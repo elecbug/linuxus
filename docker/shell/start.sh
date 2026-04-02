@@ -38,12 +38,15 @@ chmod 755 "$HOME_DIR"
 # Add welcome message once
 BASHRC="$HOME_DIR/.bashrc"
 if ! grep -q 'Ubuntu practice shell' "$BASHRC" 2>/dev/null; then
-    cat >> "$BASHRC" <<EOF
+    cat > "$BASHRC" <<EOF
     
-echo "Welcome to the linuxus service shell."
-echo "   Student ID: $STUDENT_ID"
-echo "  Home folder: /home/$USERNAME"
-echo "Shared folder: /home/share"
+echo "+---------------------------------------------------+"
+echo "|       Welcome to the linuxus service shell.       |"
+echo "+---------------------------------------------------+"
+echo "  Student ID       : $STUDENT_ID"
+echo "  Home directory   : /home/$USERNAME"
+echo "  Shared directory : /home/share"
+echo "+---------------------------------------------------+"
 EOF
 fi
 
