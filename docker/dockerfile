@@ -2,6 +2,7 @@ FROM ubuntu:22.04
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Seoul
 
 # Install basic packages and ttyd
 RUN apt-get update && apt-get install -y \
@@ -23,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     procps \
     locales \
     ca-certificates \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Generate locale
@@ -31,12 +33,13 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
-# Create a student user
+# Create student user
 RUN useradd -m -s /bin/bash student && \
     echo "student ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Create workspace directory
+# Prepare directories
 RUN mkdir -p /home/student/workspace && \
+    mkdir -p /home/student/share && \
     chown -R student:student /home/student
 
 # Copy startup script
