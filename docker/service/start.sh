@@ -68,5 +68,4 @@ chown "$USERNAME:$USERNAME" "$PROFILE"
 exec ttyd \
   --port 7681 \
   --client-option "titleFixed=linuxus - $STUDENT_ID" \
-  --terminal-type "bash" \
   su - "$USERNAME"
