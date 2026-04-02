@@ -8,7 +8,6 @@ ENV TZ=Asia/Seoul
 RUN apt-get update && apt-get install -y \
     ttyd \
     bash \
-    sudo \
     curl \
     wget \
     vim \

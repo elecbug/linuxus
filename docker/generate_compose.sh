@@ -126,7 +126,7 @@ for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
     cat >> "$OUTPUT_FILE" <<EOF
   student_${SAFE_ID}:
     build: ./shell
-    container_name: ubuntu-shell-${SAFE_ID}
+    container_name: ubuntu-${SAFE_ID}
     environment:
       - STUDENT_ID=${STUDENT_ID}
     expose:
@@ -135,6 +135,8 @@ for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
       - home_${SAFE_ID}:/home/${USERNAME}
       - shared_data:/home/share
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
 EOF
 done
