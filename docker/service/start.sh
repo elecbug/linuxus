@@ -71,5 +71,5 @@ chown "$USERNAME:$USERNAME" "$PROFILE"
 # Start ttyd and launch bash as the student
 exec ttyd \
   --port 7681 \
-  --client-option "titleFixed=linuxus - $USERNAME" \
+  --client-option "titleFixed=linuxus | $USERNAME" \
   su - "$USERNAME"

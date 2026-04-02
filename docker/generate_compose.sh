@@ -104,12 +104,12 @@ version: "3.8"
 services:
   linuxus_auth:
     build: ./auth
-    container_name: linuxus-auth
+    container_name: linuxus_auth
     environment:
-      - STUDENTS_FILE=/data/students.txt
+      - STUDENTS_FILE=/data/STUDENTS
       - SESSION_SECRET=change-this-secret-before-production
     volumes:
-      - ${STUDENT_LIST_FILE}:/data/students.txt:ro
+      - ${STUDENT_LIST_FILE}:/data/STUDENTS:ro
     ports:
       - "${AUTH_PORT}:8080"
     restart: unless-stopped
@@ -124,7 +124,7 @@ for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
     cat >> "$OUTPUT_FILE" <<EOF
   linuxus_service_${SAFE_ID}:
     build: ./service
-    container_name: linuxus-${USERNAME}
+    container_name: linuxus_service_${SAFE_ID}
     hostname: linuxus
     environment:
       - STUDENT_ID=${STUDENT_ID}
