@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Seoul
 
-# Install basic packages and ttyd
+# Install base packages and ttyd
 RUN apt-get update && apt-get install -y \
     ttyd \
     bash \

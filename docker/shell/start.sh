@@ -37,7 +37,7 @@ chmod 755 "$HOME_DIR"
 
 # Add welcome message once
 BASHRC="$HOME_DIR/.bashrc"
-if ! grep -q 'linuxus service shell' "$BASHRC" 2>/dev/null; then
+if ! grep -q 'Ubuntu practice shell' "$BASHRC" 2>/dev/null; then
     cat >> "$BASHRC" <<EOF
     
 echo "Welcome to the linuxus service shell."
@@ -46,6 +46,8 @@ echo "  Home folder: /home/$USERNAME"
 echo "Shared folder: /home/share"
 EOF
 fi
+
+chown "$USERNAME:$USERNAME" "$BASHRC"
 
 # Start ttyd and launch bash as the student
 exec ttyd \

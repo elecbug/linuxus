@@ -2,16 +2,16 @@
 
 set -e
 
-# =========================
-# Usage check
-# =========================
+# Usage:
+#   ./generate_compose.sh <students.txt> [auth_port]
+
 if [ $# -lt 1 ]; then
-    echo "Usage: ./generate_compose.sh <student_list.txt> [start_port]"
+    echo "Usage: ./generate_compose.sh <students.txt> [auth_port]"
     exit 1
 fi
 
 STUDENT_LIST_FILE="$1"
-START_PORT="${2:-7681}"
+AUTH_PORT="${2:-8080}"
 OUTPUT_FILE="docker-compose.generated.yml"
 
 if [ ! -f "$STUDENT_LIST_FILE" ]; then
@@ -19,8 +19,8 @@ if [ ! -f "$STUDENT_LIST_FILE" ]; then
     exit 1
 fi
 
-if ! [[ "$START_PORT" =~ ^[0-9]+$ ]] || [ "$START_PORT" -le 0 ]; then
-    echo "Error: start_port must be a positive integer."
+if ! [[ "$AUTH_PORT" =~ ^[0-9]+$ ]] || [ "$AUTH_PORT" -le 0 ]; then
+    echo "Error: auth_port must be a positive integer."
     exit 1
 fi
 
@@ -34,8 +34,13 @@ trim() {
 sanitize_name() {
     local s="$1"
     s="$(printf '%s' "$s" | tr '[:upper:]' '[:lower:]')"
-    s="$(printf '%s' "$s" | sed 's/[^a-z0-9_.-]/_/g')"
-    s="$(printf '%s' "$s" | sed 's/^[_.-]\+//')"
+    # Replace all non-alnum chars with underscore
+    s="$(printf '%s' "$s" | sed 's/[^a-z0-9]/_/g')"
+    # Collapse repeated underscores
+    s="$(printf '%s' "$s" | sed 's/_\+/_/g')"
+    # Remove leading/trailing underscores
+    s="$(printf '%s' "$s" | sed 's/^_//; s/_$//')"
+
     if [ -z "$s" ]; then
         echo "invalid"
     else
@@ -43,28 +48,51 @@ sanitize_name() {
     fi
 }
 
+make_username() {
+    local student_id="$1"
+
+    # Prefix with 'u' if the ID starts with a digit
+    if [[ "$student_id" =~ ^[0-9] ]]; then
+        printf 'u%s' "$student_id"
+    else
+        printf '%s' "$student_id"
+    fi
+}
+
 declare -a STUDENT_IDS=()
 declare -a SAFE_IDS=()
+declare -a USERNAMES=()
 declare -A SEEN=()
 
 while IFS= read -r line || [ -n "$line" ]; do
     line="$(trim "$line")"
-    [ -z "$line" ] && continue
 
+    # Skip empty lines and comments
+    [ -z "$line" ] && continue
     case "$line" in
         \#*) continue ;;
     esac
 
-    if [ -n "${SEEN[$line]}" ]; then
-        echo "Warning: duplicate student ID skipped: $line"
+    # Split only at the first colon
+    student_id="${line%%:*}"
+    student_id="$(trim "$student_id")"
+
+    if [ -z "$student_id" ]; then
         continue
     fi
 
-    SAFE_ID="$(sanitize_name "$line")"
+    if [ -n "${SEEN[$student_id]}" ]; then
+        echo "Warning: duplicate student ID skipped: $student_id"
+        continue
+    fi
 
-    SEEN["$line"]=1
-    STUDENT_IDS+=("$line")
-    SAFE_IDS+=("$SAFE_ID")
+    safe_id="$(sanitize_name "$student_id")"
+    username="$(make_username "$student_id")"
+
+    SEEN["$student_id"]=1
+    STUDENT_IDS+=("$student_id")
+    SAFE_IDS+=("$safe_id")
+    USERNAMES+=("$username")
 done < "$STUDENT_LIST_FILE"
 
 if [ "${#STUDENT_IDS[@]}" -eq 0 ]; then
@@ -76,30 +104,39 @@ cat > "$OUTPUT_FILE" <<EOF
 version: "3.8"
 
 services:
-EOF
-
-PORT="$START_PORT"
-
-for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
-    STUDENT_ID="${STUDENT_IDS[$i]}"
-    SAFE_ID="${SAFE_IDS[$i]}"
-
-    cat >> "$OUTPUT_FILE" <<EOF
-  student_${SAFE_ID}:
-    build: .
-    container_name: ubuntu-shell-${SAFE_ID}
+  auth:
+    build: ./auth
+    container_name: ubuntu-shell-auth
     environment:
-      - STUDENT_ID=${STUDENT_ID}
-    ports:
-      - "${PORT}:7681"
+      - STUDENTS_FILE=/data/students.txt
+      - SESSION_SECRET=change-this-secret-before-production
     volumes:
-      - ${SAFE_ID}_home:/home/${STUDENT_ID}
-      - shared_data:/home/share
+      - ./data/students.txt:/data/students.txt:ro
+    ports:
+      - "${AUTH_PORT}:8080"
     restart: unless-stopped
 
 EOF
 
-    PORT=$((PORT + 1))
+for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
+    STUDENT_ID="${STUDENT_IDS[$i]}"
+    SAFE_ID="${SAFE_IDS[$i]}"
+    USERNAME="${USERNAMES[$i]}"
+
+    cat >> "$OUTPUT_FILE" <<EOF
+  student_${SAFE_ID}:
+    build: ./shell
+    container_name: ubuntu-shell-${SAFE_ID}
+    environment:
+      - STUDENT_ID=${STUDENT_ID}
+    expose:
+      - "7681"
+    volumes:
+      - home_${SAFE_ID}:/home/${USERNAME}
+      - shared_data:/home/share
+    restart: unless-stopped
+
+EOF
 done
 
 cat >> "$OUTPUT_FILE" <<EOF
@@ -108,7 +145,7 @@ EOF
 
 for SAFE_ID in "${SAFE_IDS[@]}"; do
     cat >> "$OUTPUT_FILE" <<EOF
-  ${SAFE_ID}_home:
+  home_${SAFE_ID}:
 EOF
 done
 
@@ -117,14 +154,13 @@ cat >> "$OUTPUT_FILE" <<EOF
 EOF
 
 echo "Generated $OUTPUT_FILE"
-echo "Student count: ${#STUDENT_IDS[@]}"
-echo "Start port   : $START_PORT"
 echo
-echo "Port mapping:"
-PORT="$START_PORT"
+echo "Login URL:"
+echo "  http://localhost:${AUTH_PORT}/login"
+echo
+echo "Students:"
 for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
-    echo "  ${STUDENT_IDS[$i]} -> ${PORT}"
-    PORT=$((PORT + 1))
+    echo "  ID=${STUDENT_IDS[$i]} USER=${USERNAMES[$i]} SERVICE=student_${SAFE_IDS[$i]}"
 done
 echo
 echo "Run:"

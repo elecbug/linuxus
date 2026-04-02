@@ -1,0 +1,20 @@
+FROM golang:1.25 AS builder
+
+WORKDIR /app
+
+COPY go.mod ./
+RUN go mod download golang.org/x/crypto
+RUN go mod download
+
+COPY main.go ./
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o auth-server main.go
+
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+COPY --from=builder /app/auth-server /app/auth-server
+
+EXPOSE 8080
+
+CMD ["/app/auth-server"]
