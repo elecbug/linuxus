@@ -12,13 +12,7 @@ if [ -z "$USERNAME_PREFIX" ]; then
     USERNAME_PREFIX="u"
 fi
 
-# Determine username
-if [[ "$STUDENT_ID" =~ ^[0-9] ]]; then
-    USERNAME="$USERNAME_PREFIX$STUDENT_ID"
-else
-    USERNAME="$STUDENT_ID"
-fi
-
+USERNAME="$USERNAME_PREFIX$STUDENT_ID"
 HOME_DIR="/home/$USERNAME"
 SHARE_DIR="/home/share"
 
@@ -57,9 +51,15 @@ chown "$USERNAME:$USERNAME" "$BASHRC"
 
 # Ensure .bash_profile sources .bashrc
 PROFILE="$HOME_DIR/.bash_profile"
-
-if ! grep -q '.bashrc' "$PROFILE" 2>/dev/null; then
+if [ ! -f "$PROFILE" ]; then
     cat > "$PROFILE" <<EOF
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+EOF
+elif ! grep -q '.bashrc' "$PROFILE" 2>/dev/null; then
+    cat >> "$PROFILE" <<EOF
+
 if [ -f ~/.bashrc ]; then
     . ~/.bashrc
 fi
