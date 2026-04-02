@@ -1,4 +1,10 @@
 #!/bin/bash
 
-sudo docker compose -f ./docker/docker-compose.generated.yml down -v
-sudo docker compose -f ./docker/docker-compose.generated.yml up -d --build
+cd docker
+
+./generate_compose.sh ./data/students.txt
+
+sudo docker compose -f ./docker-compose.generated.yml down -v --remove-orphans
+sudo docker compose -f ./docker-compose.generated.yml up -d --build
+
+cd ..

@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
     locales \
     ca-certificates \
     tzdata \
+    passwd \
     && rm -rf /var/lib/apt/lists/*
 
 # Generate locale
@@ -33,14 +34,8 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
-# Create student user
-RUN useradd -m -s /bin/bash student && \
-    echo "student ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
-# Prepare directories
-RUN mkdir -p /home/student/workspace && \
-    mkdir -p /home/student/share && \
-    chown -R student:student /home/student
+# Prepare shared directory
+RUN mkdir -p /home/share && chmod 777 /home/share
 
 # Copy startup script
 COPY start.sh /start.sh
