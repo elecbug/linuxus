@@ -18,6 +18,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const LOGIN_PATH = "login"
+const LOGOUT_PATH = "logout"
 const SERVICE_PATH = "service"
 
 type App struct {
@@ -35,7 +37,7 @@ func main() {
 		log.Fatalf("failed to load users: %v", err)
 	}
 
-	tmpl, err := template.New("login").Parse(loginPage)
+	tmpl, err := template.New(LOGIN_PATH).Parse(loginPage)
 	if err != nil {
 		log.Fatalf("failed to parse template: %v", err)
 	}
@@ -48,8 +50,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", app.handleRoot)
-	mux.HandleFunc("/login", app.handleLogin)
-	mux.HandleFunc("/logout", app.handleLogout)
+	mux.HandleFunc("/"+LOGIN_PATH, app.handleLogin)
+	mux.HandleFunc("/"+LOGOUT_PATH, app.handleLogout)
 
 	// Important:
 	// /$SERVICE_PATH  -> redirect to /$SERVICE_PATH/
@@ -113,7 +115,7 @@ func (a *App) handleRoot(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/"+SERVICE_PATH+"/", http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
 }
 
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -160,12 +162,12 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
 }
 
 func (a *App) handleShellRedirect(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.getSessionStudentID(r); !ok {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
 		return
 	}
 
@@ -175,7 +177,7 @@ func (a *App) handleShellRedirect(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleShellProxy(w http.ResponseWriter, r *http.Request) {
 	studentID, ok := a.getSessionStudentID(r)
 	if !ok {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
 		return
 	}
 
@@ -220,7 +222,7 @@ func (a *App) handleShellProxy(w http.ResponseWriter, r *http.Request) {
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("proxy error for %s: %v", studentID, err)
-		http.Error(w, "Shell backend is unavailable", http.StatusBadGateway)
+		http.Error(w, "Service backend is unavailable", http.StatusBadGateway)
 	}
 
 	proxy.ServeHTTP(w, r)
@@ -346,14 +348,14 @@ const loginPage = `
 <body>
     <h2>Linuxus Login</h2>
     {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
-    <form method="post" action="/login">
+    <form method="post" action="/` + LOGIN_PATH + `">
         <input type="text" name="student_id" placeholder="Student ID" required>
         <input type="password" name="password" placeholder="Password" required>
         <button type="submit">Login</button>
     </form>
     <div class="links">
         <a href="/` + SERVICE_PATH + `/">Go to service</a>
-        <a href="/logout">Logout</a>
+        <a href="/` + LOGOUT_PATH + `">Logout</a>
     </div>
 </body>
 </html>
