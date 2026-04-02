@@ -125,7 +125,7 @@ for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
 
     cat >> "$OUTPUT_FILE" <<EOF
   student_${SAFE_ID}:
-    build: ./shell
+    build: ./service
     container_name: ubuntu-${SAFE_ID}
     hostname: linuxus-${SAFE_ID}
     environment:

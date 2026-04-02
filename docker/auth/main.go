@@ -18,6 +18,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const SERVICE_PATH = "service"
+
 type App struct {
 	users      map[string]string
 	sessionKey []byte
@@ -50,10 +52,10 @@ func main() {
 	mux.HandleFunc("/logout", app.handleLogout)
 
 	// Important:
-	// /shell  -> redirect to /shell/
-	// /shell/ -> reverse proxy with prefix stripping
-	mux.HandleFunc("/shell", app.handleShellRedirect)
-	mux.HandleFunc("/shell/", app.handleShellProxy)
+	// /$SERVICE_PATH  -> redirect to /$SERVICE_PATH/
+	// /$SERVICE_PATH/ -> reverse proxy with prefix stripping
+	mux.HandleFunc("/"+SERVICE_PATH, app.handleShellRedirect)
+	mux.HandleFunc("/"+SERVICE_PATH+"/", app.handleShellProxy)
 
 	addr := ":8080"
 	log.Printf("Auth server listening on %s", addr)
@@ -108,7 +110,7 @@ func loadUsers(path string) (map[string]string, error) {
 
 func (a *App) handleRoot(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.getSessionStudentID(r); ok {
-		http.Redirect(w, r, "/shell/", http.StatusSeeOther)
+		http.Redirect(w, r, "/"+SERVICE_PATH+"/", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
@@ -141,7 +143,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		a.setSessionCookie(w, studentID)
-		http.Redirect(w, r, "/shell/", http.StatusSeeOther)
+		http.Redirect(w, r, "/"+SERVICE_PATH+"/", http.StatusSeeOther)
 		return
 
 	default:
@@ -167,7 +169,7 @@ func (a *App) handleShellRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/shell/", http.StatusSeeOther)
+	http.Redirect(w, r, "/"+SERVICE_PATH+"/", http.StatusSeeOther)
 }
 
 func (a *App) handleShellProxy(w http.ResponseWriter, r *http.Request) {
@@ -196,18 +198,19 @@ func (a *App) handleShellProxy(w http.ResponseWriter, r *http.Request) {
 		req.URL.Host = target.Host
 		req.Host = target.Host
 
-		// Strip "/shell" prefix before forwarding to ttyd.
+		// Strip "$SERVICE_PATH" prefix before forwarding to ttyd.
 		// Examples:
-		//   /shell/      -> /
-		//   /shell/ws    -> /ws
-		//   /shell/foo   -> /foo
-		newPath := strings.TrimPrefix(req.URL.Path, "/shell")
+		//   /$SERVICE_PATH/      -> /
+		//   /$SERVICE_PATH/ws    -> /ws
+		//   /$SERVICE_PATH/foo   -> /foo
+		newPath := strings.TrimPrefix(req.URL.Path, "/"+SERVICE_PATH)
 		if newPath == "" {
 			newPath = "/"
 		}
 		if !strings.HasPrefix(newPath, "/") {
 			newPath = "/" + newPath
 		}
+
 		req.URL.Path = newPath
 		req.URL.RawPath = ""
 
@@ -310,7 +313,7 @@ const loginPage = `
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Student Shell Login</title>
+    <title>Linuxus Login</title>
     <style>
         body {
             font-family: sans-serif;
@@ -341,7 +344,7 @@ const loginPage = `
     </style>
 </head>
 <body>
-    <h2>Student Shell Login</h2>
+    <h2>Linuxus Login</h2>
     {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
     <form method="post" action="/login">
         <input type="text" name="student_id" placeholder="Student ID" required>
@@ -349,7 +352,7 @@ const loginPage = `
         <button type="submit">Login</button>
     </form>
     <div class="links">
-        <a href="/shell/">Go to shell</a>
+        <a href="/` + SERVICE_PATH + `/">Go to service</a>
         <a href="/logout">Logout</a>
     </div>
 </body>
