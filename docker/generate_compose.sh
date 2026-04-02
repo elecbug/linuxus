@@ -127,6 +127,7 @@ for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
   student_${SAFE_ID}:
     build: ./shell
     container_name: ubuntu-${SAFE_ID}
+    hostname: linuxus-${SAFE_ID}
     environment:
       - STUDENT_ID=${STUDENT_ID}
     expose:

@@ -51,8 +51,22 @@ fi
 
 chown "$USERNAME:$USERNAME" "$BASHRC"
 
+# Ensure .bash_profile sources .bashrc
+PROFILE="$HOME_DIR/.bash_profile"
+
+if ! grep -q '.bashrc' "$PROFILE" 2>/dev/null; then
+    cat > "$PROFILE" <<EOF
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+EOF
+fi
+
+chown "$USERNAME:$USERNAME" "$PROFILE"
+
 # Start ttyd and launch bash as the student
 exec ttyd \
-  -p 7681 \
-  -t "titleFixed=linuxus - $STUDENT_ID" \
+  --port 7681 \
+  --client-option "titleFixed=linuxus - $STUDENT_ID" \
+  --terminal-type "bash" \
   su - "$USERNAME"
