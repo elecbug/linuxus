@@ -3,7 +3,9 @@
 set -e
 
 # Usage:
-#   ./generate_compose.sh <students.txt> [auth_port]
+#   ./generate_compose.sh <students.txt> [auth_port] [username_prefix]
+# Example:
+#   ./generate_compose.sh ./data/students.txt 8080 "stu-"
 
 if [ $# -lt 1 ]; then
     echo "Usage: ./generate_compose.sh <students.txt> [auth_port] [username_prefix]"
@@ -12,7 +14,7 @@ fi
 
 STUDENT_LIST_FILE="$1"
 AUTH_PORT="${2:-8080}"
-USERNAME_PREFIX="${3:-stu}"
+USERNAME_PREFIX="${3:-stu-}"
 OUTPUT_FILE="docker-compose.generated.yml"
 
 if [ ! -f "$STUDENT_LIST_FILE" ]; then
@@ -52,13 +54,7 @@ sanitize_name() {
 make_username() {
     local student_id="$1"
 
-    # if [[ "$student_id" =~ ^[0-9] ]]; then
-    #     echo "${USERNAME_PREFIX}${student_id}"
-    # else
-    #     echo "$student_id"
-    # fi
-
-    echo $USERNAME_PREFIX$student_id
+    echo "${USERNAME_PREFIX}${student_id}"
 }
 
 declare -a STUDENT_IDS=()
@@ -113,7 +109,7 @@ services:
       - STUDENTS_FILE=/data/students.txt
       - SESSION_SECRET=change-this-secret-before-production
     volumes:
-      - ./data/students.txt:/data/students.txt:ro
+      - ${STUDENT_LIST_FILE}:/data/students.txt:ro
     ports:
       - "${AUTH_PORT}:8080"
     restart: unless-stopped
