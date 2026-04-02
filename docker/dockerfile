@@ -1,0 +1,48 @@
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install basic packages and ttyd
+RUN apt-get update && apt-get install -y \
+    ttyd \
+    bash \
+    sudo \
+    curl \
+    wget \
+    vim \
+    nano \
+    git \
+    gcc \
+    g++ \
+    make \
+    python3 \
+    python3-pip \
+    iputils-ping \
+    net-tools \
+    procps \
+    locales \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Generate locale
+RUN locale-gen en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+# Create a student user
+RUN useradd -m -s /bin/bash student && \
+    echo "student ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Create workspace directory
+RUN mkdir -p /home/student/workspace && \
+    chown -R student:student /home/student
+
+# Copy startup script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+EXPOSE 7681
+
+CMD ["/start.sh"]
