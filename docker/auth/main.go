@@ -182,7 +182,7 @@ func (a *App) handleShellProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	safeID := sanitizeStudentID(studentID)
-	targetURL := fmt.Sprintf("http://student_%s:7681", safeID)
+	targetURL := fmt.Sprintf("http://linuxus_service_%s:7681", safeID)
 
 	target, err := url.Parse(targetURL)
 	if err != nil {

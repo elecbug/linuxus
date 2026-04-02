@@ -8,9 +8,13 @@ if [ -z "$STUDENT_ID" ]; then
     exit 1
 fi
 
+if [ -z "$USERNAME_PREFIX" ]; then
+    USERNAME_PREFIX="u"
+fi
+
 # Determine username
 if [[ "$STUDENT_ID" =~ ^[0-9] ]]; then
-    USERNAME="u$STUDENT_ID"
+    USERNAME="$USERNAME_PREFIX$STUDENT_ID"
 else
     USERNAME="$STUDENT_ID"
 fi
@@ -67,5 +71,5 @@ chown "$USERNAME:$USERNAME" "$PROFILE"
 # Start ttyd and launch bash as the student
 exec ttyd \
   --port 7681 \
-  --client-option "titleFixed=linuxus - $STUDENT_ID" \
+  --client-option "titleFixed=linuxus - $USERNAME" \
   su - "$USERNAME"

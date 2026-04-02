@@ -18,7 +18,7 @@ if [ ! -f "./data/students.txt" ]; then
     exit 1
 fi
 
-./generate_compose.sh ./data/students.txt
+./generate_compose.sh ./data/students.txt 8080 "stu-"
 
 if [ "$param" == "--clear-volume" ]; then
     sudo docker compose -f ./docker-compose.generated.yml down -v --remove-orphans

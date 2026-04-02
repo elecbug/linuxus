@@ -6,12 +6,13 @@ set -e
 #   ./generate_compose.sh <students.txt> [auth_port]
 
 if [ $# -lt 1 ]; then
-    echo "Usage: ./generate_compose.sh <students.txt> [auth_port]"
+    echo "Usage: ./generate_compose.sh <students.txt> [auth_port] [username_prefix]"
     exit 1
 fi
 
 STUDENT_LIST_FILE="$1"
 AUTH_PORT="${2:-8080}"
+USERNAME_PREFIX="${3:-stu}"
 OUTPUT_FILE="docker-compose.generated.yml"
 
 if [ ! -f "$STUDENT_LIST_FILE" ]; then
@@ -51,12 +52,13 @@ sanitize_name() {
 make_username() {
     local student_id="$1"
 
-    # Prefix with 'u' if the ID starts with a digit
-    if [[ "$student_id" =~ ^[0-9] ]]; then
-        printf 'u%s' "$student_id"
-    else
-        printf '%s' "$student_id"
-    fi
+    # if [[ "$student_id" =~ ^[0-9] ]]; then
+    #     echo "${USERNAME_PREFIX}${student_id}"
+    # else
+    #     echo "$student_id"
+    # fi
+
+    echo $USERNAME_PREFIX$student_id
 }
 
 declare -a STUDENT_IDS=()
@@ -104,9 +106,9 @@ cat > "$OUTPUT_FILE" <<EOF
 version: "3.8"
 
 services:
-  auth:
+  linuxus_auth:
     build: ./auth
-    container_name: ubuntu-shell-auth
+    container_name: linuxus-auth
     environment:
       - STUDENTS_FILE=/data/students.txt
       - SESSION_SECRET=change-this-secret-before-production
@@ -124,12 +126,13 @@ for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
     USERNAME="${USERNAMES[$i]}"
 
     cat >> "$OUTPUT_FILE" <<EOF
-  student_${SAFE_ID}:
+  linuxus_service_${SAFE_ID}:
     build: ./service
-    container_name: ubuntu-${SAFE_ID}
-    hostname: linuxus-${SAFE_ID}
+    container_name: linuxus-${USERNAME}
+    hostname: linuxus
     environment:
       - STUDENT_ID=${STUDENT_ID}
+      - USERNAME_PREFIX=${USERNAME_PREFIX}
     expose:
       - "7681"
     volumes:
@@ -138,7 +141,6 @@ for ((i=0; i<${#STUDENT_IDS[@]}; i++)); do
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-
 EOF
 done
 
