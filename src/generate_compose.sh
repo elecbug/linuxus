@@ -59,11 +59,6 @@ sanitize_name() {
     fi
 }
 
-make_username() {
-    local user_id="$1"
-    printf '%s%s' "$USERNAME_PREFIX" "$user_id"
-}
-
 declare -a USER_IDS=()
 declare -a SAFE_IDS=()
 declare -a USERNAMES=()
@@ -90,7 +85,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     fi
 
     safe_id="$(sanitize_name "$user_id")"
-    username="$(make_username "$user_id")"
+    username="${SERVICE_USERNAME_PREFIX}${user_id}"
 
     SEEN["$user_id"]=1
     USER_IDS+=("$user_id")
@@ -101,19 +96,6 @@ done < "$AUTH_LIST_FILE"
 if [ "${#USER_IDS[@]}" -eq 0 ]; then
     echo "Error: no valid user IDs found in $AUTH_LIST_FILE"
     exit 1
-fi
-
-# =========================
-# Prepare volumes
-# =========================
-if [ -d "$SERVICE_SHARED_DIR" ]; then
-    mkdir -p "$SERVICE_SHARED_DIR"
-    chmod 755 "$SERVICE_SHARED_DIR"
-fi
-
-if [ -d "$SERVICE_READONLY_DIR" ]; then
-    mkdir -p "$SERVICE_READONLY_DIR"
-    chmod 755 "$SERVICE_READONLY_DIR"
 fi
 
 # =========================
@@ -128,13 +110,14 @@ services:
     container_name: ${AUTH_CONTAINER_NAME}
     environment:
       - AUTH_LIST=${AUTH_LIST_MOUNT_PATH}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - LOGIN_PATH=${LOGIN_PATH}
-      - LOGOUT_PATH=${LOGOUT_PATH}
-      - SERVICE_PATH=${SERVICE_PATH}
-      - TERMINAL_PATH=${TERMINAL_PATH}
-      - MANAGER_LOGIN_ID=${MANAGER_LOGIN_ID}
-      - MANAGER_LOGIN_PASSWORD=${MANAGER_LOGIN_PASSWORD}
+      - SESSION_SECRET=${AUTH_SESSION_SECRET}
+      - LOGIN_PATH=${URL_LOGIN_PATH}
+      - LOGOUT_PATH=${URL_LOGOUT_PATH}
+      - SERVICE_PATH=${URL_SERVICE_PATH}
+      - TERMINAL_PATH=${URL_TERMINAL_PATH}
+      - ADMIN_LOGIN_ID=${ADMIN_LOGIN_ID}
+      - ADMIN_LOGIN_PASSWORD=${ADMIN_LOGIN_PASSWORD}
+      - ADMIN_CONTAINER_NAME=${ADMIN_CONTAINER_NAME}
     volumes:
       - ${AUTH_LIST_FILE}:${AUTH_LIST_MOUNT_PATH}:ro
     ports:
@@ -155,15 +138,16 @@ for ((i=0; i<${#USER_IDS[@]}; i++)); do
     hostname: ${SERVICE_HOSTNAME}
     environment:
       - USER_ID=${USER_ID}
-      - USERNAME_PREFIX=${USERNAME_PREFIX}
-      - SHARED_DIR=${SERVICE_SHARED_DIR}
-      - READONLY_DIR=${SERVICE_READONLY_DIR}
+      - USERNAME_PREFIX=${SERVICE_USERNAME_PREFIX}
+      - SHARED_DIR=${CONTAINER_SHARE_DIR}
+      - READONLY_DIR=${CONTAINER_READONLY_DIR}
+      - IS_ADMIN=false
     expose:
       - "7681"
     volumes:
       - ${HOST_HOMES_DIR}/${USERNAME}:/home/${USERNAME}:rw
-      - ${HOST_SHARE_DIR}:${SERVICE_SHARED_DIR}:rw
-      - ${HOST_READONLY_DIR}:${SERVICE_READONLY_DIR}:ro
+      - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
+      - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:ro
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -173,20 +157,22 @@ done
 
 
 cat >> "$OUTPUT_FILE" <<EOF
-  ${MANAGER_CONTAINER_NAME}:
-    build: ${SERVICE_SOURCE_DIR}
-    container_name: ${SERVICE_CONTAINER_NAME_PREFIX}${MANAGER_CONTAINER_NAME}
+  ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_CONTAINER_NAME}:
+    build: ${ADMIN_SOURCE_DIR}
+    container_name: ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_CONTAINER_NAME}
+    hostname: ${ADMIN_HOSTNAME}
     environment:
-      - USER_ID=${MANAGER_CONTAINER_USERNAME}
-      - USERNAME_PREFIX=""
-      - SHARED_DIR=${SERVICE_SHARED_DIR}
-      - READONLY_DIR=${SERVICE_READONLY_DIR}
+      - USER_ID=${ADMIN_CONTAINER_NAME}
+      - USERNAME_PREFIX=${ADMIN_USERNAME_PREFIX}
+      - SHARED_DIR=${CONTAINER_SHARE_DIR}
+      - READONLY_DIR=${CONTAINER_READONLY_DIR}
+      - IS_ADMIN=true
     expose:
       - "7681"
     volumes:
-      - ${HOST_HOMES_DIR}/${MANAGER_CONTAINER_USERNAME}:/home/${MANAGER_CONTAINER_USERNAME}:rw
-      - ${HOST_SHARE_DIR}:${SERVICE_SHARED_DIR}:rw
-      - ${HOST_READONLY_DIR}:${SERVICE_READONLY_DIR}:rw
+      - ${HOST_HOMES_DIR}/${ADMIN_USERNAME_PREFIX}${ADMIN_CONTAINER_NAME}:/home/${ADMIN_USERNAME_PREFIX}${ADMIN_CONTAINER_NAME}:rw
+      - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
+      - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:rw
     restart: unless-stopped
 
 EOF
@@ -200,7 +186,7 @@ echo "Config file:"
 echo "  $CONFIG_FILE"
 echo
 echo "Login URL:"
-echo "  http://localhost:${AUTH_PORT}/${LOGIN_PATH}"
+echo "  http://localhost:${AUTH_PORT}/${URL_LOGIN_PATH}"
 echo
 echo "Users:"
 for ((i=0; i<${#USER_IDS[@]}; i++)); do

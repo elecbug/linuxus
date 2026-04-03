@@ -17,8 +17,9 @@ func main() {
 	logoutPath := getEnv("LOGOUT_PATH", "logout")
 	servicePath := getEnv("SERVICE_PATH", "service")
 	terminalPath := getEnv("TERMINAL_PATH", "terminal")
-	managerLoginID := getEnv("MANAGER_LOGIN_ID", "admin")
-	managerLoginPassword := getEnv("MANAGER_LOGIN_PASSWORD", "admin")
+	adminLoginID := getEnv("ADMIN_LOGIN_ID", "admin")
+	adminLoginPassword := getEnv("ADMIN_LOGIN_PASSWORD", "admin")
+	adminContainerName := getEnv("ADMIN_CONTAINER_NAME", "manager")
 
 	users, err := loadUsers(authListFile)
 	if err != nil {
@@ -27,7 +28,8 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	app := handler.NewApp(users, []byte(sessionSecret), loginPath, logoutPath, servicePath, terminalPath, managerLoginID, managerLoginPassword)
+	app := handler.NewApp(users, []byte(sessionSecret),
+		loginPath, logoutPath, servicePath, terminalPath, adminLoginID, adminLoginPassword, adminContainerName)
 	app.RegisterRoutes(mux)
 
 	addr := ":8080"

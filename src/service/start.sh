@@ -39,12 +39,20 @@ if ! id "$USERNAME" >/dev/null 2>&1; then
     useradd -M -d "$HOME_DIR" -s /bin/bash "$USERNAME"
 fi
 
-# Ensure home directory exists
+# Ensure directories exist
 mkdir -p "$HOME_DIR"
+mkdir -p "$SHARED_DIR"
+mkdir -p "$READONLY_DIR"
 
 # Ensure ownership
 chown -R "$USERNAME:$USERNAME" "$HOME_DIR"
+
 chmod 755 "$HOME_DIR"
+chmod 777 "$SHARED_DIR"
+
+if [ "$IS_ADMIN" = "true" ]; then
+    chmod 777 "$READONLY_DIR"
+fi
 
 # Add welcome message once
 BASHRC="$HOME_DIR/.bashrc"
@@ -56,6 +64,7 @@ echo "+---------------------------------------------------+"
 echo ""
 echo "  - User ID            : $USER_ID"
 echo "  - Linux user         : $USERNAME"
+echo "  - User mode          : $( [ "$IS_ADMIN" = "true" ] && echo "Admin" || echo "Default" )"
 echo ""
 echo "  - Home directory     : /home/$USERNAME"
 echo "  - Shared directory   : $SHARED_DIR"

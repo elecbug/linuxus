@@ -34,9 +34,6 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
-# Prepare shared directory
-RUN mkdir -p /home/share && chmod 777 /home/share
-
 # Copy startup script
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
