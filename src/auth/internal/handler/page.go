@@ -76,7 +76,8 @@ func (a *App) GetServicePage() string {
             padding: 0 16px;
             box-sizing: border-box;
             border-bottom: 1px solid #ddd;
-            background: #282a2e;
+            background: #595d65;
+			color: white;
         }
 
         .left {
@@ -95,7 +96,7 @@ func (a *App) GetServicePage() string {
             border: 1px solid #999;
             border-radius: 6px;
             color: white;
-            background: #3b3e44;
+            background: #242529;
         }
 
         .btn-danger {
