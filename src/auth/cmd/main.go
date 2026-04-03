@@ -4,7 +4,6 @@ import (
 	"authserver/internal/handler"
 	"bufio"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -12,27 +11,21 @@ import (
 )
 
 func main() {
-	studentsFile := getEnv("STUDENTS_FILE", "/data/students.txt")
+	authListFile := getEnv("AUTH_LIST", "/data/auths.txt")
 	sessionSecret := getEnv("SESSION_SECRET", "replace-this-with-a-long-random-secret-key")
+	loginPath := getEnv("LOGIN_PATH", "login")
+	logoutPath := getEnv("LOGOUT_PATH", "logout")
+	servicePath := getEnv("SERVICE_PATH", "service")
+	terminalPath := getEnv("TERMINAL_PATH", "terminal")
 
-	users, err := loadUsers(studentsFile)
+	users, err := loadUsers(authListFile)
 	if err != nil {
 		log.Fatalf("failed to load users: %v", err)
 	}
 
-	loginTmpl, err := template.New(handler.LOGIN_PATH).Parse(handler.LOGIN_PAGE)
-	if err != nil {
-		log.Fatalf("failed to parse template: %v", err)
-	}
-
-	serviceTmpl, err := template.New(handler.SERVICE_PATH).Parse(handler.SERVICE_PAGE)
-	if err != nil {
-		log.Fatalf("failed to parse service template: %v", err)
-	}
-
 	mux := http.NewServeMux()
 
-	app := handler.NewApp(users, []byte(sessionSecret), loginTmpl, serviceTmpl)
+	app := handler.NewApp(users, []byte(sessionSecret), loginPath, logoutPath, servicePath, terminalPath)
 	app.RegisterRoutes(mux)
 
 	addr := ":8080"
@@ -66,14 +59,14 @@ func loadUsers(path string) (map[string]string, error) {
 
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid line in students file: %s", line)
+			return nil, fmt.Errorf("invalid line in auths file: %s", line)
 		}
 
 		studentID := strings.TrimSpace(parts[0])
 		hash := strings.TrimSpace(parts[1])
 
 		if studentID == "" || hash == "" {
-			return nil, fmt.Errorf("invalid line in students file: %s", line)
+			return nil, fmt.Errorf("invalid line in auths file: %s", line)
 		}
 
 		users[studentID] = hash

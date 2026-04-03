@@ -1,6 +1,7 @@
 package handler
 
-const LOGIN_PAGE = `
+func (a *App) GetLoginPage() string {
+	return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -38,19 +39,22 @@ const LOGIN_PAGE = `
 <body>
     <h2>Linuxus Login</h2>
     {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
-    <form method="post" action="/` + LOGIN_PATH + `">
+    <form method="post" action="/` + a.loginPath + `">
         <input type="text" name="student_id" placeholder="Student ID" required>
         <input type="password" name="password" placeholder="Password" required>
         <button type="submit">Login</button>
     </form>
     <div class="links">
-        <a href="/` + SERVICE_PATH + `/">Go to service</a>
-        <a href="/` + LOGOUT_PATH + `">Logout</a>
+        <a href="/` + a.servicePath + `/">Go to service</a>
+        <a href="/` + a.logoutPath + `">Logout</a>
     </div>
 </body>
 </html>
 `
-const SERVICE_PAGE = `
+}
+
+func (a *App) GetServicePage() string {
+	return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -72,7 +76,7 @@ const SERVICE_PAGE = `
             padding: 0 16px;
             box-sizing: border-box;
             border-bottom: 1px solid #ddd;
-            background: #f7f7f7;
+            background: #282a2e;
         }
 
         .left {
@@ -90,8 +94,8 @@ const SERVICE_PAGE = `
             text-decoration: none;
             border: 1px solid #999;
             border-radius: 6px;
-            color: black;
-            background: white;
+            color: white;
+            background: #3b3e44;
         }
 
         .btn-danger {
@@ -115,14 +119,15 @@ const SERVICE_PAGE = `
     <div class="topbar">
         <div class="left">linuxus | {{.StudentID}}</div>
         <div class="right">
-            <a class="btn" href="/` + TERMINAL_PATH + `/" target="shellframe">Open Shell</a>
-            <a class="btn btn-danger" href="/` + LOGOUT_PATH + `">Logout</a>
+            <a class="btn" href="/` + a.terminalPath + `/" target="shellframe">Open Shell</a>
+            <a class="btn btn-danger" href="/` + a.logoutPath + `">Logout</a>
         </div>
     </div>
 
     <div class="frame-wrap">
-        <iframe name="shellframe" src="/` + TERMINAL_PATH + `/"></iframe>
+        <iframe name="shellframe" src="/` + a.terminalPath + `/"></iframe>
     </div>
 </body>
 </html>
 `
+}

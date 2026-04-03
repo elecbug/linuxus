@@ -3,19 +3,18 @@
 set -e
 
 # Validate required environment variable
-if [ -z "$STUDENT_ID" ]; then
-    echo "Error: STUDENT_ID is not set."
+if [ -z "$USER_ID" ]; then
+    echo "Error: USER_ID is not set."
     exit 1
 fi
 
 if [ -z "$USERNAME_PREFIX" ]; then
-    USERNAME_PREFIX="u"
+    USERNAME_PREFIX="stu"
 fi
 
-USERNAME="$USERNAME_PREFIX$STUDENT_ID"
+USERNAME="$USERNAME_PREFIX$USER_ID"
 HOME_DIR="/home/$USERNAME"
 SHARE_DIR="/home/share"
-TERMINAL_PATH="terminal"
 
 # Create shared directory if missing
 mkdir -p "$SHARE_DIR"
@@ -41,7 +40,7 @@ echo "+---------------------------------------------------+"
 echo "|       Welcome to the linuxus service shell.       |"
 echo "+---------------------------------------------------+"
 echo ""
-echo "  - Student ID       : $STUDENT_ID"
+echo "  - User ID          : $USER_ID"
 echo "  - Linux user       : $USERNAME"
 echo "  - Home directory   : /home/$USERNAME"
 echo "  - Shared directory : /home/share"

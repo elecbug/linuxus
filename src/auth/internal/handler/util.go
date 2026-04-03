@@ -21,28 +21,6 @@ func (a *App) renderLogin(w http.ResponseWriter, errMsg string) {
 	}
 }
 
-func sanitizeStudentID(id string) string {
-	id = strings.ToLower(id)
-	var b strings.Builder
-
-	for _, ch := range id {
-		if (ch >= 'a' && ch <= 'z') ||
-			(ch >= '0' && ch <= '9') ||
-			ch == '_' || ch == '-' || ch == '.' {
-			b.WriteRune(ch)
-		} else {
-			b.WriteRune('_')
-		}
-	}
-
-	result := b.String()
-	result = strings.TrimLeft(result, "._-")
-	if result == "" {
-		return "invalid"
-	}
-	return result
-}
-
 func (a *App) setSessionCookie(w http.ResponseWriter, studentID string) {
 	signature := a.sign(studentID)
 	payload := studentID + "|" + signature
@@ -89,4 +67,26 @@ func (a *App) sign(value string) string {
 	mac := hmac.New(sha256.New, a.sessionKey)
 	mac.Write([]byte(value))
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
+}
+
+func sanitizeStudentID(id string) string {
+	id = strings.ToLower(id)
+	var b strings.Builder
+
+	for _, ch := range id {
+		if (ch >= 'a' && ch <= 'z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '_' || ch == '-' || ch == '.' {
+			b.WriteRune(ch)
+		} else {
+			b.WriteRune('_')
+		}
+	}
+
+	result := b.String()
+	result = strings.TrimLeft(result, "._-")
+	if result == "" {
+		return "invalid"
+	}
+	return result
 }

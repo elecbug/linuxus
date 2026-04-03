@@ -12,44 +12,58 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const LOGIN_PATH = "login"
-const LOGOUT_PATH = "logout"
-const SERVICE_PATH = "service"
-const TERMINAL_PATH = "terminal"
-
 type App struct {
-	users       map[string]string
-	sessionKey  []byte
-	loginTmpl   *template.Template
-	serviceTmpl *template.Template
+	users        map[string]string
+	sessionKey   []byte
+	loginTmpl    *template.Template
+	serviceTmpl  *template.Template
+	loginPath    string
+	logoutPath   string
+	servicePath  string
+	terminalPath string
 }
 
-func NewApp(users map[string]string, sessionKey []byte, loginTmpl, serviceTmpl *template.Template) *App {
+func NewApp(users map[string]string, sessionKey []byte, loginPath, logoutPath, servicePath, terminalPath string) *App {
 	return &App{
-		users:       users,
-		sessionKey:  sessionKey,
-		loginTmpl:   loginTmpl,
-		serviceTmpl: serviceTmpl,
+		users:        users,
+		sessionKey:   sessionKey,
+		loginPath:    loginPath,
+		logoutPath:   logoutPath,
+		servicePath:  servicePath,
+		terminalPath: terminalPath,
 	}
 }
 
 func (a *App) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/", a.handleRoot)
-	mux.HandleFunc("/"+LOGIN_PATH, a.handleLogin)
-	mux.HandleFunc("/"+LOGOUT_PATH, a.handleLogout)
+	loginTmpl, err := template.New(a.loginPath).Parse(a.GetLoginPage())
+	if err != nil {
+		log.Fatalf("failed to parse template: %v", err)
+	}
 
-	mux.HandleFunc("/"+SERVICE_PATH, a.handleServiceRedirect)
-	mux.HandleFunc("/"+SERVICE_PATH+"/", a.handleServicePage)
-	mux.HandleFunc("/"+TERMINAL_PATH, a.handleTerminalRedirect)
-	mux.HandleFunc("/"+TERMINAL_PATH+"/", a.handleTerminalProxy)
+	serviceTmpl, err := template.New(a.servicePath).Parse(a.GetServicePage())
+	if err != nil {
+		log.Fatalf("failed to parse service template: %v", err)
+	}
+
+	a.loginTmpl = loginTmpl
+	a.serviceTmpl = serviceTmpl
+
+	mux.HandleFunc("/", a.handleRoot)
+	mux.HandleFunc("/"+a.loginPath, a.handleLogin)
+	mux.HandleFunc("/"+a.logoutPath, a.handleLogout)
+
+	mux.HandleFunc("/"+a.servicePath, a.handleServiceRedirect)
+	mux.HandleFunc("/"+a.servicePath+"/", a.handleServicePage)
+	mux.HandleFunc("/"+a.terminalPath, a.handleTerminalRedirect)
+	mux.HandleFunc("/"+a.terminalPath+"/", a.handleTerminalProxy)
 }
 
 func (a *App) handleRoot(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.getSessionStudentID(r); ok {
-		http.Redirect(w, r, "/"+SERVICE_PATH+"/", http.StatusSeeOther)
+		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
+	http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 }
 
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +93,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		a.setSessionCookie(w, studentID)
-		http.Redirect(w, r, "/"+SERVICE_PATH+"/", http.StatusSeeOther)
+		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
 		return
 
 	default:
@@ -96,22 +110,22 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 
-	http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
+	http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 }
 
 func (a *App) handleServiceRedirect(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.getSessionStudentID(r); !ok {
-		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
+		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, "/"+SERVICE_PATH+"/", http.StatusSeeOther)
+	http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
 }
 
 func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
 	studentID, ok := a.getSessionStudentID(r)
 	if !ok {
-		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
+		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 		return
 	}
 
@@ -131,17 +145,17 @@ func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.getSessionStudentID(r); !ok {
-		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
+		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, "/"+TERMINAL_PATH+"/", http.StatusSeeOther)
+	http.Redirect(w, r, "/"+a.terminalPath+"/", http.StatusSeeOther)
 }
 
 func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	studentID, ok := a.getSessionStudentID(r)
 	if !ok {
-		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
+		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 		return
 	}
 
@@ -165,7 +179,7 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 		req.Host = target.Host
 
 		// Strip "/$TERMINAL_PATH" prefix
-		newPath := strings.TrimPrefix(req.URL.Path, "/"+TERMINAL_PATH)
+		newPath := strings.TrimPrefix(req.URL.Path, "/"+a.terminalPath)
 		if newPath == "" {
 			newPath = "/"
 		}

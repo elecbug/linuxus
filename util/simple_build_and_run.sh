@@ -11,18 +11,18 @@ CURRENT_DIR=$(pwd)
 UTIL_DIR=$(dirname "$(realpath "$0")")
 REPO_DIR=$(dirname "$UTIL_DIR")
 SOURCE_DIR=$REPO_DIR/src
-STUDENT_LIST_FILE="$SOURCE_DIR/data/students.txt"
+AUTH_LIST_FILE="$SOURCE_DIR/data/auths.txt"
 DOCKER_COMPOSE_FILE="$SOURCE_DIR/docker-compose.generated.yml"
 
 cd "$SOURCE_DIR"
 
-if [ ! -f "$STUDENT_LIST_FILE" ]; then
-    echo "Error: '$STUDENT_LIST_FILE' not found"
+if [ ! -f "$AUTH_LIST_FILE" ]; then
+    echo "Error: '$AUTH_LIST_FILE' not found"
 
     exit 1
 fi
 
-./generate_compose.sh "$STUDENT_LIST_FILE" 8080 "stu-"
+./generate_compose.sh "$AUTH_LIST_FILE" 8080
 
 if [ "$param" == "--clear-volume" ]; then
     sudo docker compose -f "$DOCKER_COMPOSE_FILE" down -v --remove-orphans
