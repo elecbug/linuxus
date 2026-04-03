@@ -40,7 +40,7 @@ func (a *App) GetLoginPage() string {
     <h2>Linuxus Login</h2>
     {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
     <form method="post" action="/` + a.loginPath + `">
-        <input type="text" name="student_id" placeholder="Student ID" required>
+        <input type="text" name="id" placeholder="ID" required>
         <input type="password" name="password" placeholder="Password" required>
         <button type="submit">Login</button>
     </form>
@@ -118,7 +118,7 @@ func (a *App) GetServicePage() string {
 </head>
 <body>
     <div class="topbar">
-        <div class="left">linuxus | {{.StudentID}}</div>
+        <div class="left">linuxus | {{.ID}}</div>
         <div class="right">
             <a class="btn" href="/` + a.terminalPath + `/" target="shellframe">Open Shell</a>
             <a class="btn btn-danger" href="/` + a.logoutPath + `">Logout</a>

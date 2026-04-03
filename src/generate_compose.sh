@@ -3,39 +3,38 @@
 set -e
 
 # Usage:
-#   ./generate_compose.sh <auths.txt> [auth_port]
-# Example:
-#   ./generate_compose.sh ./data/auths.txt 8080
+#   ./generate_compose.sh <auths.txt> [config.env]
 
 if [ $# -lt 1 ]; then
-    echo "Usage: ./generate_compose.sh <auths.txt> [auth_port]"
+    echo "Usage: ./generate_compose.sh <auths.txt> [config.env]"
     exit 1
 fi
 
-LOGIN_PATH="login"
-LOGOUT_PATH="logout"
-SERVICE_PATH="service"
-TERMINAL_PATH="terminal"
-
-AUTH_PORT="${2:-8080}"
-AUTH_SOURCE_DIR="./auth"
-AUTH_CONTAINER_NAME="linuxus_auth"
-
-SERVICE_SOURCE_DIR="./service"
-SERVICE_CONTAINER_NAME_PREFIX="linuxus_service_"
-USERNAME_PREFIX="stu-"
-
 AUTH_LIST_FILE="$1"
-
-OUTPUT_FILE="docker-compose.generated.yml"
+CONFIG_FILE="${2:-./config.env}"
 
 if [ ! -f "$AUTH_LIST_FILE" ]; then
     echo "Error: file not found: $AUTH_LIST_FILE"
     exit 1
 fi
 
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Error: config file not found: $CONFIG_FILE"
+    exit 1
+fi
+
+# =========================
+# Load config
+# =========================
+set -o allexport
+source "$CONFIG_FILE"
+set +o allexport
+
+# =========================
+# Validation
+# =========================
 if ! [[ "$AUTH_PORT" =~ ^[0-9]+$ ]] || [ "$AUTH_PORT" -le 0 ]; then
-    echo "Error: auth_port must be a positive integer."
+    echo "Error: AUTH_PORT must be a positive integer."
     exit 1
 fi
 
@@ -49,11 +48,8 @@ trim() {
 sanitize_name() {
     local s="$1"
     s="$(printf '%s' "$s" | tr '[:upper:]' '[:lower:]')"
-    # Replace all non-alnum chars with underscore
     s="$(printf '%s' "$s" | sed 's/[^a-z0-9]/_/g')"
-    # Collapse repeated underscores
     s="$(printf '%s' "$s" | sed 's/_\+/_/g')"
-    # Remove leading/trailing underscores
     s="$(printf '%s' "$s" | sed 's/^_//; s/_$//')"
 
     if [ -z "$s" ]; then
@@ -65,8 +61,7 @@ sanitize_name() {
 
 make_username() {
     local user_id="$1"
-
-    echo "${USERNAME_PREFIX}${user_id}"
+    printf '%s%s' "$USERNAME_PREFIX" "$user_id"
 }
 
 declare -a USER_IDS=()
@@ -77,13 +72,11 @@ declare -A SEEN=()
 while IFS= read -r line || [ -n "$line" ]; do
     line="$(trim "$line")"
 
-    # Skip empty lines and comments
     [ -z "$line" ] && continue
     case "$line" in
         \#*) continue ;;
     esac
 
-    # Split only at the first colon
     user_id="${line%%:*}"
     user_id="$(trim "$user_id")"
 
@@ -110,22 +103,40 @@ if [ "${#USER_IDS[@]}" -eq 0 ]; then
     exit 1
 fi
 
+# =========================
+# Prepare volumes
+# =========================
+if [ -d "$SERVICE_SHARED_DIR" ]; then
+    mkdir -p "$SERVICE_SHARED_DIR"
+    chmod 755 "$SERVICE_SHARED_DIR"
+fi
+
+if [ -d "$SERVICE_READONLY_DIR" ]; then
+    mkdir -p "$SERVICE_READONLY_DIR"
+    chmod 755 "$SERVICE_READONLY_DIR"
+fi
+
+# =========================
+# Generate compose
+# =========================
 cat > "$OUTPUT_FILE" <<EOF
 version: "3.8"
 
 services:
-  $AUTH_CONTAINER_NAME:
-    build: $AUTH_SOURCE_DIR
-    container_name: $AUTH_CONTAINER_NAME
+  ${AUTH_CONTAINER_NAME}:
+    build: ${AUTH_SOURCE_DIR}
+    container_name: ${AUTH_CONTAINER_NAME}
     environment:
-      - AUTH_LIST=/data/AUTH_LIST
-      - SESSION_SECRET=change-this-secret-before-production
+      - AUTH_LIST=${AUTH_LIST_MOUNT_PATH}
+      - SESSION_SECRET=${SESSION_SECRET}
       - LOGIN_PATH=${LOGIN_PATH}
       - LOGOUT_PATH=${LOGOUT_PATH}
       - SERVICE_PATH=${SERVICE_PATH}
       - TERMINAL_PATH=${TERMINAL_PATH}
+      - MANAGER_LOGIN_ID=${MANAGER_LOGIN_ID}
+      - MANAGER_LOGIN_PASSWORD=${MANAGER_LOGIN_PASSWORD}
     volumes:
-      - ${AUTH_LIST_FILE}:/data/AUTH_LIST:ro
+      - ${AUTH_LIST_FILE}:${AUTH_LIST_MOUNT_PATH}:ro
     ports:
       - "${AUTH_PORT}:8080"
     restart: unless-stopped
@@ -139,38 +150,54 @@ for ((i=0; i<${#USER_IDS[@]}; i++)); do
 
     cat >> "$OUTPUT_FILE" <<EOF
   ${SERVICE_CONTAINER_NAME_PREFIX}${SAFE_ID}:
-    build: $SERVICE_SOURCE_DIR
+    build: ${SERVICE_SOURCE_DIR}
     container_name: ${SERVICE_CONTAINER_NAME_PREFIX}${SAFE_ID}
-    hostname: linuxus
+    hostname: ${SERVICE_HOSTNAME}
     environment:
       - USER_ID=${USER_ID}
       - USERNAME_PREFIX=${USERNAME_PREFIX}
+      - SHARED_DIR=${SERVICE_SHARED_DIR}
+      - READONLY_DIR=${SERVICE_READONLY_DIR}
     expose:
       - "7681"
     volumes:
-      - home_${SAFE_ID}:/home/${USERNAME}
-      - shared_data:/home/share
+      - ${HOST_HOMES_DIR}/${USERNAME}:/home/${USERNAME}:rw
+      - ${HOST_SHARE_DIR}:${SERVICE_SHARED_DIR}:rw
+      - ${HOST_READONLY_DIR}:${SERVICE_READONLY_DIR}:ro
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+
 EOF
 done
 
-cat >> "$OUTPUT_FILE" <<EOF
-volumes:
-EOF
-
-for SAFE_ID in "${SAFE_IDS[@]}"; do
-    cat >> "$OUTPUT_FILE" <<EOF
-  home_${SAFE_ID}:
-EOF
-done
 
 cat >> "$OUTPUT_FILE" <<EOF
-  shared_data:
+  ${MANAGER_CONTAINER_NAME}:
+    build: ${SERVICE_SOURCE_DIR}
+    container_name: ${SERVICE_CONTAINER_NAME_PREFIX}${MANAGER_CONTAINER_NAME}
+    environment:
+      - USER_ID=${MANAGER_CONTAINER_USERNAME}
+      - USERNAME_PREFIX=""
+      - SHARED_DIR=${SERVICE_SHARED_DIR}
+      - READONLY_DIR=${SERVICE_READONLY_DIR}
+    expose:
+      - "7681"
+    volumes:
+      - ${HOST_HOMES_DIR}/${MANAGER_CONTAINER_USERNAME}:/home/${MANAGER_CONTAINER_USERNAME}:rw
+      - ${HOST_SHARE_DIR}:${SERVICE_SHARED_DIR}:rw
+      - ${HOST_READONLY_DIR}:${SERVICE_READONLY_DIR}:rw
+    restart: unless-stopped
+
 EOF
 
+# =========================
+# Output
+# =========================
 echo "Generated $OUTPUT_FILE"
+echo
+echo "Config file:"
+echo "  $CONFIG_FILE"
 echo
 echo "Login URL:"
 echo "  http://localhost:${AUTH_PORT}/${LOGIN_PATH}"

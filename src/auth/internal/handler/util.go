@@ -21,9 +21,9 @@ func (a *App) renderLogin(w http.ResponseWriter, errMsg string) {
 	}
 }
 
-func (a *App) setSessionCookie(w http.ResponseWriter, studentID string) {
-	signature := a.sign(studentID)
-	payload := studentID + "|" + signature
+func (a *App) setSessionCookie(w http.ResponseWriter, id string) {
+	signature := a.sign(id)
+	payload := id + "|" + signature
 	value := base64.StdEncoding.EncodeToString([]byte(payload))
 
 	http.SetCookie(w, &http.Cookie{
@@ -36,7 +36,7 @@ func (a *App) setSessionCookie(w http.ResponseWriter, studentID string) {
 	})
 }
 
-func (a *App) getSessionStudentID(r *http.Request) (string, bool) {
+func (a *App) getSessionID(r *http.Request) (string, bool) {
 	cookie, err := r.Cookie("session")
 	if err != nil {
 		return "", false
@@ -52,15 +52,15 @@ func (a *App) getSessionStudentID(r *http.Request) (string, bool) {
 		return "", false
 	}
 
-	studentID := parts[0]
+	id := parts[0]
 	signature := parts[1]
 
-	expected := a.sign(studentID)
+	expected := a.sign(id)
 	if !hmac.Equal([]byte(signature), []byte(expected)) {
 		return "", false
 	}
 
-	return studentID, true
+	return id, true
 }
 
 func (a *App) sign(value string) string {
@@ -69,7 +69,7 @@ func (a *App) sign(value string) string {
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
-func sanitizeStudentID(id string) string {
+func sanitizeID(id string) string {
 	id = strings.ToLower(id)
 	var b strings.Builder
 

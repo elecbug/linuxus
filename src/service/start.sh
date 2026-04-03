@@ -9,16 +9,30 @@ if [ -z "$USER_ID" ]; then
 fi
 
 if [ -z "$USERNAME_PREFIX" ]; then
-    USERNAME_PREFIX="stu"
+    echo "Error: USERNAME_PREFIX is not set."
+    exit 1
+fi
+
+if [ -z "$SHARED_DIR" ]; then
+    echo "Error: SHARED_DIR is not set."
+    exit 1
+fi
+
+if [ -z "$READONLY_DIR" ]; then
+    echo "Error: READONLY_DIR is not set."
+    exit 1
+fi
+
+# Validate directories
+if [ ! -d "$SHARED_DIR" ]; then
+    mkdir -p "$SHARED_DIR"
+fi
+if [ ! -d "$READONLY_DIR" ]; then
+    mkdir -p "$READONLY_DIR"
 fi
 
 USERNAME="$USERNAME_PREFIX$USER_ID"
 HOME_DIR="/home/$USERNAME"
-SHARE_DIR="/home/share"
-
-# Create shared directory if missing
-mkdir -p "$SHARE_DIR"
-chmod 777 "$SHARE_DIR"
 
 # Create user if it does not exist
 if ! id "$USERNAME" >/dev/null 2>&1; then
@@ -40,10 +54,12 @@ echo "+---------------------------------------------------+"
 echo "|       Welcome to the linuxus service shell.       |"
 echo "+---------------------------------------------------+"
 echo ""
-echo "  - User ID          : $USER_ID"
-echo "  - Linux user       : $USERNAME"
-echo "  - Home directory   : /home/$USERNAME"
-echo "  - Shared directory : /home/share"
+echo "  - User ID            : $USER_ID"
+echo "  - Linux user         : $USERNAME"
+echo ""
+echo "  - Home directory     : /home/$USERNAME"
+echo "  - Shared directory   : $SHARED_DIR"
+echo "  - Readonly directory : $READONLY_DIR"
 echo ""
 echo "+---------------------------------------------------+"
 echo ""

@@ -13,24 +13,28 @@ import (
 )
 
 type App struct {
-	users        map[string]string
-	sessionKey   []byte
-	loginTmpl    *template.Template
-	serviceTmpl  *template.Template
-	loginPath    string
-	logoutPath   string
-	servicePath  string
-	terminalPath string
+	users                map[string]string
+	sessionKey           []byte
+	loginTmpl            *template.Template
+	serviceTmpl          *template.Template
+	loginPath            string
+	logoutPath           string
+	servicePath          string
+	terminalPath         string
+	managerLoginID       string
+	managerLoginPassword string
 }
 
-func NewApp(users map[string]string, sessionKey []byte, loginPath, logoutPath, servicePath, terminalPath string) *App {
+func NewApp(users map[string]string, sessionKey []byte, loginPath, logoutPath, servicePath, terminalPath, managerLoginID, managerLoginPassword string) *App {
 	return &App{
-		users:        users,
-		sessionKey:   sessionKey,
-		loginPath:    loginPath,
-		logoutPath:   logoutPath,
-		servicePath:  servicePath,
-		terminalPath: terminalPath,
+		users:                users,
+		sessionKey:           sessionKey,
+		loginPath:            loginPath,
+		logoutPath:           logoutPath,
+		servicePath:          servicePath,
+		terminalPath:         terminalPath,
+		managerLoginID:       managerLoginID,
+		managerLoginPassword: managerLoginPassword,
 	}
 }
 
@@ -59,7 +63,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (a *App) handleRoot(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.getSessionStudentID(r); ok {
+	if _, ok := a.getSessionID(r); ok {
 		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
 		return
 	}
@@ -78,21 +82,21 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		studentID := strings.TrimSpace(r.FormValue("student_id"))
+		id := strings.TrimSpace(r.FormValue("id"))
 		password := r.FormValue("password")
 
-		hash, ok := a.users[studentID]
+		hash, ok := a.users[id]
 		if !ok {
-			a.renderLogin(w, "Invalid student ID or password")
+			a.renderLogin(w, "Invalid ID or password")
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
-			a.renderLogin(w, "Invalid student ID or password")
+			a.renderLogin(w, "Invalid ID or password")
 			return
 		}
 
-		a.setSessionCookie(w, studentID)
+		a.setSessionCookie(w, id)
 		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
 		return
 
@@ -114,7 +118,7 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleServiceRedirect(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.getSessionStudentID(r); !ok {
+	if _, ok := a.getSessionID(r); !ok {
 		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 		return
 	}
@@ -123,7 +127,7 @@ func (a *App) handleServiceRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
-	studentID, ok := a.getSessionStudentID(r)
+	id, ok := a.getSessionID(r)
 	if !ok {
 		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 		return
@@ -133,9 +137,9 @@ func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Pragma", "no-cache")
 
 	data := struct {
-		StudentID string
+		ID string
 	}{
-		StudentID: studentID,
+		ID: id,
 	}
 
 	if err := a.serviceTmpl.Execute(w, data); err != nil {
@@ -144,7 +148,7 @@ func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.getSessionStudentID(r); !ok {
+	if _, ok := a.getSessionID(r); !ok {
 		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 		return
 	}
@@ -153,13 +157,13 @@ func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
-	studentID, ok := a.getSessionStudentID(r)
+	id, ok := a.getSessionID(r)
 	if !ok {
 		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 		return
 	}
 
-	safeID := sanitizeStudentID(studentID)
+	safeID := sanitizeID(id)
 	targetURL := fmt.Sprintf("http://linuxus_service_%s:7681", safeID)
 
 	target, err := url.Parse(targetURL)
@@ -194,7 +198,7 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		log.Printf("proxy error for %s: %v", studentID, err)
+		log.Printf("proxy error for %s: %v", id, err)
 		http.Error(w, "Shell backend is unavailable", http.StatusBadGateway)
 	}
 
