@@ -1,3 +1,8 @@
+# Data file directory likely authentication info, user data, etc.
 data/
 
+# User volumes for services, e.g., home directories, shared directories, etc.
+volumes/
+
+# Generated docker-compose files for services.
 *.generated.yml

@@ -3,20 +3,14 @@
 set -e
 
 # Usage:
-#   ./generate_compose.sh <auths.txt> [config.env]
+#   ./generate_compose.sh [config.env]
 
 if [ $# -lt 1 ]; then
-    echo "Usage: ./generate_compose.sh <auths.txt> [config.env]"
+    echo "Usage: ./generate_compose.sh [config.env]"
     exit 1
 fi
 
-AUTH_LIST_FILE="$1"
-CONFIG_FILE="${2:-./config.env}"
-
-if [ ! -f "$AUTH_LIST_FILE" ]; then
-    echo "Error: file not found: $AUTH_LIST_FILE"
-    exit 1
-fi
+CONFIG_FILE="${1:-./config.env}"
 
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Error: config file not found: $CONFIG_FILE"

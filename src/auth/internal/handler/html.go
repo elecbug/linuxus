@@ -12,27 +12,19 @@ func (a *App) GetLoginPage() string {
             font-family: sans-serif;
             max-width: 420px;
             margin: 60px auto;
+            background: #2e2e2e;
+            color: white;
         }
         form {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
-        input {
-            padding: 10px;
-            font-size: 16px;
-        }
-        button {
-            padding: 10px;
-            font-size: 16px;
-        }
+        input {` + baseBox(3, false, false) + `}
+        button {` + baseBox(3, true, false) + `}
+        button:hover {` + hoverEffect(3, true) + `}
         .error {
-            color: red;
-        }
-        .links {
-            margin-top: 16px;
-            display: flex;
-            gap: 12px;
+            color: #ff0000;
         }
     </style>
 </head>
@@ -44,10 +36,6 @@ func (a *App) GetLoginPage() string {
         <input type="password" name="password" placeholder="Password" required>
         <button type="submit">Login</button>
     </form>
-    <div class="links">
-        <a href="/` + a.servicePath + `/">Go to service</a>
-        <a href="/` + a.logoutPath + `">Logout</a>
-    </div>
 </body>
 </html>
 `
@@ -67,7 +55,6 @@ func (a *App) GetServicePage() string {
             height: 100%;
             font-family: sans-serif;
         }
-
         .topbar {
             height: 56px;
             display: flex;
@@ -75,45 +62,30 @@ func (a *App) GetServicePage() string {
             justify-content: space-between;
             padding: 0 16px;
             box-sizing: border-box;
-            border-bottom: 1px solid #ddd;
-            background: #595d65;
+            border-bottom: 1px solid #dddddd;
+            background: #595959;
 			color: white;
         }
-
         .left {
             font-weight: bold;
         }
-
         .right {
             display: flex;
             gap: 10px;
         }
-
-        .btn {
-            display: inline-block;
-            padding: 8px 12px;
-            text-decoration: none;
-            border: 1px solid #999;
-            border-radius: 6px;
-            color: white;
-            background: #242529;
-        }
-
-        .btn-danger {
-            border-color: #c33;
-            color: #c33;
-        }
-
         .frame-wrap {
             height: calc(100% - 56px);
         }
-
         iframe {
             width: 100%;
             height: 100%;
             border: 0;
             display: block;
         }
+        .btn {` + baseBox(3, true, false) + `}
+        .btn:hover {` + hoverEffect(3, true) + `}
+        .btn-danger {` + baseBox(3, true, true) + `}
+        .btn-danger:hover {` + hoverEffect(3, true) + `}
     </style>
 </head>
 <body>
@@ -132,3 +104,25 @@ func (a *App) GetServicePage() string {
 </html>
 `
 }
+
+/*
+   .links {
+       margin-top: 16px;
+       display: flex;
+       gap: 12px;
+       color: white;
+   }
+   .links a {
+       color: white;
+       text-decoration: none;
+   }
+   .links a:hover {
+       text-decoration: underline;
+   }
+   .links a:active {
+       color: #ccccff;
+   }
+   .links a:visited {
+       color: #9999ff;
+   }
+*/
