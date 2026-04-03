@@ -67,11 +67,11 @@ func hoverEffect(indent int, isDark bool) string {
 
 	if isDark {
 		return `
-` + indentStr + `background: #545454;
+` + indentStr + `background: #343434;
 ` + indentStr + ``
 	} else if !isDark {
 		return `
-` + indentStr + `background: #c0c0c0;
+` + indentStr + `background: #e0e0e0;
 ` + indentStr + ``
 	}
 
