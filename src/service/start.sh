@@ -15,6 +15,7 @@ fi
 USERNAME="$USERNAME_PREFIX$STUDENT_ID"
 HOME_DIR="/home/$USERNAME"
 SHARE_DIR="/home/share"
+TERMINAL_PATH="terminal"
 
 # Create shared directory if missing
 mkdir -p "$SHARE_DIR"

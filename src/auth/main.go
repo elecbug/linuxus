@@ -21,11 +21,13 @@ import (
 const LOGIN_PATH = "login"
 const LOGOUT_PATH = "logout"
 const SERVICE_PATH = "service"
+const TERMINAL_PATH = "terminal"
 
 type App struct {
-	users      map[string]string
-	sessionKey []byte
-	loginTmpl  *template.Template
+	users       map[string]string
+	sessionKey  []byte
+	loginTmpl   *template.Template
+	serviceTmpl *template.Template
 }
 
 func main() {
@@ -37,15 +39,21 @@ func main() {
 		log.Fatalf("failed to load users: %v", err)
 	}
 
-	tmpl, err := template.New(LOGIN_PATH).Parse(loginPage)
+	loginTmpl, err := template.New(LOGIN_PATH).Parse(loginPage)
 	if err != nil {
 		log.Fatalf("failed to parse template: %v", err)
 	}
 
+	serviceTmpl, err := template.New(SERVICE_PATH).Parse(servicePage)
+	if err != nil {
+		log.Fatalf("failed to parse service template: %v", err)
+	}
+
 	app := &App{
-		users:      users,
-		sessionKey: []byte(sessionSecret),
-		loginTmpl:  tmpl,
+		users:       users,
+		sessionKey:  []byte(sessionSecret),
+		loginTmpl:   loginTmpl,
+		serviceTmpl: serviceTmpl,
 	}
 
 	mux := http.NewServeMux()
@@ -56,8 +64,10 @@ func main() {
 	// Important:
 	// /$SERVICE_PATH  -> redirect to /$SERVICE_PATH/
 	// /$SERVICE_PATH/ -> reverse proxy with prefix stripping
-	mux.HandleFunc("/"+SERVICE_PATH, app.handleShellRedirect)
-	mux.HandleFunc("/"+SERVICE_PATH+"/", app.handleShellProxy)
+	mux.HandleFunc("/"+SERVICE_PATH, app.handleServiceRedirect)
+	mux.HandleFunc("/"+SERVICE_PATH+"/", app.handleServicePage)
+	mux.HandleFunc("/"+TERMINAL_PATH, app.handleTerminalRedirect)
+	mux.HandleFunc("/"+TERMINAL_PATH+"/", app.handleTerminalProxy)
 
 	addr := ":8080"
 	log.Printf("Auth server listening on %s", addr)
@@ -165,7 +175,7 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
 }
 
-func (a *App) handleShellRedirect(w http.ResponseWriter, r *http.Request) {
+func (a *App) handleServiceRedirect(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.getSessionStudentID(r); !ok {
 		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
 		return
@@ -174,7 +184,37 @@ func (a *App) handleShellRedirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/"+SERVICE_PATH+"/", http.StatusSeeOther)
 }
 
-func (a *App) handleShellProxy(w http.ResponseWriter, r *http.Request) {
+func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
+	studentID, ok := a.getSessionStudentID(r)
+	if !ok {
+		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
+		return
+	}
+
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+
+	data := struct {
+		StudentID string
+	}{
+		StudentID: studentID,
+	}
+
+	if err := a.serviceTmpl.Execute(w, data); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+	}
+}
+
+func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
+	if _, ok := a.getSessionStudentID(r); !ok {
+		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/"+TERMINAL_PATH+"/", http.StatusSeeOther)
+}
+
+func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	studentID, ok := a.getSessionStudentID(r)
 	if !ok {
 		http.Redirect(w, r, "/"+LOGIN_PATH, http.StatusSeeOther)
@@ -200,19 +240,14 @@ func (a *App) handleShellProxy(w http.ResponseWriter, r *http.Request) {
 		req.URL.Host = target.Host
 		req.Host = target.Host
 
-		// Strip "$SERVICE_PATH" prefix before forwarding to ttyd.
-		// Examples:
-		//   /$SERVICE_PATH/      -> /
-		//   /$SERVICE_PATH/ws    -> /ws
-		//   /$SERVICE_PATH/foo   -> /foo
-		newPath := strings.TrimPrefix(req.URL.Path, "/"+SERVICE_PATH)
+		// Strip "/$TERMINAL_PATH" prefix
+		newPath := strings.TrimPrefix(req.URL.Path, "/"+TERMINAL_PATH)
 		if newPath == "" {
 			newPath = "/"
 		}
 		if !strings.HasPrefix(newPath, "/") {
 			newPath = "/" + newPath
 		}
-
 		req.URL.Path = newPath
 		req.URL.RawPath = ""
 
@@ -222,7 +257,7 @@ func (a *App) handleShellProxy(w http.ResponseWriter, r *http.Request) {
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("proxy error for %s: %v", studentID, err)
-		http.Error(w, "Service backend is unavailable", http.StatusBadGateway)
+		http.Error(w, "Shell backend is unavailable", http.StatusBadGateway)
 	}
 
 	proxy.ServeHTTP(w, r)
@@ -356,6 +391,82 @@ const loginPage = `
     <div class="links">
         <a href="/` + SERVICE_PATH + `/">Go to service</a>
         <a href="/` + LOGOUT_PATH + `">Logout</a>
+    </div>
+</body>
+</html>
+`
+const servicePage = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>linuxus shell</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: sans-serif;
+        }
+
+        .topbar {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            box-sizing: border-box;
+            border-bottom: 1px solid #ddd;
+            background: #f7f7f7;
+        }
+
+        .left {
+            font-weight: bold;
+        }
+
+        .right {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 12px;
+            text-decoration: none;
+            border: 1px solid #999;
+            border-radius: 6px;
+            color: black;
+            background: white;
+        }
+
+        .btn-danger {
+            border-color: #c33;
+            color: #c33;
+        }
+
+        .frame-wrap {
+            height: calc(100% - 56px);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="left">linuxus | {{.StudentID}}</div>
+        <div class="right">
+            <a class="btn" href="/` + TERMINAL_PATH + `/" target="shellframe">Open Shell</a>
+            <a class="btn btn-danger" href="/` + LOGOUT_PATH + `">Logout</a>
+        </div>
+    </div>
+
+    <div class="frame-wrap">
+        <iframe name="shellframe" src="/` + TERMINAL_PATH + `/"></iframe>
     </div>
 </body>
 </html>
