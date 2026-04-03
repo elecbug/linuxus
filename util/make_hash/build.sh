@@ -2,13 +2,13 @@
 
 set -e
 
-current_dir=$(pwd)
-sourcec_dir=$(dirname "$(realpath "$0")")
-source="main.go"
-output="make_hash.out"
+CURRENT_DIR=$(pwd)
+SOURCE_DIR=$(dirname "$(realpath "$0")")
+SOURCE="main.go"
+OUTPUT="make_hash.out"
 
-cd "$sourcec_dir"
+cd "$SOURCE_DIR"
 
-go build -o "../$output" "$source"
+go build -o "../$OUTPUT" "$SOURCE"
 
-cd "$current_dir"
+cd "$CURRENT_DIR"

@@ -40,11 +40,14 @@ if ! grep -q 'Welcome to the linuxus service shell' "$BASHRC" 2>/dev/null; then
 echo "+---------------------------------------------------+"
 echo "|       Welcome to the linuxus service shell.       |"
 echo "+---------------------------------------------------+"
+echo ""
 echo "  - Student ID       : $STUDENT_ID"
 echo "  - Linux user       : $USERNAME"
 echo "  - Home directory   : /home/$USERNAME"
 echo "  - Shared directory : /home/share"
+echo ""
 echo "+---------------------------------------------------+"
+echo ""
 EOF
 fi
 
@@ -70,6 +73,7 @@ fi
 chown "$USERNAME:$USERNAME" "$PROFILE"
 
 # Start ttyd and launch bash as the student
+# NOTE: do not use --base-path or it will break the terminal proxying in auth server
 exec ttyd \
   --port 7681 \
   --client-option "titleFixed=linuxus | $USERNAME" \

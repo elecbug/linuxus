@@ -6,8 +6,9 @@ COPY go.mod ./
 RUN go mod download golang.org/x/crypto
 RUN go mod download
 
-COPY main.go ./
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o auth-server main.go
+COPY cmd ./cmd
+COPY internal ./internal
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o auth-server cmd/main.go
 
 FROM debian:bookworm-slim
 
