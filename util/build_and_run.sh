@@ -7,29 +7,33 @@ if [ -z "$param" ]; then
     exit 1
 fi
 
-current_dir=$(pwd)
-util_dir=$(dirname "$(realpath "$0")")
-source_dir=$(dirname "$util_dir")
+CURRENT_DIR=$(pwd)
+UTIL_DIR=$(dirname "$(realpath "$0")")
+REPO_DIR=$(dirname "$UTIL_DIR")
+SOURCE_DIR=$REPO_DIR/src
+STUDENT_LIST_FILE="$SOURCE_DIR/data/students.txt"
+DOCKER_COMPOSE_FILE="$SOURCE_DIR/docker-compose.generated.yml"
 
-cd "$source_dir/docker"
+cd "$SOURCE_DIR"
 
-if [ ! -f "./data/students.txt" ]; then
-    echo "Error: 'students.txt' not found in '$(pwd)/docker/data/'"
+if [ ! -f "$STUDENT_LIST_FILE" ]; then
+    echo "Error: '$STUDENT_LIST_FILE' not found"
+
     exit 1
 fi
 
-./generate_compose.sh ./data/students.txt 8080 "stu-"
+./generate_compose.sh "$STUDENT_LIST_FILE" 8080 "stu-"
 
 if [ "$param" == "--clear-volume" ]; then
-    sudo docker compose -f ./docker-compose.generated.yml down -v --remove-orphans
-    sudo docker compose -f ./docker-compose.generated.yml up -d --build
+    sudo docker compose -f "$DOCKER_COMPOSE_FILE" down -v --remove-orphans
+    sudo docker compose -f "$DOCKER_COMPOSE_FILE" up -d --build
 elif [ "$param" == "--only-down" ]; then
-    sudo docker compose -f ./docker-compose.generated.yml down --remove-orphans
+    sudo docker compose -f "$DOCKER_COMPOSE_FILE" down --remove-orphans
 elif [ "$param" == "--only-up" ]; then
-    sudo docker compose -f ./docker-compose.generated.yml up -d --build
+    sudo docker compose -f "$DOCKER_COMPOSE_FILE" up -d --build
 elif [ "$param" == "--restart" ]; then
-    sudo docker compose -f ./docker-compose.generated.yml down --remove-orphans
-    sudo docker compose -f ./docker-compose.generated.yml up -d --build
+    sudo docker compose -f "$DOCKER_COMPOSE_FILE" down --remove-orphans
+    sudo docker compose -f "$DOCKER_COMPOSE_FILE" up -d --build
 fi
 
-cd "$current_dir"
+cd "$CURRENT_DIR"
