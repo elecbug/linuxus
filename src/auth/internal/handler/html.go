@@ -7,26 +7,7 @@ func (a *App) GetLoginPage() string {
 <head>
     <meta charset="UTF-8">
     <title>Linuxus Login</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            max-width: 420px;
-            margin: 60px auto;
-            background: #2e2e2e;
-            color: white;
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        input {` + baseBox(3, false, false) + `}
-        button {` + baseBox(3, true, false) + `}
-        button:hover {` + hoverEffect(3, true) + `}
-        .error {
-            color: #ff0000;
-        }
-    </style>
+    ` + a.GetLoginCSS() + `
 </head>
 <body>
     <h2>Linuxus Login</h2>
@@ -48,45 +29,7 @@ func (a *App) GetServicePage() string {
 <head>
     <meta charset="UTF-8">
     <title>linuxus shell</title>
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: sans-serif;
-        }
-        .topbar {
-            height: 56px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 16px;
-            box-sizing: border-box;
-            border-bottom: 1px solid #dddddd;
-            background: #595959;
-			color: white;
-        }
-        .left {
-            font-weight: bold;
-        }
-        .right {
-            display: flex;
-            gap: 10px;
-        }
-        .frame-wrap {
-            height: calc(100% - 56px);
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: 0;
-            display: block;
-        }
-        .btn {` + baseBox(3, true, false) + `}
-        .btn:hover {` + hoverEffect(3, true) + `}
-        .btn-danger {` + baseBox(3, true, true) + `}
-        .btn-danger:hover {` + hoverEffect(3, true) + `}
-    </style>
+    ` + a.GetServiceCSS() + `
 </head>
 <body>
     <div class="topbar">
