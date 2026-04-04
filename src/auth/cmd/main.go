@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -93,14 +95,14 @@ func loadUsers(path string) (map[string]string, error) {
 			return nil, fmt.Errorf("invalid line in auths file: %s", line)
 		}
 
-		studentID := strings.TrimSpace(parts[0])
+		id := strings.TrimSpace(parts[0])
 		hash := strings.TrimSpace(parts[1])
 
-		if studentID == "" || hash == "" {
+		if id == "" || hash == "" {
 			return nil, fmt.Errorf("invalid line in auths file: %s", line)
 		}
 
-		users[studentID] = hash
+		users[id] = hash
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -108,4 +110,33 @@ func loadUsers(path string) (map[string]string, error) {
 	}
 
 	return users, nil
+}
+
+func addUser(path string, users map[string]string, id, password string) error {
+	if _, ok := users[id]; ok {
+		return fmt.Errorf("user '%s' already exists", id)
+	}
+
+	if id == "" || password == "" {
+		return fmt.Errorf("invalid user ID or password")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %v", err)
+	}
+
+	users[id] = string(hash)
+
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to open auth file: %v", err)
+	}
+	defer file.Close()
+
+	if _, err := file.WriteString(fmt.Sprintf("%s:%s\n", id, string(hash))); err != nil {
+		return fmt.Errorf("failed to write to auth file: %v", err)
+	}
+
+	return nil
 }

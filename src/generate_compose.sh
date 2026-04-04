@@ -113,7 +113,7 @@ services:
       - ADMIN_LOGIN_PASSWORD=${ADMIN_LOGIN_PASSWORD}
       - ADMIN_CONTAINER_NAME=${ADMIN_CONTAINER_NAME}
     volumes:
-      - ${AUTH_LIST_FILE}:${AUTH_LIST_MOUNT_PATH}:ro
+      - ${AUTH_LIST_FILE}:${AUTH_LIST_MOUNT_PATH}:rw
     ports:
       - "${AUTH_PORT}:8080"
     restart: unless-stopped
