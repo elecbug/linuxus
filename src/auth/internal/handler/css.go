@@ -84,47 +84,47 @@ func baseBox(indent int, isDark, isDangerOpt bool) string {
 
 	if isDark && !isDangerOpt {
 		return `
-` + indentStr + `display: inline-block;
-` + indentStr + `padding: 8px 12px;
-` + indentStr + `text-decoration: none;
-` + indentStr + `border: 1px solid #999999;
-` + indentStr + `border-radius: 6px;
-` + indentStr + `font-size: 16px;
-` + indentStr + `color: white;
-` + indentStr + `background: #242424;
+` + indentStr + `display: ` + BOX_DISPLAY + `;
+` + indentStr + `padding: ` + BOX_PADDING + `;
+` + indentStr + `text-decoration: ` + BOX_TEXT_DECORATION + `;
+` + indentStr + `border: ` + BOX_DARK_BORDER + `;
+` + indentStr + `border-radius: ` + BOX_BORDER_RADIUS + `;
+` + indentStr + `font-size: ` + BOX_FONT_SIZE + `;
+` + indentStr + `color: ` + BOX_DARK_COLOR + `;
+` + indentStr + `background: ` + BOX_DARK_BACKGROUND + `;
 ` + indentStr + ``
 	} else if !isDark && !isDangerOpt {
 		return `
-` + indentStr + `display: inline-block;
-` + indentStr + `padding: 8px 12px;
-` + indentStr + `text-decoration: none;
-` + indentStr + `border: 1px solid #555555;
-` + indentStr + `border-radius: 6px;
-` + indentStr + `font-size: 16px;
-` + indentStr + `color: black;
-` + indentStr + `background: #f0f0f0;
+` + indentStr + `display: ` + BOX_DISPLAY + `;
+` + indentStr + `padding: ` + BOX_PADDING + `;
+` + indentStr + `text-decoration: ` + BOX_TEXT_DECORATION + `;
+` + indentStr + `border: ` + BOX_LIGHT_BORDER + `;
+` + indentStr + `border-radius: ` + BOX_BORDER_RADIUS + `;
+` + indentStr + `font-size: ` + BOX_FONT_SIZE + `;
+` + indentStr + `color: ` + BOX_LIGHT_COLOR + `;
+` + indentStr + `background: ` + BOX_LIGHT_BACKGROUND + `;
 ` + indentStr + ``
 	} else if isDark && isDangerOpt {
 		return `
-` + indentStr + `display: inline-block;
-` + indentStr + `padding: 8px 12px;
-` + indentStr + `text-decoration: none;
-` + indentStr + `border: 1px solid #ff0000;
-` + indentStr + `border-radius: 6px;
-` + indentStr + `font-size: 16px;
-` + indentStr + `color: #ff0000;
-` + indentStr + `background: #242424;
+` + indentStr + `display: ` + BOX_DISPLAY + `;
+` + indentStr + `padding: ` + BOX_PADDING + `;
+` + indentStr + `text-decoration: ` + BOX_TEXT_DECORATION + `;
+` + indentStr + `border: ` + BOX_DANGER_BORDER + `;
+` + indentStr + `border-radius: ` + BOX_BORDER_RADIUS + `;
+` + indentStr + `font-size: ` + BOX_FONT_SIZE + `;
+` + indentStr + `color: ` + BOX_DANGER_COLOR + `;
+` + indentStr + `background: ` + BOX_DARK_BACKGROUND + `;
 ` + indentStr + ``
 	} else if !isDark && isDangerOpt {
 		return `
-` + indentStr + `display: inline-block;
-` + indentStr + `padding: 8px 12px;
-` + indentStr + `text-decoration: none;
-` + indentStr + `border: 1px solid #ff0000;
-` + indentStr + `border-radius: 6px;
-` + indentStr + `font-size: 16px;
-` + indentStr + `color: #ff0000;
-` + indentStr + `background: #f0f0f0;
+` + indentStr + `display: ` + BOX_DISPLAY + `;
+` + indentStr + `padding: ` + BOX_PADDING + `;
+` + indentStr + `text-decoration: ` + BOX_TEXT_DECORATION + `;
+` + indentStr + `border: ` + BOX_DANGER_BORDER + `;
+` + indentStr + `border-radius: ` + BOX_BORDER_RADIUS + `;
+` + indentStr + `font-size: ` + BOX_FONT_SIZE + `;
+` + indentStr + `color: ` + BOX_DANGER_COLOR + `;
+` + indentStr + `background: ` + BOX_LIGHT_BACKGROUND + `;
 ` + indentStr + ``
 	}
 
@@ -136,11 +136,11 @@ func hoverEffect(indent int, isDark bool) string {
 
 	if isDark {
 		return `
-` + indentStr + `background: #343434;
+` + indentStr + `background: ` + BOX_HOVER_DARK_BACKGROUND + `;
 ` + indentStr + ``
 	} else if !isDark {
 		return `
-` + indentStr + `background: #e0e0e0;
+` + indentStr + `background: ` + BOX_HOVER_LIGHT_BACKGROUND + `;
 ` + indentStr + ``
 	}
 
