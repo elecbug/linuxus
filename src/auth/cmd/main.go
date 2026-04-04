@@ -11,15 +11,42 @@ import (
 )
 
 func main() {
-	authListFile := getEnv("AUTH_LIST", "/data/auths.txt")
-	sessionSecret := getEnv("SESSION_SECRET", "replace-this-with-a-long-random-secret-key")
-	loginPath := getEnv("LOGIN_PATH", "login")
-	logoutPath := getEnv("LOGOUT_PATH", "logout")
-	servicePath := getEnv("SERVICE_PATH", "service")
-	terminalPath := getEnv("TERMINAL_PATH", "terminal")
-	adminLoginID := getEnv("ADMIN_LOGIN_ID", "admin")
-	adminLoginPassword := getEnv("ADMIN_LOGIN_PASSWORD", "admin")
-	adminContainerName := getEnv("ADMIN_CONTAINER_NAME", "manager")
+	authListFile, err := getEnv("AUTH_LIST")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	sessionSecret, err := getEnv("SESSION_SECRET")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	loginPath, err := getEnv("LOGIN_PATH")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	logoutPath, err := getEnv("LOGOUT_PATH")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	servicePath, err := getEnv("SERVICE_PATH")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	terminalPath, err := getEnv("TERMINAL_PATH")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	adminLoginID, err := getEnv("ADMIN_LOGIN_ID")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	adminLoginPassword, err := getEnv("ADMIN_LOGIN_PASSWORD")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	adminContainerName, err := getEnv("ADMIN_CONTAINER_NAME")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
 
 	users, err := loadUsers(authListFile)
 	if err != nil {
@@ -37,12 +64,12 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
-func getEnv(key, fallback string) string {
+func getEnv(key string) (string, error) {
 	value := os.Getenv(key)
 	if value == "" {
-		return fallback
+		return "", fmt.Errorf("environment variable %s not set", key)
 	}
-	return value
+	return value, nil
 }
 
 func loadUsers(path string) (map[string]string, error) {
