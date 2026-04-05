@@ -1,21 +1,21 @@
 package page
 
 type CSS struct {
-	contents []CSSContent
+	contents []*CSSContent
 }
 
-func NewCSS(contents []CSSContent) *CSS {
+func NewCSS(contents ...*CSSContent) *CSS {
 	return &CSS{
 		contents: contents,
 	}
 }
 
-func (c *CSS) AddContent(content CSSContent) *CSS {
+func (c *CSS) AddContent(content *CSSContent) *CSS {
 	c.contents = append(c.contents, content)
 	return c
 }
 
-func (c *CSS) RemoveContent(predicate func(x CSSContent) bool) *CSS {
+func (c *CSS) RemoveContent(predicate func(x *CSSContent) bool) *CSS {
 	for i, content := range c.contents {
 		if predicate(content) {
 			c.contents = append(c.contents[:i], c.contents[i+1:]...)
@@ -25,7 +25,7 @@ func (c *CSS) RemoveContent(predicate func(x CSSContent) bool) *CSS {
 	return c
 }
 
-func (c *CSS) Contents() []CSSContent {
+func (c *CSS) Contents() []*CSSContent {
 	return c.contents
 }
 

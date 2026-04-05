@@ -1,28 +1,28 @@
 package handler
 
-func (a *App) GetLoginCSS() string {
-	return `
-    <style>
-        body {
-            font-family: sans-serif;
-            max-width: 420px;
-            margin: 60px auto;
-            background: #2e2e2e;
-            color: white;
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        input {` + baseBox(3, false, false) + `}
-        button {` + baseBox(3, true, false) + `}
-        button:hover {` + hoverEffect(3, true) + `}
-        .error {
-            color: #ff0000;
-        }
-    </style>
-`
+import "github.com/elecbug/linuxus/src/auth/internal/page"
+
+func (a *App) GetLoginCSS() *page.CSS {
+	return page.NewCSS(
+		page.NewCSSContent("body",
+			page.KeyValue{Key: "font-family", Value: "sans-serif"},
+			page.KeyValue{Key: "max-width", Value: "420px"},
+			page.KeyValue{Key: "margin", Value: "60px auto"},
+			page.KeyValue{Key: "background", Value: "#2e2e2e"},
+			page.KeyValue{Key: "color", Value: "white"},
+		),
+		page.NewCSSContent("form",
+			page.KeyValue{Key: "display", Value: "flex"},
+			page.KeyValue{Key: "flex-direction", Value: "column"},
+			page.KeyValue{Key: "gap", Value: "12px"},
+		),
+		baseBox("input", false, false),
+		baseBox("button", true, false),
+		hoverEffect("button:hover", true),
+		page.NewCSSContent(".error",
+			page.KeyValue{Key: "color", Value: "#ff0000"},
+		),
+	)
 }
 
 func (a *App) GetServiceCSS() string {
@@ -61,88 +61,74 @@ func (a *App) GetServiceCSS() string {
             border: 0;
             display: block;
         }
-        .btn {` + baseBox(3, true, false) + `}
-        .btn:hover {` + hoverEffect(3, true) + `}
-        .btn-danger {` + baseBox(3, true, true) + `}
-        .btn-danger:hover {` + hoverEffect(3, true) + `}
-    </style>
-`
+        </style>
+        `
+	// .btn {` + baseBox(3, true, false) + `}
+	// .btn:hover {` + hoverEffect(3, true) + `}
+	// .btn-danger {` + baseBox(3, true, true) + `}
+	// .btn-danger:hover {` + hoverEffect(3, true) + `}
 }
 
-func getIndentStr(indent int) string {
-	indentStr := ""
-
-	for i := 0; i < indent; i++ {
-		indentStr += "    "
-	}
-
-	return indentStr
-}
-
-func baseBox(indent int, isDark, isDangerOpt bool) string {
-	indentStr := getIndentStr(indent)
-
+func baseBox(tag string, isDark, isDangerOpt bool) *page.CSSContent {
 	if isDark && !isDangerOpt {
-		return `
-` + indentStr + `display: ` + BOX_DISPLAY + `;
-` + indentStr + `padding: ` + BOX_PADDING + `;
-` + indentStr + `text-decoration: ` + BOX_TEXT_DECORATION + `;
-` + indentStr + `border: ` + DARK_BORDER + `;
-` + indentStr + `border-radius: ` + BOX_BORDER_RADIUS + `;
-` + indentStr + `font-size: ` + BOX_FONT_SIZE + `;
-` + indentStr + `color: ` + DARK_COLOR + `;
-` + indentStr + `background: ` + DARK_BACKGROUND + `;
-` + indentStr + ``
+		return page.NewCSSContent(tag,
+			page.KeyValue{Key: "display", Value: BOX_DISPLAY},
+			page.KeyValue{Key: "padding", Value: BOX_PADDING},
+			page.KeyValue{Key: "text-decoration", Value: BOX_TEXT_DECORATION},
+			page.KeyValue{Key: "border", Value: DARK_BORDER},
+			page.KeyValue{Key: "border-radius", Value: BOX_BORDER_RADIUS},
+			page.KeyValue{Key: "font-size", Value: BOX_FONT_SIZE},
+			page.KeyValue{Key: "color", Value: DARK_COLOR},
+			page.KeyValue{Key: "background", Value: DARK_BACKGROUND},
+		)
 	} else if !isDark && !isDangerOpt {
-		return `
-` + indentStr + `display: ` + BOX_DISPLAY + `;
-` + indentStr + `padding: ` + BOX_PADDING + `;
-` + indentStr + `text-decoration: ` + BOX_TEXT_DECORATION + `;
-` + indentStr + `border: ` + LIGHT_BORDER + `;
-` + indentStr + `border-radius: ` + BOX_BORDER_RADIUS + `;
-` + indentStr + `font-size: ` + BOX_FONT_SIZE + `;
-` + indentStr + `color: ` + LIGHT_COLOR + `;
-` + indentStr + `background: ` + LIGHT_BACKGROUND + `;
-` + indentStr + ``
+		return page.NewCSSContent(tag,
+			page.KeyValue{Key: "display", Value: BOX_DISPLAY},
+			page.KeyValue{Key: "padding", Value: BOX_PADDING},
+			page.KeyValue{Key: "text-decoration", Value: BOX_TEXT_DECORATION},
+			page.KeyValue{Key: "border", Value: LIGHT_BORDER},
+			page.KeyValue{Key: "border-radius", Value: BOX_BORDER_RADIUS},
+			page.KeyValue{Key: "font-size", Value: BOX_FONT_SIZE},
+			page.KeyValue{Key: "color", Value: LIGHT_COLOR},
+			page.KeyValue{Key: "background", Value: LIGHT_BACKGROUND},
+		)
 	} else if isDark && isDangerOpt {
-		return `
-` + indentStr + `display: ` + BOX_DISPLAY + `;
-` + indentStr + `padding: ` + BOX_PADDING + `;
-` + indentStr + `text-decoration: ` + BOX_TEXT_DECORATION + `;
-` + indentStr + `border: ` + DANGER_BORDER + `;
-` + indentStr + `border-radius: ` + BOX_BORDER_RADIUS + `;
-` + indentStr + `font-size: ` + BOX_FONT_SIZE + `;
-` + indentStr + `color: ` + DANGER_COLOR + `;
-` + indentStr + `background: ` + DARK_BACKGROUND + `;
-` + indentStr + ``
+		return page.NewCSSContent(tag,
+			page.KeyValue{Key: "display", Value: BOX_DISPLAY},
+			page.KeyValue{Key: "padding", Value: BOX_PADDING},
+			page.KeyValue{Key: "text-decoration", Value: BOX_TEXT_DECORATION},
+			page.KeyValue{Key: "border", Value: DANGER_BORDER},
+			page.KeyValue{Key: "border-radius", Value: BOX_BORDER_RADIUS},
+			page.KeyValue{Key: "font-size", Value: BOX_FONT_SIZE},
+			page.KeyValue{Key: "color", Value: DANGER_COLOR},
+			page.KeyValue{Key: "background", Value: DARK_BACKGROUND},
+		)
 	} else if !isDark && isDangerOpt {
-		return `
-` + indentStr + `display: ` + BOX_DISPLAY + `;
-` + indentStr + `padding: ` + BOX_PADDING + `;
-` + indentStr + `text-decoration: ` + BOX_TEXT_DECORATION + `;
-` + indentStr + `border: ` + DANGER_BORDER + `;
-` + indentStr + `border-radius: ` + BOX_BORDER_RADIUS + `;
-` + indentStr + `font-size: ` + BOX_FONT_SIZE + `;
-` + indentStr + `color: ` + DANGER_COLOR + `;
-` + indentStr + `background: ` + LIGHT_BACKGROUND + `;
-` + indentStr + ``
+		return page.NewCSSContent(tag,
+			page.KeyValue{Key: "display", Value: BOX_DISPLAY},
+			page.KeyValue{Key: "padding", Value: BOX_PADDING},
+			page.KeyValue{Key: "text-decoration", Value: BOX_TEXT_DECORATION},
+			page.KeyValue{Key: "border", Value: DANGER_BORDER},
+			page.KeyValue{Key: "border-radius", Value: BOX_BORDER_RADIUS},
+			page.KeyValue{Key: "font-size", Value: BOX_FONT_SIZE},
+			page.KeyValue{Key: "color", Value: DANGER_COLOR},
+			page.KeyValue{Key: "background", Value: LIGHT_BACKGROUND},
+		)
 	}
 
-	return ""
+	return nil
 }
 
-func hoverEffect(indent int, isDark bool) string {
-	indentStr := getIndentStr(indent)
-
+func hoverEffect(tag string, isDark bool) *page.CSSContent {
 	if isDark {
-		return `
-` + indentStr + `background: ` + DARK_BACKGROUND_HOVER + `;
-` + indentStr + ``
+		return page.NewCSSContent(tag,
+			page.KeyValue{Key: "background", Value: DARK_BACKGROUND_HOVER},
+		)
 	} else if !isDark {
-		return `
-` + indentStr + `background: ` + LIGHT_BACKGROUND_HOVER + `;
-` + indentStr + ``
+		return page.NewCSSContent(tag,
+			page.KeyValue{Key: "background", Value: LIGHT_BACKGROUND_HOVER},
+		)
 	}
 
-	return ""
+	return nil
 }

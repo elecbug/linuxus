@@ -2,14 +2,12 @@ package page
 
 type CSSContent struct {
 	tag        string
-	class      string
 	attributes []KeyValue
 }
 
-func NewCSSContent(name string, class string, attributes ...KeyValue) *CSSContent {
+func NewCSSContent(name string, attributes ...KeyValue) *CSSContent {
 	return &CSSContent{
 		tag:        name,
-		class:      class,
 		attributes: attributes,
 	}
 }
@@ -46,15 +44,6 @@ func (c *CSSContent) Tag() string {
 	return c.tag
 }
 
-func (c *CSSContent) SetClass(class string) *CSSContent {
-	c.class = class
-	return c
-}
-
-func (c *CSSContent) Class() string {
-	return c.class
-}
-
 func (c *CSSContent) Render() string {
 	return c.renderWithIndent(0)
 }
@@ -63,7 +52,7 @@ func (c *CSSContent) renderWithIndent(indent int) string {
 	indentStr := getIndentStr(indent)
 	cssStr := ""
 
-	cssStr += indentStr + c.tag + "." + c.class + " {\n"
+	cssStr += indentStr + c.tag + " {\n"
 	for _, attr := range c.attributes {
 		cssStr += indentStr + getIndentStr(1) + attr.Key + ": " + attr.Value + ";\n"
 	}

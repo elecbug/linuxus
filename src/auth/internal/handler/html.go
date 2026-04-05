@@ -28,18 +28,14 @@ func (a *App) GetLoginPage() string {
 		[]page.KeyValue{
 			{Key: "charset", Value: "UTF-8"},
 		},
-		page.NewCSS([]page.CSSContent{}),
-		[]any{
-			page.NewHTML("h2", []page.KeyValue{}, "Linuxus Login"),
-			page.NewHTML("p", []page.KeyValue{{Key: "class", Value: "error"}}, "{{.Error}}").AddPrefix("{{if .Error}}").AddSuffix("{{end}}"),
-			page.NewHTML("form", []page.KeyValue{{Key: "method", Value: "post"}, {Key: "action", Value: "/" + a.loginPath}},
-				[]any{
-					page.NewHTML("input", []page.KeyValue{{Key: "type", Value: "text"}, {Key: "name", Value: "id"}, {Key: "placeholder", Value: "ID"}, {Key: "required", Value: "true"}}, nil),
-					page.NewHTML("input", []page.KeyValue{{Key: "type", Value: "password"}, {Key: "name", Value: "password"}, {Key: "placeholder", Value: "Password"}, {Key: "required", Value: "true"}}, nil),
-					page.NewHTML("button", []page.KeyValue{{Key: "type", Value: "submit"}}, "Login"),
-				},
-			),
-		},
+		a.GetLoginCSS(),
+		page.NewHTML("h2", []page.KeyValue{}, "Linuxus Login"),
+		page.NewHTML("p", []page.KeyValue{{Key: "class", Value: "error"}}, "{{.Error}}").AddPrefix("{{if .Error}}").AddSuffix("{{end}}"),
+		page.NewHTML("form", []page.KeyValue{{Key: "method", Value: "post"}, {Key: "action", Value: "/" + a.loginPath}},
+			page.NewHTML("input", []page.KeyValue{{Key: "type", Value: "text"}, {Key: "name", Value: "id"}, {Key: "placeholder", Value: "ID"}, {Key: "required", Value: "true"}}),
+			page.NewHTML("input", []page.KeyValue{{Key: "type", Value: "password"}, {Key: "name", Value: "password"}, {Key: "placeholder", Value: "Password"}, {Key: "required", Value: "true"}}),
+			page.NewHTML("button", []page.KeyValue{{Key: "type", Value: "submit"}}, "Login"),
+		),
 	)
 
 	return htmlpage.Render()

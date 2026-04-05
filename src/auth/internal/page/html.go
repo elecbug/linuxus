@@ -3,16 +3,18 @@ package page
 type HTML struct {
 	tag        string
 	attributes []KeyValue
-	contents   any
+	contents   []any
 	prefixes   []string
 	suffixes   []string
 }
 
-func NewHTML(tag string, attributes []KeyValue, contents any) *HTML {
+func NewHTML(tag string, attributes []KeyValue, contents ...any) *HTML {
 	return &HTML{
 		tag:        tag,
 		attributes: attributes,
 		contents:   contents,
+		prefixes:   make([]string, 0),
+		suffixes:   make([]string, 0),
 	}
 }
 
@@ -48,20 +50,14 @@ func (h *HTML) Attributes() []KeyValue {
 	return h.attributes
 }
 
-func (h *HTML) AddContent(contents any) *HTML {
+func (h *HTML) AddContent(content any) *HTML {
 	if h.contents == nil {
-		h.contents = contents
+		h.contents = make([]any, 0)
+		h.contents = append(h.contents, content)
 		return h
 	}
 
-	switch existingContent := h.contents.(type) {
-	case string:
-		h.contents = []any{existingContent, contents}
-	case *HTML:
-		h.contents = []any{existingContent, contents}
-	case []any:
-		h.contents = append(existingContent, contents)
-	}
+	h.contents = append(h.contents, content)
 	return h
 }
 
@@ -70,27 +66,20 @@ func (h *HTML) RemoveContent(predicate func(x any) bool) *HTML {
 		return h
 	}
 
-	switch existingContent := h.contents.(type) {
-	case string:
-		if predicate(existingContent) {
-			h.contents = nil
-		}
-	case *HTML:
-		if predicate(existingContent) {
-			h.contents = nil
-		}
-	case []any:
-		for i, content := range existingContent {
-			if predicate(content) {
-				h.contents = append(existingContent[:i], existingContent[i+1:]...)
-				break
-			}
+	for i, content := range h.contents {
+		if predicate(content) {
+			h.contents = append(h.contents[:i], h.contents[i+1:]...)
+			break
 		}
 	}
 	return h
 }
 
 func (h *HTML) AddPrefix(prefix string) *HTML {
+	if h.prefixes == nil {
+		h.prefixes = make([]string, 0)
+	}
+
 	h.prefixes = append(h.prefixes, prefix)
 	return h
 }
@@ -110,6 +99,10 @@ func (h *HTML) Prefixes() []string {
 }
 
 func (h *HTML) AddSuffix(suffix string) *HTML {
+	if h.suffixes == nil {
+		h.suffixes = make([]string, 0)
+	}
+
 	h.suffixes = append(h.suffixes, suffix)
 	return h
 }
@@ -141,42 +134,57 @@ func (h *HTML) renderWithIndent(indent int) string {
 	htmlStr := ""
 
 	if h.prefixes != nil {
+		htmlStr += indentStr
 		for _, prefix := range h.prefixes {
-			htmlStr += indentStr + prefix + "\n"
+			htmlStr += prefix
 		}
+	} else {
+		htmlStr += indentStr
 	}
 
-	htmlStr += indentStr + "<" + h.tag
+	htmlStr += "<" + h.tag
 	for _, attr := range h.attributes {
 		htmlStr += " " + attr.Key + `="` + attr.Value + `"`
 	}
-	htmlStr += ">\n"
+	htmlStr += ">"
 
-	switch content := h.contents.(type) {
-	case nil:
-		// No content to render
-		break
-	case string:
-		htmlStr += indentStr + getIndentStr(1) + content + "\n"
-	case *HTML:
-		htmlStr += content.renderWithIndent(indent + 1)
-	case []any:
-		for _, item := range content {
-			if htmlItem, ok := item.(*HTML); ok {
-				htmlStr += htmlItem.renderWithIndent(indent + 1)
-			} else if strItem, ok := item.(string); ok {
-				htmlStr += indentStr + getIndentStr(1) + strItem + "\n"
+	if len(h.contents) >= 2 {
+		htmlStr += "\n"
+	}
+
+	for _, content := range h.contents {
+		switch content := content.(type) {
+		case nil:
+			// No content to render
+			break
+		case string:
+			if len(h.contents) == 1 {
+				htmlStr += content
+			} else {
+				htmlStr += getIndentStr(indent+1) + content + "\n"
 			}
+		case *HTML:
+			htmlStr += content.renderWithIndent(indent + 1)
 		}
 	}
 
-	htmlStr += indentStr + "</" + h.tag + ">\n"
+	if len(h.contents) >= 2 {
+		htmlStr += indentStr + "</" + h.tag + ">"
+	} else if len(h.contents) == 1 {
+		if _, ok := h.contents[0].(string); ok {
+			htmlStr += "</" + h.tag + ">"
+		} else {
+			htmlStr += "\n" + indentStr + "</" + h.tag + ">"
+		}
+	}
 
 	if h.suffixes != nil {
 		for _, suffix := range h.suffixes {
-			htmlStr += indentStr + suffix + "\n"
+			htmlStr += suffix
 		}
 	}
+
+	htmlStr += "\n"
 
 	return htmlStr
 }

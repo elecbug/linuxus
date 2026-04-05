@@ -1,18 +1,18 @@
 package page
 
 type HTMLPage struct {
-	title    string
-	meta     []KeyValue
-	css      *CSS
-	contents any
+	title string
+	meta  []KeyValue
+	css   *CSS
+	body  []any
 }
 
-func NewHTMLPage(title string, meta []KeyValue, css *CSS, contents any) *HTMLPage {
+func NewHTMLPage(title string, meta []KeyValue, css *CSS, body ...any) *HTMLPage {
 	return &HTMLPage{
-		title:    title,
-		meta:     meta,
-		css:      css,
-		contents: contents,
+		title: title,
+		meta:  meta,
+		css:   css,
+		body:  body,
 	}
 }
 
@@ -57,50 +57,33 @@ func (p *HTMLPage) CSS() *CSS {
 	return p.css
 }
 
-func (p *HTMLPage) AddContent(contents any) *HTMLPage {
-	if p.contents == nil {
-		p.contents = contents
-		return p
+func (p *HTMLPage) AddBodyContent(contents any) *HTMLPage {
+	if p.body == nil {
+		p.body = make([]any, 0)
 	}
 
-	switch existingContent := p.contents.(type) {
-	case string:
-		p.contents = []any{existingContent, contents}
-	case *HTML:
-		p.contents = []any{existingContent, contents}
-	case []any:
-		p.contents = append(existingContent, contents)
-	}
+	p.body = append(p.body, contents)
+
 	return p
 }
 
-func (p *HTMLPage) RemoveContent(predicate func(x any) bool) *HTMLPage {
-	if p.contents == nil {
+func (p *HTMLPage) RemoveBodyContent(predicate func(x any) bool) *HTMLPage {
+	if p.body == nil {
 		return p
 	}
 
-	switch existingContent := p.contents.(type) {
-	case string:
-		if predicate(existingContent) {
-			p.contents = nil
-		}
-	case *HTML:
-		if predicate(existingContent) {
-			p.contents = nil
-		}
-	case []any:
-		for i, content := range existingContent {
-			if predicate(content) {
-				p.contents = append(existingContent[:i], existingContent[i+1:]...)
-				break
-			}
+	for i, content := range p.body {
+		if predicate(content) {
+			p.body = append(p.body[:i], p.body[i+1:]...)
+			break
 		}
 	}
+
 	return p
 }
 
-func (p *HTMLPage) Contents() any {
-	return p.contents
+func (p *HTMLPage) BodyContents() any {
+	return p.body
 }
 
 func (p *HTMLPage) Render() string {
@@ -116,23 +99,23 @@ func (p *HTMLPage) Render() string {
 	}
 	pageStr += "</head>\n"
 	pageStr += "<body>\n"
-	if p.contents != nil {
-		switch content := p.contents.(type) {
+
+	for _, content := range p.body {
+		switch content := content.(type) {
+		case nil:
+			// No content to render
+			break
+		case string:
+			if len(p.body) == 1 {
+				pageStr += content
+			} else {
+				pageStr += getIndentStr(1) + content + "\n"
+			}
 		case *HTML:
 			pageStr += content.renderWithIndent(1)
-		case string:
-			pageStr += getIndentStr(1) + content + "\n"
-		case []any:
-			for _, c := range content {
-				switch c := c.(type) {
-				case *HTML:
-					pageStr += c.renderWithIndent(1)
-				case string:
-					pageStr += getIndentStr(1) + c + "\n"
-				}
-			}
 		}
 	}
+
 	pageStr += "</body>\n"
 	pageStr += "</html>\n"
 

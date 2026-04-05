@@ -6,3 +6,9 @@ volumes/
 
 # Generated docker-compose files for services.
 *.generated.yml
+
+# Logs and temporary files.
+logs/
+tmp/
+*.log
+*.tmp
