@@ -1,12 +1,13 @@
 package main
 
 import (
-	"authserver/internal/handler"
-	"authserver/internal/user"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/elecbug/linuxus/src/auth/internal/handler"
+	"github.com/elecbug/linuxus/src/auth/internal/user"
 )
 
 func main() {

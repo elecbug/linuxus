@@ -1,4 +1,4 @@
-module authserver
+module github.com/elecbug/linuxus/src/auth
 
 go 1.25.0
 
