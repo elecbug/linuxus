@@ -4,6 +4,8 @@ type HTML struct {
 	tag        string
 	attributes []KeyValue
 	contents   any
+	prefixes   []string
+	suffixes   []string
 }
 
 func NewHTML(tag string, attributes []KeyValue, contents any) *HTML {
@@ -88,6 +90,44 @@ func (h *HTML) RemoveContent(predicate func(x any) bool) *HTML {
 	return h
 }
 
+func (h *HTML) AddPrefix(prefix string) *HTML {
+	h.prefixes = append(h.prefixes, prefix)
+	return h
+}
+
+func (h *HTML) RemovePrefix(predicate func(x string) bool) *HTML {
+	for i, prefix := range h.prefixes {
+		if predicate(prefix) {
+			h.prefixes = append(h.prefixes[:i], h.prefixes[i+1:]...)
+			break
+		}
+	}
+	return h
+}
+
+func (h *HTML) Prefixes() []string {
+	return h.prefixes
+}
+
+func (h *HTML) AddSuffix(suffix string) *HTML {
+	h.suffixes = append(h.suffixes, suffix)
+	return h
+}
+
+func (h *HTML) RemoveSuffix(predicate func(x string) bool) *HTML {
+	for i, suffix := range h.suffixes {
+		if predicate(suffix) {
+			h.suffixes = append(h.suffixes[:i], h.suffixes[i+1:]...)
+			break
+		}
+	}
+	return h
+}
+
+func (h *HTML) Suffixes() []string {
+	return h.suffixes
+}
+
 func (h *HTML) Contents() any {
 	return h.contents
 }
@@ -100,6 +140,12 @@ func (h *HTML) renderWithIndent(indent int) string {
 	indentStr := getIndentStr(indent)
 	htmlStr := ""
 
+	if h.prefixes != nil {
+		for _, prefix := range h.prefixes {
+			htmlStr += indentStr + prefix + "\n"
+		}
+	}
+
 	htmlStr += indentStr + "<" + h.tag
 	for _, attr := range h.attributes {
 		htmlStr += " " + attr.Key + `="` + attr.Value + `"`
@@ -107,6 +153,9 @@ func (h *HTML) renderWithIndent(indent int) string {
 	htmlStr += ">\n"
 
 	switch content := h.contents.(type) {
+	case nil:
+		// No content to render
+		break
 	case string:
 		htmlStr += indentStr + getIndentStr(1) + content + "\n"
 	case *HTML:
@@ -122,6 +171,12 @@ func (h *HTML) renderWithIndent(indent int) string {
 	}
 
 	htmlStr += indentStr + "</" + h.tag + ">\n"
+
+	if h.suffixes != nil {
+		for _, suffix := range h.suffixes {
+			htmlStr += indentStr + suffix + "\n"
+		}
+	}
 
 	return htmlStr
 }
