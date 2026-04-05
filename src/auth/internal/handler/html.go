@@ -47,25 +47,3 @@ func (a *App) GetServicePage() string {
 </html>
 `
 }
-
-/*
-   .links {
-       margin-top: 16px;
-       display: flex;
-       gap: 12px;
-       color: white;
-   }
-   .links a {
-       color: white;
-       text-decoration: none;
-   }
-   .links a:hover {
-       text-decoration: underline;
-   }
-   .links a:active {
-       color: #ccccff;
-   }
-   .links a:visited {
-       color: #9999ff;
-   }
-*/
