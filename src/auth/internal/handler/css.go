@@ -8,7 +8,7 @@ func (a *App) GetLoginCSS() *page.CSS {
 			page.KeyValue{Key: "font-family", Value: "sans-serif"},
 			page.KeyValue{Key: "max-width", Value: "420px"},
 			page.KeyValue{Key: "margin", Value: "60px auto"},
-			page.KeyValue{Key: "background", Value: "#2e2e2e"},
+			page.KeyValue{Key: "background", Value: BASE_BACKGROUND},
 			page.KeyValue{Key: "color", Value: "white"},
 		),
 		page.NewCSSContent("form",
@@ -16,60 +16,59 @@ func (a *App) GetLoginCSS() *page.CSS {
 			page.KeyValue{Key: "flex-direction", Value: "column"},
 			page.KeyValue{Key: "gap", Value: "12px"},
 		),
-		baseBox("input", false, false),
-		baseBox("button", true, false),
-		hoverEffect("button:hover", true),
+		box("input", false, false),
+		box("button", true, false),
+		boxHoverEffect("button:hover", true),
 		page.NewCSSContent(".error",
 			page.KeyValue{Key: "color", Value: "#ff0000"},
 		),
 	)
 }
 
-func (a *App) GetServiceCSS() string {
-	return `
-	<style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: sans-serif;
-        }
-        .topbar {
-            height: 56px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 16px;
-            box-sizing: border-box;
-            border-bottom: 1px solid #dddddd;
-            background: #595959;
-			color: white;
-        }
-        .left {
-            font-weight: bold;
-        }
-        .right {
-            display: flex;
-            gap: 10px;
-        }
-        .frame-wrap {
-            height: calc(100% - 56px);
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: 0;
-            display: block;
-        }
-        </style>
-        `
-	// .btn {` + baseBox(3, true, false) + `}
-	// .btn:hover {` + hoverEffect(3, true) + `}
-	// .btn-danger {` + baseBox(3, true, true) + `}
-	// .btn-danger:hover {` + hoverEffect(3, true) + `}
+func (a *App) GetServiceCSS() *page.CSS {
+	return page.NewCSS(
+		page.NewCSSContent("html, body",
+			page.KeyValue{Key: "margin", Value: "0"},
+			page.KeyValue{Key: "padding", Value: "0"},
+			page.KeyValue{Key: "height", Value: "100%"},
+			page.KeyValue{Key: "font-family", Value: "sans-serif"},
+		),
+		page.NewCSSContent(".topbar",
+			page.KeyValue{Key: "height", Value: "56px"},
+			page.KeyValue{Key: "display", Value: "flex"},
+			page.KeyValue{Key: "align-items", Value: "center"},
+			page.KeyValue{Key: "justify-content", Value: "space-between"},
+			page.KeyValue{Key: "padding", Value: "0 16px"},
+			page.KeyValue{Key: "box-sizing", Value: "border-box"},
+			page.KeyValue{Key: "border-bottom", Value: DARK_BORDER},
+			page.KeyValue{Key: "background", Value: BASE_BACKGROUND},
+			page.KeyValue{Key: "color", Value: "white"},
+		),
+		page.NewCSSContent(".left",
+			page.KeyValue{Key: "font-weight", Value: "bold"},
+		),
+		page.NewCSSContent(".right",
+			page.KeyValue{Key: "display", Value: "flex"},
+			page.KeyValue{Key: "gap", Value: "10px"},
+		),
+		page.NewCSSContent(".frame-wrap",
+			page.KeyValue{Key: "height", Value: "calc(100% - 56px)"},
+		),
+		page.NewCSSContent("iframe",
+			page.KeyValue{Key: "width", Value: "100%"},
+			page.KeyValue{Key: "height", Value: "100%"},
+			page.KeyValue{Key: "border", Value: "0"},
+			page.KeyValue{Key: "display", Value: "block"},
+		),
+		box(".btn", true, false),
+		boxHoverEffect(".btn:hover", true),
+		box(".btn-danger", true, true),
+		boxHoverEffect(".btn-danger:hover", true),
+	)
+
 }
 
-func baseBox(tag string, isDark, isDangerOpt bool) *page.CSSContent {
+func box(tag string, isDark, isDangerOpt bool) *page.CSSContent {
 	if isDark && !isDangerOpt {
 		return page.NewCSSContent(tag,
 			page.KeyValue{Key: "display", Value: BOX_DISPLAY},
@@ -119,7 +118,7 @@ func baseBox(tag string, isDark, isDangerOpt bool) *page.CSSContent {
 	return nil
 }
 
-func hoverEffect(tag string, isDark bool) *page.CSSContent {
+func boxHoverEffect(tag string, isDark bool) *page.CSSContent {
 	if isDark {
 		return page.NewCSSContent(tag,
 			page.KeyValue{Key: "background", Value: DARK_BACKGROUND_HOVER},
