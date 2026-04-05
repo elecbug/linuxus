@@ -19,6 +19,7 @@ const DARK_BORDER = "1px solid " + DARK_COLOR
 const DANGER_COLOR = "#ff0000"
 const DANGER_BORDER = "1px solid " + DANGER_COLOR
 
+const BASE_FONT_FAMILY = "sans-serif"
 const BASE_COLOR = "#f0f0f0"
 const BASE_BACKGROUND = "#202020"
 const BASE_BORDER = "1px solid " + BASE_COLOR

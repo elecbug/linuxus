@@ -2,14 +2,14 @@ package handler
 
 import "github.com/elecbug/linuxus/src/auth/internal/page"
 
-func (a *App) GetLoginCSS() *page.CSS {
+func getLoginCSS() *page.CSS {
 	return page.NewCSS(
 		page.NewCSSContent("body",
-			page.KeyValue{Key: "font-family", Value: "sans-serif"},
+			page.KeyValue{Key: "font-family", Value: BASE_FONT_FAMILY},
 			page.KeyValue{Key: "max-width", Value: "420px"},
 			page.KeyValue{Key: "margin", Value: "60px auto"},
 			page.KeyValue{Key: "background", Value: BASE_BACKGROUND},
-			page.KeyValue{Key: "color", Value: "white"},
+			page.KeyValue{Key: "color", Value: BASE_COLOR},
 		),
 		page.NewCSSContent("form",
 			page.KeyValue{Key: "display", Value: "flex"},
@@ -20,18 +20,18 @@ func (a *App) GetLoginCSS() *page.CSS {
 		box("button", true, false),
 		boxHoverEffect("button:hover", true),
 		page.NewCSSContent(".error",
-			page.KeyValue{Key: "color", Value: "#ff0000"},
+			page.KeyValue{Key: "color", Value: DANGER_COLOR},
 		),
 	)
 }
 
-func (a *App) GetServiceCSS() *page.CSS {
+func getServiceCSS() *page.CSS {
 	return page.NewCSS(
 		page.NewCSSContent("html, body",
 			page.KeyValue{Key: "margin", Value: "0"},
 			page.KeyValue{Key: "padding", Value: "0"},
 			page.KeyValue{Key: "height", Value: "100%"},
-			page.KeyValue{Key: "font-family", Value: "sans-serif"},
+			page.KeyValue{Key: "font-family", Value: BASE_FONT_FAMILY},
 		),
 		page.NewCSSContent(".topbar",
 			page.KeyValue{Key: "height", Value: "56px"},
@@ -42,7 +42,7 @@ func (a *App) GetServiceCSS() *page.CSS {
 			page.KeyValue{Key: "box-sizing", Value: "border-box"},
 			page.KeyValue{Key: "border-bottom", Value: DARK_BORDER},
 			page.KeyValue{Key: "background", Value: BASE_BACKGROUND},
-			page.KeyValue{Key: "color", Value: "white"},
+			page.KeyValue{Key: "color", Value: BASE_COLOR},
 		),
 		page.NewCSSContent(".left",
 			page.KeyValue{Key: "font-weight", Value: "bold"},

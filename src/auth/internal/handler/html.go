@@ -4,11 +4,9 @@ import "github.com/elecbug/linuxus/src/auth/internal/page"
 
 func (a *App) GetLoginPage() string {
 	htmlpage := page.NewHTMLPage(
-		"Linuxus Login",
-		[]page.KeyValue{
-			{Key: "charset", Value: "UTF-8"},
-		},
-		a.GetLoginCSS(),
+		"Linuxus | Login",
+		getBaseMeta(),
+		getLoginCSS(),
 		page.NewHTML("h2", []page.KeyValue{}, "Linuxus Login"),
 		page.NewHTML("p", []page.KeyValue{{Key: "class", Value: "error"}}, "{{.Error}}").AddPrefix("{{if .Error}}").AddSuffix("{{end}}"),
 		page.NewHTML("form", []page.KeyValue{{Key: "method", Value: "post"}, {Key: "action", Value: "/" + a.loginPath}},
@@ -23,11 +21,9 @@ func (a *App) GetLoginPage() string {
 
 func (a *App) GetServicePage() string {
 	htmlpage := page.NewHTMLPage(
-		"linuxus shell",
-		[]page.KeyValue{
-			{Key: "charset", Value: "UTF-8"},
-		},
-		a.GetServiceCSS(),
+		"Linuxus | {{.ID}}",
+		getBaseMeta(),
+		getServiceCSS(),
 		page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "topbar"}},
 			page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "left"}}, "linuxus | {{.ID}}"),
 			page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "right"}},
@@ -41,4 +37,10 @@ func (a *App) GetServicePage() string {
 	)
 
 	return htmlpage.Render()
+}
+
+func getBaseMeta() []page.KeyValue {
+	return []page.KeyValue{
+		{Key: "charset", Value: "UTF-8"},
+	}
 }
