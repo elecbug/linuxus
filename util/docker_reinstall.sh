@@ -7,6 +7,7 @@ set -e
 # ============================ #
 
 # 1. Stop Docker and Containerd services
+sudo systemctl stop docker.socket || true
 sudo systemctl stop docker || true
 sudo systemctl stop containerd || true
 
