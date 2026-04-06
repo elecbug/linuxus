@@ -23,3 +23,9 @@ const BASE_FONT_FAMILY = "sans-serif"
 const BASE_COLOR = "#f0f0f0"
 const BASE_BACKGROUND = "#202020"
 const BASE_BORDER = "1px solid " + BASE_COLOR
+
+const FOOTER_COLOR = "#888888"
+const FOOTER_LINK_COLOR = "#1e90ff"
+const FOOTER_LINK_HOVER_COLOR = "#1c86ee"
+const FOOTER_LINK_ACTIVE_COLOR = "#1874cd"
+const FOOTER_LINK_VISITED_COLOR = "#551a8b"
