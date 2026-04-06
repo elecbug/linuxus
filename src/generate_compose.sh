@@ -53,6 +53,41 @@ sanitize_name() {
     fi
 }
 
+get_ip() {
+    local base_ip="$1"
+    local i="$2"
+
+    # Split the base IP into octets
+    IFS='.' read -r o1 o2 o3 o4 <<< "$base_ip"
+
+    # Validate basic input
+    if ! [[ "$o1" =~ ^[0-9]+$ && "$o2" =~ ^[0-9]+$ && "$o3" =~ ^[0-9]+$ && "$o4" =~ ^[0-9]+$ ]]; then
+        echo "Error: invalid base IP format" >&2
+        return 1
+    fi
+
+    if ! [[ "$i" =~ ^[0-9]+$ ]]; then
+        echo "Error: index must be a non-negative integer" >&2
+        return 1
+    fi
+
+    # /28 means one subnet per 16 addresses
+    # 16 subnets fit into one /24
+    local third_octet_offset=$(( i / 16 ))
+    local fourth_octet_offset=$(( (i % 16) * 16 ))
+
+    local new_o3=$(( o3 + third_octet_offset ))
+    local new_o4=$fourth_octet_offset
+
+    # Check overflow
+    if [ "$new_o3" -gt 255 ]; then
+        echo "Error: subnet overflow (3rd octet > 255)" >&2
+        return 1
+    fi
+
+    echo "${o1}.${o2}.${new_o3}.${new_o4}/28"
+}
+
 declare -a USER_IDS=()
 declare -a SAFE_IDS=()
 declare -a USERNAMES=()
@@ -192,18 +227,27 @@ cat >> "$OUTPUT_FILE" <<EOF
 networks:
 EOF
 
+seq_i="0"
+
 # One private network per student
 for SAFE_ID in "${SAFE_IDS[@]}"; do
     cat >> "$OUTPUT_FILE" <<EOF
   ${SERVICE_NETWORK_PREFIX}${SAFE_ID}:
     driver: bridge
+    ipam:
+      config:
+        - subnet: $(get_ip "$SERVICE_BASE_IP" "$seq_i")
 EOF
+    seq_i=$((seq_i + 1))
 done
 
 # One private network for admin
 cat >> "$OUTPUT_FILE" <<EOF
   ${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}:
     driver: bridge
+    ipam:
+      config:
+        - subnet: $(get_ip "$SERVICE_BASE_IP" "$seq_i")
 EOF
 
 # =========================
