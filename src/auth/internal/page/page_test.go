@@ -9,27 +9,37 @@ import (
 func TestCSSRendering(t *testing.T) {
 	css := page.NewCSS(
 		page.NewCSSContent("body.main",
-			page.KeyValue{Key: "background-color", Value: "#f0f0f0"},
-			page.KeyValue{Key: "color", Value: "#242424"},
-			page.KeyValue{Key: "font-family", Value: "Arial, sans-serif"},
+			page.NewAttributes(
+				"background-color", "#f0f0f0",
+				"color", "#242424",
+				"font-family", "Arial, sans-serif",
+			)...,
 		),
 		page.NewCSSContent("h2.title",
-			page.KeyValue{Key: "color", Value: "#333333"},
+			page.NewAttributes(
+				"color", "#333333",
+			)...,
 		),
 		page.NewCSSContent("p.error",
-			page.KeyValue{Key: "color", Value: "red"},
+			page.NewAttributes(
+				"color", "red",
+			)...,
 		),
 		page.NewCSSContent("form.login-form",
-			page.KeyValue{Key: "display", Value: "flex"},
-			page.KeyValue{Key: "flex-direction", Value: "column"},
-			page.KeyValue{Key: "width", Value: "300px"},
-			page.KeyValue{Key: "margin", Value: "0 auto"},
+			page.NewAttributes(
+				"display", "flex",
+				"flex-direction", "column",
+				"width", "300px",
+				"margin", "0 auto",
+			)...,
 		),
 		page.NewCSSContent("input.input-field",
-			page.KeyValue{Key: "padding", Value: "10px"},
-			page.KeyValue{Key: "margin", Value: "10px 0"},
-			page.KeyValue{Key: "border", Value: "1px solid #cccccc"},
-			page.KeyValue{Key: "border-radius", Value: "4px"},
+			page.NewAttributes(
+				"padding", "10px",
+				"margin", "10px 0",
+				"border", "1px solid #cccccc",
+				"border-radius", "4px",
+			)...,
 		),
 	)
 
@@ -72,21 +82,21 @@ func TestCSSRendering(t *testing.T) {
 func TestHTMLPageRendering(t *testing.T) {
 	css := page.NewCSS(
 		page.NewCSSContent("body.main",
-			page.KeyValue{Key: "background-color", Value: "#f0f0f0"},
-			page.KeyValue{Key: "color", Value: "#242424"},
-			page.KeyValue{Key: "font-family", Value: "Arial, sans-serif"},
+			page.NewAttributes(
+				"background-color", "#f0f0f0",
+				"color", "#242424",
+				"font-family", "Arial, sans-serif",
+			)...,
 		),
 	)
 
-	htmlContent := page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "container"}}, "Hello, World!")
+	htmlContent := page.NewHTML("div", page.NewAttributes("class", "container"), "Hello, World!")
 
-	p := page.NewHTMLPage("Test Page", []page.KeyValue{
-		{Key: "charset", Value: "UTF-8"},
-	}, css, htmlContent)
+	p := page.NewHTMLPage("Test Page", page.NewAttributes("charset", "UTF-8"), css, htmlContent)
 
-	p.AddBodyContent(page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "footer"}}, "Footer content"))
+	p.AddBodyContent(page.NewHTML("div", page.NewAttributes("class", "footer"), "Footer content"))
 
-	htmlContent.AddContent(page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "section"}}, "Section content"))
+	htmlContent.AddContent(page.NewHTML("div", page.NewAttributes("class", "section"), "Section content"))
 
 	pageStr := p.Render()
 
@@ -121,10 +131,10 @@ func TestHTMLPageRendering(t *testing.T) {
 }
 
 func TestHTMLPageRemoveContent(t *testing.T) {
-	htmlContent := page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "container"}}, "Hello, World!")
+	htmlContent := page.NewHTML("div", page.NewAttributes("class", "container"), "Hello, World!")
 	p := page.NewHTMLPage("Test Page", nil, nil, htmlContent)
 
-	p.AddBodyContent(page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "footer"}}, "Footer content"))
+	p.AddBodyContent(page.NewHTML("div", page.NewAttributes("class", "footer"), "Footer content"))
 	p.RemoveBodyContent(func(x any) bool {
 		if html, ok := x.(*page.HTML); ok {
 			for _, attr := range html.Attributes() {

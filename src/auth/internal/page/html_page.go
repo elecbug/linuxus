@@ -2,12 +2,12 @@ package page
 
 type HTMLPage struct {
 	title string
-	meta  []KeyValue
+	meta  []Attribute
 	css   *CSS
 	body  []any
 }
 
-func NewHTMLPage(title string, meta []KeyValue, css *CSS, body ...any) *HTMLPage {
+func NewHTMLPage(title string, meta []Attribute, css *CSS, body ...any) *HTMLPage {
 	return &HTMLPage{
 		title: title,
 		meta:  meta,
@@ -27,14 +27,14 @@ func (p *HTMLPage) Title() string {
 
 func (p *HTMLPage) AddMeta(key string, value string) *HTMLPage {
 	if p.meta == nil {
-		p.meta = make([]KeyValue, 0)
+		p.meta = make([]Attribute, 0)
 	}
 
-	p.meta = append(p.meta, KeyValue{Key: key, Value: value})
+	p.meta = append(p.meta, Attribute{Key: key, Value: value})
 	return p
 }
 
-func (p *HTMLPage) RemoveMeta(predicate func(x KeyValue) bool) *HTMLPage {
+func (p *HTMLPage) RemoveMeta(predicate func(x Attribute) bool) *HTMLPage {
 	for i, kv := range p.meta {
 		if predicate(kv) {
 			p.meta = append(p.meta[:i], p.meta[i+1:]...)
@@ -44,7 +44,7 @@ func (p *HTMLPage) RemoveMeta(predicate func(x KeyValue) bool) *HTMLPage {
 	return p
 }
 
-func (p *HTMLPage) Meta() []KeyValue {
+func (p *HTMLPage) Meta() []Attribute {
 	return p.meta
 }
 

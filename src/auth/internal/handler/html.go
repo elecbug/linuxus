@@ -7,12 +7,12 @@ func (a *App) GetLoginPage() string {
 		"Linuxus | Login",
 		getBaseMeta(),
 		getLoginCSS(),
-		page.NewHTML("h2", []page.KeyValue{}, "Linuxus Login"),
-		page.NewHTML("p", []page.KeyValue{{Key: "class", Value: "error"}}, "{{.Error}}").AddPrefix("{{if .Error}}").AddSuffix("{{end}}"),
-		page.NewHTML("form", []page.KeyValue{{Key: "method", Value: "post"}, {Key: "action", Value: "/" + a.loginPath}},
-			page.NewHTML("input", []page.KeyValue{{Key: "type", Value: "text"}, {Key: "name", Value: "id"}, {Key: "placeholder", Value: "ID"}, {Key: "required", Value: "true"}}),
-			page.NewHTML("input", []page.KeyValue{{Key: "type", Value: "password"}, {Key: "name", Value: "password"}, {Key: "placeholder", Value: "Password"}, {Key: "required", Value: "true"}}),
-			page.NewHTML("button", []page.KeyValue{{Key: "type", Value: "submit"}}, "Login"),
+		page.NewHTML("h2", page.NewAttributes(), "Linuxus Login"),
+		page.NewHTML("p", page.NewAttributes("class", "error"), "{{.Error}}").AddPrefix("{{if .Error}}").AddSuffix("{{end}}"),
+		page.NewHTML("form", page.NewAttributes("class", "login-form", "method", "post", "action", "/"+a.loginPath),
+			page.NewHTML("input", page.NewAttributes("type", "text", "name", "id", "placeholder", "ID", "required", "true")),
+			page.NewHTML("input", page.NewAttributes("type", "password", "name", "password", "placeholder", "Password", "required", "true")),
+			page.NewHTML("button", page.NewAttributes("type", "submit"), "Login"),
 		),
 	)
 
@@ -24,23 +24,23 @@ func (a *App) GetServicePage() string {
 		"Linuxus | {{.ID}}",
 		getBaseMeta(),
 		getServiceCSS(),
-		page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "topbar"}},
-			page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "left"}}, "linuxus | {{.ID}}"),
-			page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "right"}},
-				page.NewHTML("a", []page.KeyValue{{Key: "class", Value: "btn"}, {Key: "href", Value: "/" + a.terminalPath + "/"}, {Key: "target", Value: "shellframe"}}, "Open Shell"),
-				page.NewHTML("a", []page.KeyValue{{Key: "class", Value: "btn btn-danger"}, {Key: "href", Value: "/" + a.logoutPath}}, "Logout"),
+		page.NewHTML("div", page.NewAttributes("class", "topbar"),
+			page.NewHTML("div", page.NewAttributes("class", "left"), "linuxus | {{.ID}}"),
+			page.NewHTML("div", page.NewAttributes("class", "right"),
+				page.NewHTML("a", page.NewAttributes("class", "btn", "href", "/"+a.terminalPath+"/", "target", "shellframe"), "Open Shell"),
+				page.NewHTML("a", page.NewAttributes("class", "btn btn-danger", "href", "/"+a.logoutPath), "Logout"),
 			),
 		),
-		page.NewHTML("div", []page.KeyValue{{Key: "class", Value: "frame-wrap"}},
-			page.NewHTML("iframe", []page.KeyValue{{Key: "name", Value: "shellframe"}, {Key: "src", Value: "/" + a.terminalPath + "/"}}, ""),
+		page.NewHTML("div", page.NewAttributes("class", "frame-wrap"),
+			page.NewHTML("iframe", page.NewAttributes("name", "shellframe", "src", "/"+a.terminalPath+"/"), ""),
 		),
 	)
 
 	return htmlpage.Render()
 }
 
-func getBaseMeta() []page.KeyValue {
-	return []page.KeyValue{
-		{Key: "charset", Value: "UTF-8"},
-	}
+func getBaseMeta() []page.Attribute {
+	return page.NewAttributes(
+		"charset", "UTF-8",
+	)
 }

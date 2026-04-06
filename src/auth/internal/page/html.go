@@ -2,13 +2,13 @@ package page
 
 type HTML struct {
 	tag        string
-	attributes []KeyValue
+	attributes []Attribute
 	contents   []any
 	prefixes   []string
 	suffixes   []string
 }
 
-func NewHTML(tag string, attributes []KeyValue, contents ...any) *HTML {
+func NewHTML(tag string, attributes []Attribute, contents ...any) *HTML {
 	return &HTML{
 		tag:        tag,
 		attributes: attributes,
@@ -29,14 +29,14 @@ func (h *HTML) Tag() string {
 
 func (h *HTML) AddAttribute(key string, value string) *HTML {
 	if h.attributes == nil {
-		h.attributes = make([]KeyValue, 0)
+		h.attributes = make([]Attribute, 0)
 	}
 
-	h.attributes = append(h.attributes, KeyValue{Key: key, Value: value})
+	h.attributes = append(h.attributes, Attribute{Key: key, Value: value})
 	return h
 }
 
-func (h *HTML) RemoveAttribute(predicate func(x KeyValue) bool) *HTML {
+func (h *HTML) RemoveAttribute(predicate func(x Attribute) bool) *HTML {
 	for i, attr := range h.attributes {
 		if predicate(attr) {
 			h.attributes = append(h.attributes[:i], h.attributes[i+1:]...)
@@ -46,7 +46,7 @@ func (h *HTML) RemoveAttribute(predicate func(x KeyValue) bool) *HTML {
 	return h
 }
 
-func (h *HTML) Attributes() []KeyValue {
+func (h *HTML) Attributes() []Attribute {
 	return h.attributes
 }
 

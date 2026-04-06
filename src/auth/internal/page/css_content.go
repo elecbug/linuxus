@@ -2,10 +2,10 @@ package page
 
 type CSSContent struct {
 	tag        string
-	attributes []KeyValue
+	attributes []Attribute
 }
 
-func NewCSSContent(name string, attributes ...KeyValue) *CSSContent {
+func NewCSSContent(name string, attributes ...Attribute) *CSSContent {
 	return &CSSContent{
 		tag:        name,
 		attributes: attributes,
@@ -14,14 +14,14 @@ func NewCSSContent(name string, attributes ...KeyValue) *CSSContent {
 
 func (c *CSSContent) AddAttribute(key string, value string) *CSSContent {
 	if c.attributes == nil {
-		c.attributes = make([]KeyValue, 0)
+		c.attributes = make([]Attribute, 0)
 	}
 
-	c.attributes = append(c.attributes, KeyValue{Key: key, Value: value})
+	c.attributes = append(c.attributes, Attribute{Key: key, Value: value})
 	return c
 }
 
-func (c *CSSContent) RemoveAttribute(predicate func(x KeyValue) bool) *CSSContent {
+func (c *CSSContent) RemoveAttribute(predicate func(x Attribute) bool) *CSSContent {
 	for i, attr := range c.attributes {
 		if predicate(attr) {
 			c.attributes = append(c.attributes[:i], c.attributes[i+1:]...)
@@ -31,7 +31,7 @@ func (c *CSSContent) RemoveAttribute(predicate func(x KeyValue) bool) *CSSConten
 	return c
 }
 
-func (c *CSSContent) Attributes() []KeyValue {
+func (c *CSSContent) Attributes() []Attribute {
 	return c.attributes
 }
 
