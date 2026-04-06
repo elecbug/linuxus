@@ -11,9 +11,15 @@ import (
 )
 
 func main() {
-	authListFile, sessionSecret,
-		loginPath, logoutPath, servicePath, terminalPath,
-		adminLoginID, adminLoginPassword, adminContainerName := getEnvs()
+	var authListFile,
+		sessionSecret,
+		loginPath,
+		logoutPath,
+		servicePath,
+		terminalPath,
+		adminLoginID,
+		adminLoginPassword,
+		adminContainerName = getEnvs()
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -22,8 +28,17 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	app := handler.NewApp(users, []byte(sessionSecret),
-		loginPath, logoutPath, servicePath, terminalPath, adminLoginID, adminLoginPassword, adminContainerName)
+	app := handler.NewApp(
+		users,
+		[]byte(sessionSecret),
+		loginPath,
+		logoutPath,
+		servicePath,
+		terminalPath,
+		adminLoginID,
+		adminLoginPassword,
+		adminContainerName,
+	)
 	app.RegisterRoutes(mux)
 
 	addr := ":8080"
@@ -39,7 +54,17 @@ func getEnv(key string) (string, error) {
 	return value, nil
 }
 
-func getEnvs() (authListFile, sessionSecret, loginPath, logoutPath, servicePath, terminalPath, adminLoginID, adminLoginPassword, adminContainerName string) {
+func getEnvs() (
+	authListFile,
+	sessionSecret,
+	loginPath,
+	logoutPath,
+	servicePath,
+	terminalPath,
+	adminLoginID,
+	adminLoginPassword,
+	adminContainerName string,
+) {
 	var err error
 
 	authListFile, err = getEnv("AUTH_LIST")

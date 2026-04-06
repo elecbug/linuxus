@@ -90,13 +90,32 @@ func TestHTMLPageRendering(t *testing.T) {
 		),
 	)
 
-	htmlContent := page.NewHTML("div", page.NewAttributes("class", "container"), "Hello, World!")
+	htmlContent := page.NewHTML(
+		"div",
+		page.NewAttributes("class", "container"),
+		"Hello, World!",
+	)
 
-	p := page.NewHTMLPage("Test Page", page.NewAttributes("charset", "UTF-8"), css, htmlContent)
+	p := page.NewHTMLPage(
+		"Test Page",
+		page.NewAttributes("charset", "UTF-8"),
+		css,
+		htmlContent,
+	)
 
-	p.AddBodyContent(page.NewHTML("div", page.NewAttributes("class", "footer"), "Footer content"))
+	p.AddBodyContent(
+		page.NewHTML(
+			"div",
+			page.NewAttributes("class", "footer"),
+			"Footer content",
+		),
+	)
 
-	htmlContent.AddContent(page.NewHTML("div", page.NewAttributes("class", "section"), "Section content"))
+	htmlContent.AddContent(page.NewHTML(
+		"div",
+		page.NewAttributes("class", "section"),
+		"Section content",
+	))
 
 	pageStr := p.Render()
 
@@ -131,10 +150,20 @@ func TestHTMLPageRendering(t *testing.T) {
 }
 
 func TestHTMLPageRemoveContent(t *testing.T) {
-	htmlContent := page.NewHTML("div", page.NewAttributes("class", "container"), "Hello, World!")
+	htmlContent := page.NewHTML(
+		"div",
+		page.NewAttributes("class", "container"),
+		"Hello, World!",
+	)
 	p := page.NewHTMLPage("Test Page", nil, nil, htmlContent)
 
-	p.AddBodyContent(page.NewHTML("div", page.NewAttributes("class", "footer"), "Footer content"))
+	p.AddBodyContent(
+		page.NewHTML(
+			"div",
+			page.NewAttributes("class", "footer"),
+			"Footer content",
+		),
+	)
 	p.RemoveBodyContent(func(x any) bool {
 		if html, ok := x.(*page.HTML); ok {
 			for _, attr := range html.Attributes() {

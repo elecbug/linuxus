@@ -26,7 +26,17 @@ type App struct {
 	adminContainerName string
 }
 
-func NewApp(users map[string]string, sessionKey []byte, loginPath, logoutPath, servicePath, terminalPath, adminLoginID, adminLoginPassword, adminContainerName string) *App {
+func NewApp(
+	users map[string]string,
+	sessionKey []byte,
+	loginPath,
+	logoutPath,
+	servicePath,
+	terminalPath,
+	adminLoginID,
+	adminLoginPassword,
+	adminContainerName string,
+) *App {
 	return &App{
 		users:              users,
 		sessionKey:         sessionKey,

@@ -7,7 +7,11 @@ import (
 )
 
 func TestHTMLRendering(t *testing.T) {
-	app := handler.NewApp(nil, nil, "login", "logout", "service", "terminal", "adminID", "adminPassword", "adminContainer")
+	app := handler.NewApp(
+		nil, nil,
+		"login", "logout", "service", "terminal",
+		"adminID", "adminPassword", "adminContainer",
+	)
 	loginPage := app.GetLoginPage()
 	if loginPage == "" {
 		t.Error("GetLoginPage returned an empty string")
