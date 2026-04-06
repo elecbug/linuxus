@@ -11,42 +11,9 @@ import (
 )
 
 func main() {
-	authListFile, err := getEnv("AUTH_LIST")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
-	sessionSecret, err := getEnv("SESSION_SECRET")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
-	loginPath, err := getEnv("LOGIN_PATH")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
-	logoutPath, err := getEnv("LOGOUT_PATH")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
-	servicePath, err := getEnv("SERVICE_PATH")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
-	terminalPath, err := getEnv("TERMINAL_PATH")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
-	adminLoginID, err := getEnv("ADMIN_LOGIN_ID")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
-	adminLoginPassword, err := getEnv("ADMIN_LOGIN_PASSWORD")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
-	adminContainerName, err := getEnv("ADMIN_CONTAINER_NAME")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
+	authListFile, sessionSecret,
+		loginPath, logoutPath, servicePath, terminalPath,
+		adminLoginID, adminLoginPassword, adminContainerName := getEnvs()
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -70,4 +37,47 @@ func getEnv(key string) (string, error) {
 		return "", fmt.Errorf("environment variable %s not set", key)
 	}
 	return value, nil
+}
+
+func getEnvs() (authListFile, sessionSecret, loginPath, logoutPath, servicePath, terminalPath, adminLoginID, adminLoginPassword, adminContainerName string) {
+	var err error
+
+	authListFile, err = getEnv("AUTH_LIST")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	sessionSecret, err = getEnv("SESSION_SECRET")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	loginPath, err = getEnv("LOGIN_PATH")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	logoutPath, err = getEnv("LOGOUT_PATH")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	servicePath, err = getEnv("SERVICE_PATH")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	terminalPath, err = getEnv("TERMINAL_PATH")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	adminLoginID, err = getEnv("ADMIN_LOGIN_ID")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	adminLoginPassword, err = getEnv("ADMIN_LOGIN_PASSWORD")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	adminContainerName, err = getEnv("ADMIN_CONTAINER_NAME")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+
+	return
 }

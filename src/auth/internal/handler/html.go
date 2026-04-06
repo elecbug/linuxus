@@ -14,7 +14,7 @@ func (a *App) GetLoginPage() string {
 			page.NewHTML("input", page.NewAttributes("type", "password", "name", "password", "placeholder", "Password", "required", "true")),
 			page.NewHTML("button", page.NewAttributes("type", "submit"), "Login"),
 		),
-		page.NewHTML("p", page.NewAttributes(), "Don't have an account? Contact the administrator."),
+		page.NewHTML("p", page.NewAttributes("class", "tooltip"), "Don't have an account? Contact the administrator."),
 		page.NewHTML("footer", page.NewAttributes(),
 			"© 2026 ",
 			page.NewHTML("a", page.NewAttributes("href", "https://github.com/elecbug/linuxus"), "Linuxus"),

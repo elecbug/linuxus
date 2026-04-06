@@ -24,6 +24,8 @@ const BASE_COLOR = "#f0f0f0"
 const BASE_BACKGROUND = "#202020"
 const BASE_BORDER = "1px solid " + BASE_COLOR
 
+const TOOLTIP_COLOR = "#cccccc"
+
 const FOOTER_COLOR = "#888888"
 const FOOTER_LINK_COLOR = "#1e90ff"
 const FOOTER_LINK_HOVER_COLOR = "#1c86ee"

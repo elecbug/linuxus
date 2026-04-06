@@ -25,6 +25,13 @@ func getLoginCSS() *page.CSS {
 				"color", DANGER_COLOR,
 			)...,
 		),
+		page.NewCSSContent("p.tooltip",
+			page.NewAttributes(
+				"color", TOOLTIP_COLOR,
+				"font-size", "0.9em",
+				"font-style", "italic",
+			)...,
+		),
 		page.NewCSSContent("footer",
 			page.NewAttributes(
 				"margin-top", "40px",
