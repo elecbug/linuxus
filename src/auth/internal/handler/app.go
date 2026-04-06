@@ -13,15 +13,15 @@ import (
 )
 
 type App struct {
-	users              map[string]string
-	sessionKey         []byte
-	loginTmpl          *template.Template
-	serviceTmpl        *template.Template
-	loginPath          string
-	logoutPath         string
-	servicePath        string
-	terminalPath       string
-	adminContainerName string
+	users        map[string]string
+	sessionKey   []byte
+	loginTmpl    *template.Template
+	serviceTmpl  *template.Template
+	loginPath    string
+	logoutPath   string
+	servicePath  string
+	terminalPath string
+	adminUserID  string
 }
 
 func NewApp(
@@ -31,16 +31,16 @@ func NewApp(
 	logoutPath,
 	servicePath,
 	terminalPath,
-	adminContainerName string,
+	adminUserID string,
 ) *App {
 	return &App{
-		users:              users,
-		sessionKey:         sessionKey,
-		loginPath:          loginPath,
-		logoutPath:         logoutPath,
-		servicePath:        servicePath,
-		terminalPath:       terminalPath,
-		adminContainerName: adminContainerName,
+		users:        users,
+		sessionKey:   sessionKey,
+		loginPath:    loginPath,
+		logoutPath:   logoutPath,
+		servicePath:  servicePath,
+		terminalPath: terminalPath,
+		adminUserID:  adminUserID,
 	}
 }
 

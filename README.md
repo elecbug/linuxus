@@ -4,6 +4,13 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
 
 ## 🚀 Usage
 
+0. Clone repository:
+
+   ```bash
+   git clone https://github.com/elecbug/linuxus
+   cd linuxus
+   ```
+
 1. If Docker is not installed, run:
 
    ```bash
@@ -25,13 +32,22 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
 3. Add the authentication file:
 
    ```
-   src/data/AUTH_LIST
+   mkdir -p src/data
+   touch src/data/AUTH_LIST
    ```
 
 4. Create user accounts by appending credentials using:
 
    ```bash
    ./util/make_hash.out <ID> <PASSWORD> >> src/data/AUTH_LIST
+   ```
+
+   You can specify the **ADMIN account** by modifying `alpha` to the ID you want to specify in the line below in `src/config.env`:
+
+   ```bash
+   ...
+   ADMIN_USER_ID=alpha
+   ...
    ```
 
 5. Start the services (containers) for each user:

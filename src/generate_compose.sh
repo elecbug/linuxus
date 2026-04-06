@@ -116,7 +116,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     safe_id="$(sanitize_name "$user_id")"
     username="${SERVICE_USERNAME_PREFIX}${user_id}"
 
-    if [ "$user_id" == "$ADMIN_CONTAINER_NAME" ]; then
+    if [ "$user_id" == "$ADMIN_USER_ID" ]; then
         continue
     fi
 
@@ -131,7 +131,7 @@ if [ "${#USER_IDS[@]}" -eq 0 ]; then
     exit 1
 fi
 
-ADMIN_SAFE_NAME="$(sanitize_name "$ADMIN_CONTAINER_NAME")"
+ADMIN_SAFE_NAME="$(sanitize_name "$ADMIN_USER_ID")"
 
 # =========================
 # Generate compose
@@ -150,7 +150,7 @@ services:
       - LOGOUT_PATH=${URL_LOGOUT_PATH}
       - SERVICE_PATH=${URL_SERVICE_PATH}
       - TERMINAL_PATH=${URL_TERMINAL_PATH}
-      - ADMIN_CONTAINER_NAME=${ADMIN_CONTAINER_NAME}
+      - ADMIN_USER_ID=${ADMIN_USER_ID}
     volumes:
       - ${AUTH_LIST_FILE}:${AUTH_LIST_MOUNT_PATH}:rw
     ports:
@@ -204,12 +204,12 @@ EOF
 done
 
 cat >> "$OUTPUT_FILE" <<EOF
-  ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_CONTAINER_NAME}:
+  ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}:
     build: ${ADMIN_SOURCE_DIR}
-    container_name: ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_CONTAINER_NAME}
+    container_name: ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}
     hostname: ${ADMIN_HOSTNAME}
     environment:
-      - USER_ID=${ADMIN_CONTAINER_NAME}
+      - USER_ID=${ADMIN_USER_ID}
       - USERNAME_PREFIX=${ADMIN_USERNAME_PREFIX}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
       - READONLY_DIR=${CONTAINER_READONLY_DIR}
@@ -217,7 +217,7 @@ cat >> "$OUTPUT_FILE" <<EOF
     expose:
       - "7681"
     volumes:
-      - ${HOST_HOMES_DIR}/${ADMIN_USERNAME_PREFIX}${ADMIN_CONTAINER_NAME}:/home/${ADMIN_USERNAME_PREFIX}${ADMIN_CONTAINER_NAME}:rw
+      - ${HOST_HOMES_DIR}/${ADMIN_USERNAME_PREFIX}${ADMIN_USER_ID}:/home/${ADMIN_USERNAME_PREFIX}${ADMIN_USER_ID}:rw
       - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
       - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:rw
     restart: unless-stopped
@@ -267,7 +267,7 @@ echo "Users:"
 for ((i=0; i<${#USER_IDS[@]}; i++)); do
     echo "  ID=${USER_IDS[$i]} USER=${USERNAMES[$i]} SERVICE=${SERVICE_CONTAINER_NAME_PREFIX}${SAFE_IDS[$i]} NET=${SERVICE_NETWORK_PREFIX}${SAFE_IDS[$i]}"
 done
-echo "  ADMIN=${ADMIN_CONTAINER_NAME} NET=${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}"
+echo "  ADMIN=${ADMIN_USER_ID} NET=${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}"
 echo
 echo "Run:"
 echo "  docker compose -f $OUTPUT_FILE up -d --build"
