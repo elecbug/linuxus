@@ -25,13 +25,13 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
 
    This will create:
 
-   ```
-   util/make_hash.out
+   ```bash
+   ls util/make_hash.out
    ```
 
 3. Add the authentication file:
 
-   ```
+   ```bash
    mkdir -p src/data
    touch src/data/AUTH_LIST
    ```
@@ -42,7 +42,7 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    ./util/make_hash.out <ID> <PASSWORD> >> src/data/AUTH_LIST
    ```
 
-   You can specify the **ADMIN account** by modifying `alpha` to the ID you want to specify in the line below in `src/config.env`:
+   You can specify the **ADMIN account** by modifying `alpha` to the ID you want to specify on the line in `src/config.env`:
 
    ```bash
    ...
@@ -53,7 +53,7 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
 5. Start the services (containers) for each user:
 
    ```bash
-   ./util/simple_build_and_run.sh
+   ./util/simple_build_and_run.sh <OPTION>
    ```
 
    **⚙️ Options**
@@ -85,8 +85,8 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    ```
    src/volumes/
    ├── homes/
-   │   ├── <user1>/
-   │   ├── <user2>/
+   │   ├── <USER1>/
+   │   ├── <USER2>/
    │   └── ...
    ├── share/
    └── readonly/
@@ -94,22 +94,22 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
 
    **Directory Permissions**
 
-   * **User directories (`homes/<user>`)**
+   * **User directories (`homes/<USER>`)**
 
      * Accessible only by the corresponding user
-     * Corresponds to the `home/<user>` directory within each service
+     * Mount to the `/home/<USER>` directory within each service
 
    * **`share` directory**
 
      * Accessible by all users
      * Read, write, and execute permissions are allowed
-     * Corresponds to the `home/share` directory within each service
+     * Mount to the `/home/share` directory within each service
 
    * **`readonly` directory**
 
      * Read and execute permissions for all users
      * **Write access is restricted to the admin account only**
-     * Corresponds to the `home/readonly` directory within each service
+     * Mount to the `/home/readonly` directory within each service
 
 ## 📄 License
 
@@ -121,7 +121,7 @@ This project is open source, and contributions are always welcome.
 
 * Feel free to open issues for bugs, questions, or suggestions
 * Pull requests (PRs) are highly encouraged
-* Any form of improvement — code, documentation, or ideas — is appreciated
+* Any form of improvement —code, documentation, or ideas— is appreciated
 
 ## 🚧 Upcoming Features
 
