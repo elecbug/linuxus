@@ -21,8 +21,6 @@ type App struct {
 	logoutPath         string
 	servicePath        string
 	terminalPath       string
-	adminLoginID       string
-	adminLoginPassword string
 	adminContainerName string
 }
 
@@ -33,8 +31,6 @@ func NewApp(
 	logoutPath,
 	servicePath,
 	terminalPath,
-	adminLoginID,
-	adminLoginPassword,
 	adminContainerName string,
 ) *App {
 	return &App{
@@ -44,8 +40,6 @@ func NewApp(
 		logoutPath:         logoutPath,
 		servicePath:        servicePath,
 		terminalPath:       terminalPath,
-		adminLoginID:       adminLoginID,
-		adminLoginPassword: adminLoginPassword,
 		adminContainerName: adminContainerName,
 	}
 }
@@ -96,12 +90,6 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 		id := strings.TrimSpace(r.FormValue("id"))
 		password := r.FormValue("password")
-
-		if id == a.adminLoginID && password == a.adminLoginPassword {
-			a.setSessionCookie(w, a.adminContainerName)
-			http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
-			return
-		}
 
 		hash, ok := a.users[id]
 		if !ok {

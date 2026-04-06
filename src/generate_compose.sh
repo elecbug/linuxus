@@ -116,6 +116,10 @@ while IFS= read -r line || [ -n "$line" ]; do
     safe_id="$(sanitize_name "$user_id")"
     username="${SERVICE_USERNAME_PREFIX}${user_id}"
 
+    if [ "$user_id" == "$ADMIN_CONTAINER_NAME" ]; then
+        continue
+    fi
+
     SEEN["$user_id"]=1
     USER_IDS+=("$user_id")
     SAFE_IDS+=("$safe_id")
@@ -146,8 +150,6 @@ services:
       - LOGOUT_PATH=${URL_LOGOUT_PATH}
       - SERVICE_PATH=${URL_SERVICE_PATH}
       - TERMINAL_PATH=${URL_TERMINAL_PATH}
-      - ADMIN_LOGIN_ID=${ADMIN_LOGIN_ID}
-      - ADMIN_LOGIN_PASSWORD=${ADMIN_LOGIN_PASSWORD}
       - ADMIN_CONTAINER_NAME=${ADMIN_CONTAINER_NAME}
     volumes:
       - ${AUTH_LIST_FILE}:${AUTH_LIST_MOUNT_PATH}:rw
