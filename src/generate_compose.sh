@@ -92,6 +92,8 @@ if [ "${#USER_IDS[@]}" -eq 0 ]; then
     exit 1
 fi
 
+ADMIN_SAFE_NAME="$(sanitize_name "$ADMIN_CONTAINER_NAME")"
+
 # =========================
 # Generate compose
 # =========================
@@ -117,6 +119,19 @@ services:
     ports:
       - "${AUTH_PORT}:8080"
     restart: unless-stopped
+    networks:
+EOF
+
+# Connect auth to every student-private network
+for SAFE_ID in "${SAFE_IDS[@]}"; do
+    cat >> "$OUTPUT_FILE" <<EOF
+      - ${SERVICE_NETWORK_PREFIX}${SAFE_ID}
+EOF
+done
+
+# Connect auth to admin-private network
+cat >> "$OUTPUT_FILE" <<EOF
+      - ${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}
 
 EOF
 
@@ -145,10 +160,11 @@ for ((i=0; i<${#USER_IDS[@]}; i++)); do
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    networks:
+      - ${SERVICE_NETWORK_PREFIX}${SAFE_ID}
 
 EOF
 done
-
 
 cat >> "$OUTPUT_FILE" <<EOF
   ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_CONTAINER_NAME}:
@@ -168,7 +184,26 @@ cat >> "$OUTPUT_FILE" <<EOF
       - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
       - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:rw
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - ${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}
 
+networks:
+EOF
+
+# One private network per student
+for SAFE_ID in "${SAFE_IDS[@]}"; do
+    cat >> "$OUTPUT_FILE" <<EOF
+  ${SERVICE_NETWORK_PREFIX}${SAFE_ID}:
+    driver: bridge
+EOF
+done
+
+# One private network for admin
+cat >> "$OUTPUT_FILE" <<EOF
+  ${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}:
+    driver: bridge
 EOF
 
 # =========================
@@ -184,8 +219,9 @@ echo "  http://localhost:${AUTH_PORT}/${URL_LOGIN_PATH}"
 echo
 echo "Users:"
 for ((i=0; i<${#USER_IDS[@]}; i++)); do
-    echo "  ID=${USER_IDS[$i]} USER=${USERNAMES[$i]} SERVICE=${SERVICE_CONTAINER_NAME_PREFIX}${SAFE_IDS[$i]}"
+    echo "  ID=${USER_IDS[$i]} USER=${USERNAMES[$i]} SERVICE=${SERVICE_CONTAINER_NAME_PREFIX}${SAFE_IDS[$i]} NET=${SERVICE_NETWORK_PREFIX}${SAFE_IDS[$i]}"
 done
+echo "  ADMIN=${ADMIN_CONTAINER_NAME} NET=${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}"
 echo
 echo "Run:"
 echo "  docker compose -f $OUTPUT_FILE up -d --build"
