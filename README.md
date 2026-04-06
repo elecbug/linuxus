@@ -11,7 +11,11 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    cd linuxus
    ```
 
-1. If Docker is not installed, run:
+1. If packages (Go-lang, Docker, and etc) are not installed, run like below:
+
+   ```bash
+   sudo snap install go --classic
+   ```
 
    ```bash
    ./util/docker_reinstall.sh
@@ -42,7 +46,8 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    ./util/make_hash.out <ID> <PASSWORD> >> src/data/AUTH_LIST
    ```
 
-   You can specify the **ADMIN account** by modifying `alpha` to the ID you want to specify on the line in `src/config.env`:
+   You can change the **ADMIN account ID** by modifying the `ADMIN_USER_ID` value in the `src/config.env` file.
+   The default value is `alpha`:
 
    ```bash
    ...
