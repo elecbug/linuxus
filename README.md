@@ -40,7 +40,7 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    ./util/simple_build_and_run.sh
    ```
 
-   ⚙️ Options
+   **⚙️ Options**
 
     You can pass the following options to control container behavior:
 
@@ -64,7 +64,7 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    * A shared directory (`share`) will be created
    * A read-only directory (`readonly`) will be created
 
-   ### Directory Structure
+   **Directory Structure**
 
    ```
    src/volumes/
@@ -76,7 +76,7 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    └── readonly/
    ```
 
-   ### Directory Permissions
+   **Directory Permissions**
 
    * **User directories (`homes/<user>`)**
 
