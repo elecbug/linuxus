@@ -48,5 +48,7 @@ func (a *App) GetServicePage() string {
 func getBaseMeta() []page.Attribute {
 	return page.NewAttributes(
 		"charset", "UTF-8",
+		"name", "viewport",
+		"content", "width=device-width, initial-scale=1.0",
 	)
 }
