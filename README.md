@@ -42,7 +42,7 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    ./util/make_hash.out <ID> <PASSWORD> >> src/data/AUTH_LIST
    ```
 
-   You can specify the **ADMIN account** by modifying `alpha` to the ID you want to specify in the line below in `src/config.env`:
+   You can specify the **ADMIN account** by modifying `alpha` to the ID you want to specify on the line in `src/config.env`:
 
    ```bash
    ...
@@ -97,19 +97,19 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    * **User directories (`homes/<user>`)**
 
      * Accessible only by the corresponding user
-     * Corresponds to the `home/<user>` directory within each service
+     * Corresponds to the `/home/<user>` directory within each service
 
    * **`share` directory**
 
      * Accessible by all users
      * Read, write, and execute permissions are allowed
-     * Corresponds to the `home/share` directory within each service
+     * Corresponds to the `/home/share` directory within each service
 
    * **`readonly` directory**
 
      * Read and execute permissions for all users
      * **Write access is restricted to the admin account only**
-     * Corresponds to the `home/readonly` directory within each service
+     * Corresponds to the `/home/readonly` directory within each service
 
 ## 📄 License
 
