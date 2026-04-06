@@ -1,6 +1,6 @@
 # LINUXUS
 
-Linuxus, Docker-based service that provides Ubuntu shells through web browsers for Linux teachers
+> Linuxus, a Docker-based service that provides Ubuntu shell environments via a web browser for Linux education
 
 ## 🚀 Usage
 
@@ -11,7 +11,7 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    cd linuxus
    ```
 
-1. If packages (Go-lang, Docker, and etc) are not installed, run like below:
+1. If required packages (Go, Docker, etc.) are not installed, run the following:
 
    ```bash
    sudo snap install go --classic
@@ -27,7 +27,7 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    ./util/make_hash/build.sh
    ```
 
-   This will create:
+   This will generate the following executable:
 
    ```bash
    ls util/make_hash.out
@@ -47,7 +47,7 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
    ```
 
    You can change the **ADMIN account ID** by modifying the `ADMIN_USER_ID` value in the `src/config.env` file.
-   The default value is `alpha`:
+   The default value is `alpha`.
 
    ```bash
    ...
@@ -81,9 +81,9 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
 
    Inside this directory:
 
-   * User directories are located under the `homes` folder
-   * A shared directory (`share`) will be created
-   * A read-only directory (`readonly`) will be created
+   * User directories are located under the `homes` folder.
+   * A shared directory (`share`) will be created.
+   * A read-only directory (`readonly`) will be created.
 
    **Directory Structure**
 
@@ -101,20 +101,20 @@ Linuxus, Docker-based service that provides Ubuntu shells through web browsers f
 
    * **User directories (`homes/<USER>`)**
 
-     * Accessible only by the corresponding user
-     * Mount to the `/home/<USER>` directory within each service
+     * Accessible only by the corresponding user.
+     * Mounted to `/home/<USER>` inside each container.
 
    * **`share` directory**
 
-     * Accessible by all users
-     * Read, write, and execute permissions are allowed
-     * Mount to the `/home/share` directory within each service
+     * Accessible by all users.
+     * Read, write, and execute permissions are allowed.
+     * Mounted to `/home/share` inside each container.
 
    * **`readonly` directory**
 
-     * Read and execute permissions for all users
-     * **Write access is restricted to the admin account only**
-     * Mount to the `/home/readonly` directory within each service
+     * Read and execute permissions for all users.
+     * **Write access is restricted to the admin account only**.
+     * Mounted to `/home/readonly` inside each container.
 
 ## 📄 License
 
@@ -124,12 +124,12 @@ This project is licensed under the [**MIT License**](./LICENSE).
 
 This project is open source, and contributions are always welcome.
 
-* Feel free to open issues for bugs, questions, or suggestions
-* Pull requests (PRs) are highly encouraged
-* Any form of improvement —code, documentation, or ideas— is appreciated
+* Feel free to open issues for bugs, questions, or suggestions.
+* Pull requests (PRs) are highly encouraged.
+* Any form of contribution — code, documentation, or ideas — is appreciated.
 
 ## 🚧 Upcoming Features
 
-We are currently working on adding a **sign-up feature that can be used during service operation (runtime)**.
+We are currently working on adding a **sign-up feature that can be used during runtime**.
 
 This feature is under development and will be available in a future update.
