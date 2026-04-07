@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -11,6 +12,15 @@ import (
 
 func main() {
 	var id, password string
+
+	helpFlag := flag.Bool("help", false, "Show usage")
+	flag.Parse()
+
+	if *helpFlag {
+		fmt.Println("Usage: go run main.go [ID PASSWORD]")
+		fmt.Println("If no arguments are provided, the program will prompt for ID and password.")
+		os.Exit(0)
+	}
 
 	if len(os.Args) == 3 {
 		args := os.Args[1:]
@@ -27,7 +37,7 @@ func main() {
 		password, _ = reader.ReadString('\n')
 		password = strings.TrimSpace(password)
 	} else {
-		fmt.Println("Usage: go run main.go [ID password]")
+		fmt.Println("Usage: go run main.go [ID PASSWORD]")
 		os.Exit(1)
 	}
 
