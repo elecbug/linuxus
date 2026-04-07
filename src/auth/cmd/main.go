@@ -17,7 +17,8 @@ func main() {
 		logoutPath,
 		servicePath,
 		terminalPath,
-		adminUserID = getEnvs()
+		adminUserID,
+		userContainerNamePrefix = getEnvs()
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -34,6 +35,7 @@ func main() {
 		servicePath,
 		terminalPath,
 		adminUserID,
+		userContainerNamePrefix,
 	)
 	app.RegisterRoutes(mux)
 
@@ -57,7 +59,8 @@ func getEnvs() (
 	logoutPath,
 	servicePath,
 	terminalPath,
-	adminUserID string,
+	adminUserID,
+	userContainerNamePrefix string,
 ) {
 	var err error
 
@@ -86,6 +89,10 @@ func getEnvs() (
 		log.Fatalf("failed to get environment variable: %v", err)
 	}
 	adminUserID, err = getEnv("ADMIN_USER_ID")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	userContainerNamePrefix, err = getEnv("USER_CONTAINER_NAME_PREFIX")
 	if err != nil {
 		log.Fatalf("failed to get environment variable: %v", err)
 	}

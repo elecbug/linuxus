@@ -10,7 +10,7 @@ func TestHTMLRendering(t *testing.T) {
 	app := handler.NewApp(
 		nil, nil,
 		"login", "logout", "service", "terminal",
-		"adminContainer",
+		"adminContainer", "linuxus-user-",
 	)
 	loginPage := app.GetLoginPage()
 	if loginPage == "" {
