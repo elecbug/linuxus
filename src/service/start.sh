@@ -5,7 +5,6 @@ set -e
 echo "ENVIRONMENT VARIABLES:"
 env | sort
 
-USERNAME="${USERNAME_PREFIX}${USER_ID}"
 HOME_DIR="/home/${CONTAINER_RUNTIME_USER}"
 
 BASHRC="$HOME_DIR/.bashrc"
@@ -49,5 +48,5 @@ cd "$HOME_DIR"
 
 exec ttyd \
   --port 7681 \
-  --client-option "titleFixed=linuxus | $USERNAME" \
+  --client-option "titleFixed=linuxus | $USER_ID" \
   bash --login
