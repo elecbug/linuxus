@@ -2,7 +2,7 @@
 
 > Linuxus, a Docker-based service that provides Ubuntu shell environments via a web browser for Linux education
 
-## 🌐 Actual Service
+## 🌐 Preview
 
 > ![LOGIN](./doc/fig/01-login.png)
 > 
@@ -19,15 +19,18 @@
    cd linuxus
    ```
 
-1. If required packages (Go, Docker, etc.) are not installed, run the following:
+1. Install required dependencies:
+
+   * Docker (required)
+   * Go (only required for building the hash generator)
 
    ```bash
-   # Install Go package
+   # Install Go (optional, only needed for hash generator)
    sudo snap install go --classic
    ```
 
-   ```bash
-   # Install Docker packages
+   ```
+   # Install Docker
    ./util/docker_reinstall.sh
    ```
 
@@ -40,7 +43,7 @@
    This will generate the following executable:
 
    ```bash
-   ls util/make_hash.out
+   ./util/make_hash.out --help
    ```
 
 3. Add the authentication file:
@@ -56,8 +59,8 @@
    ./util/make_hash.out <ID> <PASSWORD> >> src/data/AUTH_LIST
    ```
 
-   You can change the **ADMIN account ID** by modifying the `ADMIN_USER_ID` value in the `src/config.env` file.
-   The default value is `alpha`.
+   > ⚠️ The default admin account ID is `alpha`.
+   > You can change it by modifying `ADMIN_USER_ID` in `src/config.env`.
 
    ```bash
    ...
@@ -73,23 +76,19 @@
 
    **⚙️ Options**
 
-    You can pass the following options to control container behavior:
+   The following options control container behavior:
 
-    * **`--clear`**
-    Reset all user directories (volumes).
+   | Option | Description |
+   |--------|------------|
+   | `--generate`, `-g` | Generate compose file |
+   | `--up`, `-u` | Start all user containers |
+   | `--down`, `-d` | Stop all user containers |
+   | `--restart`, `-r` | Restart all user containers |
+   | `--volume-clean`, `-v` | Reset all user directories |
 
-    * **`--restart`**
-    Build compose and restart all user containers.
+6. After running the services, a `src/volumes` directory will be created automatically.
 
-    * **`--down`**
-    Stop all user containers.
-
-    * **`--up`**
-    Build compose and start all user containers. (`--down` not included)
-
-6. After running the service, a `src/volumes` directory will be created automatically.
-
-   Inside this directory:
+   Inside this directory (automatically managed by Linuxus):
 
    * User directories are located under the `homes` folder.
    * A shared directory (`share`) will be created.
