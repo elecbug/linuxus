@@ -27,18 +27,32 @@ set +o allexport
 
 cd "$SOURCE_DIR"
 
-./generate_compose.sh "$CONFIG_FILE"
-
 if [ "$param" == "--clear-volume" ]; then
-    sudo rm -rf "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
-    mkdir -p "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
     sudo docker compose -f "$OUTPUT_FILE" down -v --remove-orphans
+
+    find "$HOST_HOMES_DIR" -mindepth 1 -type d 2>/dev/null \
+        | awk '{ print length, $0 }' \
+        | sort -rn \
+        | cut -d' ' -f2- \
+        | xargs -r -n1 sudo umount 2>/dev/null || true
+
+    sudo rm -rf "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
+    sudo mkdir -p "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
+    
+    ./generate_compose.sh "$CONFIG_FILE"
+    
     sudo docker compose -f "$OUTPUT_FILE" up -d --build
 elif [ "$param" == "--only-down" ]; then
+    ./generate_compose.sh "$CONFIG_FILE"
+    
     sudo docker compose -f "$OUTPUT_FILE" down --remove-orphans
 elif [ "$param" == "--only-up" ]; then
+    ./generate_compose.sh "$CONFIG_FILE"
+    
     sudo docker compose -f "$OUTPUT_FILE" up -d --build
 elif [ "$param" == "--restart" ]; then
+    ./generate_compose.sh "$CONFIG_FILE"
+    
     sudo docker compose -f "$OUTPUT_FILE" down --remove-orphans
     sudo docker compose -f "$OUTPUT_FILE" up -d --build
 fi
