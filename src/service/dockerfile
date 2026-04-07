@@ -1,10 +1,8 @@
 FROM ubuntu:22.04
 
-# Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Seoul
 
-# Install base packages and ttyd
 RUN apt-get update && apt-get install -y \
     ttyd \
     bash \
@@ -26,15 +24,17 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     tzdata \
     passwd \
+    util-linux \
     && rm -rf /var/lib/apt/lists/*
 
-# Generate locale
 RUN locale-gen en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
-# Copy startup script
+# Create a fixed runtime user at build time
+RUN groupadd -g 1000 linuxus && useradd -m -u 1000 -g 1000 -s /bin/bash linuxus
+
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 

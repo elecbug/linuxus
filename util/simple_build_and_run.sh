@@ -3,7 +3,7 @@
 param=$1
 
 if [ -z "$param" ]; then
-    echo "Usage: $0 [--clear-volume|--only-down|--only-up|--restart]"
+    echo "Usage: $0 [--clear|--down|--up|--restart]"
     exit 1
 fi
 
@@ -27,19 +27,29 @@ set +o allexport
 
 cd "$SOURCE_DIR"
 
-./generate_compose.sh "$CONFIG_FILE"
-
-if [ "$param" == "--clear-volume" ]; then
-    sudo rm -rf "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
-    mkdir -p "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
+if [ "$param" == "--clear" ]; then
     sudo docker compose -f "$OUTPUT_FILE" down -v --remove-orphans
-    sudo docker compose -f "$OUTPUT_FILE" up -d --build
-elif [ "$param" == "--only-down" ]; then
+
+    find "$HOST_HOMES_DIR" -mindepth 1 -type d 2>/dev/null \
+        | awk '{ print length, $0 }' \
+        | sort -rn \
+        | cut -d' ' -f2- \
+        | xargs -r -n1 sudo umount 2>/dev/null || true
+
+    sudo rm -rf "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
+    sudo mkdir -p "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
+    sudo chown ${CONTAINER_RUNTIME_UID}:${CONTAINER_RUNTIME_GID} "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
+elif [ "$param" == "--down" ]; then
     sudo docker compose -f "$OUTPUT_FILE" down --remove-orphans
-elif [ "$param" == "--only-up" ]; then
+elif [ "$param" == "--up" ]; then
+    ./generate_compose.sh "$CONFIG_FILE"
+    
     sudo docker compose -f "$OUTPUT_FILE" up -d --build
 elif [ "$param" == "--restart" ]; then
     sudo docker compose -f "$OUTPUT_FILE" down --remove-orphans
+
+    ./generate_compose.sh "$CONFIG_FILE"
+    
     sudo docker compose -f "$OUTPUT_FILE" up -d --build
 fi
 

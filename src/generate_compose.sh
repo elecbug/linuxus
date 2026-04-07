@@ -27,8 +27,8 @@ set +o allexport
 # =========================
 # Validation
 # =========================
-if ! [[ "$AUTH_PORT" =~ ^[0-9]+$ ]] || [ "$AUTH_PORT" -le 0 ]; then
-    echo "Error: AUTH_PORT must be a positive integer."
+if ! [[ "$AUTH_EXTERNAL_PORT" =~ ^[0-9]+$ ]] || [ "$AUTH_EXTERNAL_PORT" -le 0 ]; then
+    echo "Error: AUTH_EXTERNAL_PORT must be a positive integer."
     exit 1
 fi
 
@@ -88,6 +88,41 @@ get_ip() {
     echo "${o1}.${o2}.${new_o3}.${new_o4}/28"
 }
 
+create_user_disk() {
+    local username="$1"
+    local size="${USER_DISK_LIMIT:-1024}"
+
+    if [ "$username" == "${ADMIN_PREFIX}${ADMIN_USER_ID}" ]; then
+        size="${ADMIN_DISK_LIMIT:-1024}"
+    fi
+
+    local uid="${CONTAINER_RUNTIME_UID:-1000}"
+    local gid="${CONTAINER_RUNTIME_GID:-1000}"
+
+    local img="${HOST_HOMES_DIR}/${username}.img"
+    local mount_point="${HOST_HOMES_DIR}/${username}"
+
+    if mountpoint -q "$mount_point"; then
+        echo "[=] Already mounted: $mount_point"
+        return 0
+    fi
+
+    if [ ! -f "$img" ]; then
+        echo "[+] Creating disk for $username (${size}MB)"
+        sudo dd if=/dev/zero of="$img" bs=1M count="$size"
+        sudo mkfs.ext4 -F "$img"
+    fi
+
+    sudo mkdir -p "$mount_point"
+
+    local loopdev
+    loopdev=$(sudo losetup -f --show "$img")
+    sudo mount "$loopdev" "$mount_point"
+
+    sudo chown ${CONTAINER_RUNTIME_UID}:${CONTAINER_RUNTIME_GID} "$mount_point"
+    sudo chmod 755 "$mount_point"
+}
+
 declare -a USER_IDS=()
 declare -a SAFE_IDS=()
 declare -a USERNAMES=()
@@ -114,7 +149,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     fi
 
     safe_id="$(sanitize_name "$user_id")"
-    username="${SERVICE_USERNAME_PREFIX}${user_id}"
+    username="${USER_PREFIX}${user_id}"
 
     if [ "$user_id" == "$ADMIN_USER_ID" ]; then
         continue
@@ -154,7 +189,7 @@ services:
     volumes:
       - ${AUTH_LIST_FILE}:${AUTH_LIST_MOUNT_PATH}:rw
     ports:
-      - "${AUTH_PORT}:8080"
+      - "${AUTH_EXTERNAL_PORT}:8080"
     restart: unless-stopped
     networks:
 EOF
@@ -162,7 +197,7 @@ EOF
 # Connect auth to every student-private network
 for SAFE_ID in "${SAFE_IDS[@]}"; do
     cat >> "$OUTPUT_FILE" <<EOF
-      - ${SERVICE_NETWORK_PREFIX}${SAFE_ID}
+      - ${USER_NETWORK_PREFIX}${SAFE_ID}
 EOF
 done
 
@@ -176,53 +211,91 @@ for ((i=0; i<${#USER_IDS[@]}; i++)); do
     USER_ID="${USER_IDS[$i]}"
     SAFE_ID="${SAFE_IDS[$i]}"
     USERNAME="${USERNAMES[$i]}"
+    
+    create_user_disk "$USERNAME"
 
     cat >> "$OUTPUT_FILE" <<EOF
-  ${SERVICE_CONTAINER_NAME_PREFIX}${SAFE_ID}:
-    build: ${SERVICE_SOURCE_DIR}
-    container_name: ${SERVICE_CONTAINER_NAME_PREFIX}${SAFE_ID}
-    hostname: ${SERVICE_HOSTNAME}
+  ${USER_CONTAINER_NAME_PREFIX}${SAFE_ID}:
+    user: ${CONTAINER_RUNTIME_UID}:${CONTAINER_RUNTIME_GID}
+    build: ${USER_SOURCE_DIR}
+    container_name: ${USER_CONTAINER_NAME_PREFIX}${SAFE_ID}
+    hostname: ${USER_HOSTNAME}
+    working_dir: /home/${CONTAINER_RUNTIME_USER}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+      - /run:rw,noexec,nosuid,nodev,size=16m
+      - /var/tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
+      - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${USER_ID}
-      - USERNAME_PREFIX=${SERVICE_USERNAME_PREFIX}
+      - USERNAME_PREFIX=${USER_PREFIX}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
       - READONLY_DIR=${CONTAINER_READONLY_DIR}
       - IS_ADMIN=false
     expose:
       - "7681"
     volumes:
-      - ${HOST_HOMES_DIR}/${USERNAME}:/home/${USERNAME}:rw
+      - ${HOST_HOMES_DIR}/${USERNAME}:/home/${CONTAINER_RUNTIME_USER}:rw
       - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
       - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:ro
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: ${USER_MEMORY_LIMIT}
+    cpus: ${USER_CPU_LIMIT}
+    pids_limit: ${USER_PID_LIMIT}
+    ulimits:
+      nofile:
+        soft: ${USER_ULIMITS_NOFILE_SOFT}
+        hard: ${USER_ULIMITS_NOFILE_HARD}
     networks:
-      - ${SERVICE_NETWORK_PREFIX}${SAFE_ID}
+      - ${USER_NETWORK_PREFIX}${SAFE_ID}
 
 EOF
 done
 
+create_user_disk "${ADMIN_PREFIX}${ADMIN_USER_ID}"
+
 cat >> "$OUTPUT_FILE" <<EOF
   ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}:
+    user: ${CONTAINER_RUNTIME_UID}:${CONTAINER_RUNTIME_GID}
     build: ${ADMIN_SOURCE_DIR}
     container_name: ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}
     hostname: ${ADMIN_HOSTNAME}
+    working_dir: /home/${CONTAINER_RUNTIME_USER}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+      - /run:rw,noexec,nosuid,nodev,size=16m
+      - /var/tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
+      - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${ADMIN_USER_ID}
-      - USERNAME_PREFIX=${ADMIN_USERNAME_PREFIX}
+      - USERNAME_PREFIX=${ADMIN_PREFIX}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
       - READONLY_DIR=${CONTAINER_READONLY_DIR}
       - IS_ADMIN=true
     expose:
       - "7681"
     volumes:
-      - ${HOST_HOMES_DIR}/${ADMIN_USERNAME_PREFIX}${ADMIN_USER_ID}:/home/${ADMIN_USERNAME_PREFIX}${ADMIN_USER_ID}:rw
+      - ${HOST_HOMES_DIR}/${ADMIN_PREFIX}${ADMIN_USER_ID}:/home/${CONTAINER_RUNTIME_USER}:rw
       - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
       - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:rw
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: ${ADMIN_MEMORY_LIMIT}
+    cpus: ${ADMIN_CPU_LIMIT}
+    pids_limit: ${ADMIN_PID_LIMIT}
+    ulimits:
+      nofile:
+        soft: ${ADMIN_ULIMITS_NOFILE_SOFT}
+        hard: ${ADMIN_ULIMITS_NOFILE_HARD}
     networks:
       - ${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}
 
@@ -234,11 +307,11 @@ seq_i="0"
 # One private network per student
 for SAFE_ID in "${SAFE_IDS[@]}"; do
     cat >> "$OUTPUT_FILE" <<EOF
-  ${SERVICE_NETWORK_PREFIX}${SAFE_ID}:
+  ${USER_NETWORK_PREFIX}${SAFE_ID}:
     driver: bridge
     ipam:
       config:
-        - subnet: $(get_ip "$SERVICE_BASE_IP" "$seq_i")
+        - subnet: $(get_ip "$USER_BASE_IP" "$seq_i")
 EOF
     seq_i=$((seq_i + 1))
 done
@@ -249,7 +322,7 @@ cat >> "$OUTPUT_FILE" <<EOF
     driver: bridge
     ipam:
       config:
-        - subnet: $(get_ip "$SERVICE_BASE_IP" "$seq_i")
+        - subnet: $(get_ip "$ADMIN_BASE_IP" "$seq_i")
 EOF
 
 # =========================
@@ -261,11 +334,11 @@ echo "Config file:"
 echo "  $CONFIG_FILE"
 echo
 echo "Login URL:"
-echo "  http://localhost:${AUTH_PORT}/${URL_LOGIN_PATH}"
+echo "  http://localhost:${AUTH_EXTERNAL_PORT}/${URL_LOGIN_PATH}"
 echo
 echo "Users:"
 for ((i=0; i<${#USER_IDS[@]}; i++)); do
-    echo "  ID=${USER_IDS[$i]} USER=${USERNAMES[$i]} SERVICE=${SERVICE_CONTAINER_NAME_PREFIX}${SAFE_IDS[$i]} NET=${SERVICE_NETWORK_PREFIX}${SAFE_IDS[$i]}"
+    echo "  ID=${USER_IDS[$i]} USER=${USERNAMES[$i]} SERVICE=${USER_CONTAINER_NAME_PREFIX}${SAFE_IDS[$i]} NET=${USER_NETWORK_PREFIX}${SAFE_IDS[$i]}"
 done
 echo "  ADMIN=${ADMIN_USER_ID} NET=${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}"
 echo
