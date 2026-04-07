@@ -75,17 +75,17 @@
 
     You can pass the following options to control container behavior:
 
-    * **`--clear-volume`**
-    Reset all user directories (volumes) and restart containers.
+    * **`--clear`**
+    Reset all user directories (volumes).
 
     * **`--restart`**
-    Restart all user containers.
+    Build compose and restart all user containers.
 
-    * **`--only-down`**
+    * **`--down`**
     Stop all user containers.
 
-    * **`--only-up`**
-    Create and start all user containers.
+    * **`--up`**
+    Build compose and start all user containers. (`--down` not included)
 
 6. After running the service, a `src/volumes` directory will be created automatically.
 
