@@ -22,10 +22,12 @@
 1. If required packages (Go, Docker, etc.) are not installed, run the following:
 
    ```bash
+   # Install Go package
    sudo snap install go --classic
    ```
 
    ```bash
+   # Install Docker packages
    ./util/docker_reinstall.sh
    ```
 
