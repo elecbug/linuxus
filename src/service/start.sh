@@ -23,7 +23,7 @@ if [ -z "$READONLY_DIR" ]; then
 fi
 
 USERNAME="${USERNAME_PREFIX}${USER_ID}"
-HOME_DIR="/home/${USERNAME}"
+HOME_DIR="/home/${CONTAINER_RUNTIME_USER}"
 
 # mkdir -p "$HOME_DIR"
 # mkdir -p "$SHARED_DIR"

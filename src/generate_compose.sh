@@ -220,13 +220,14 @@ for ((i=0; i<${#USER_IDS[@]}; i++)); do
     build: ${USER_SOURCE_DIR}
     container_name: ${USER_CONTAINER_NAME_PREFIX}${SAFE_ID}
     hostname: ${USER_HOSTNAME}
-    working_dir: /home/${USERNAME}
+    working_dir: /home/${CONTAINER_RUNTIME_USER}
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=64m
       - /run:rw,noexec,nosuid,nodev,size=16m
       - /var/tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
+      - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${USER_ID}
       - USERNAME_PREFIX=${USER_PREFIX}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
@@ -235,7 +236,7 @@ for ((i=0; i<${#USER_IDS[@]}; i++)); do
     expose:
       - "7681"
     volumes:
-      - ${HOST_HOMES_DIR}/${USERNAME}:/home/${USERNAME}:rw
+      - ${HOST_HOMES_DIR}/${USERNAME}:/home/${CONTAINER_RUNTIME_USER}:rw
       - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
       - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:ro
     restart: unless-stopped
@@ -264,13 +265,14 @@ cat >> "$OUTPUT_FILE" <<EOF
     build: ${ADMIN_SOURCE_DIR}
     container_name: ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}
     hostname: ${ADMIN_HOSTNAME}
-    working_dir: /home/${ADMIN_PREFIX}${ADMIN_USER_ID}
+    working_dir: /home/${CONTAINER_RUNTIME_USER}
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=64m
       - /run:rw,noexec,nosuid,nodev,size=16m
       - /var/tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
+      - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${ADMIN_USER_ID}
       - USERNAME_PREFIX=${ADMIN_PREFIX}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
@@ -279,7 +281,7 @@ cat >> "$OUTPUT_FILE" <<EOF
     expose:
       - "7681"
     volumes:
-      - ${HOST_HOMES_DIR}/${ADMIN_PREFIX}${ADMIN_USER_ID}:/home/${ADMIN_PREFIX}${ADMIN_USER_ID}:rw
+      - ${HOST_HOMES_DIR}/${ADMIN_PREFIX}${ADMIN_USER_ID}:/home/${CONTAINER_RUNTIME_USER}:rw
       - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
       - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:rw
     restart: unless-stopped

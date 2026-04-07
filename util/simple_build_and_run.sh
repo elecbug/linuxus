@@ -38,6 +38,7 @@ if [ "$param" == "--clear-volume" ]; then
 
     sudo rm -rf "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
     sudo mkdir -p "$HOST_HOMES_DIR" "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
+    sudo chown ${CONTAINER_RUNTIME_UID}:${CONTAINER_RUNTIME_GID} "$HOST_SHARE_DIR" "$HOST_READONLY_DIR"
     
     ./generate_compose.sh "$CONFIG_FILE"
     
