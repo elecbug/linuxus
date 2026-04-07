@@ -89,18 +89,18 @@ get_ip() {
 }
 
 create_user_disk() {
-    local username="$1"
-    local size="${USER_DISK_LIMIT:-1024}"
+    local user_id="$1"
+    local size="${USER_DISK_LIMIT}"
 
-    if [ "$username" == "${ADMIN_PREFIX}${ADMIN_USER_ID}" ]; then
-        size="${ADMIN_DISK_LIMIT:-1024}"
+    if [ "$user_id" == "${ADMIN_PREFIX}${ADMIN_USER_ID}" ]; then
+        size="${ADMIN_DISK_LIMIT}"
     fi
 
-    local uid="${CONTAINER_RUNTIME_UID:-1000}"
-    local gid="${CONTAINER_RUNTIME_GID:-1000}"
+    local uid="${CONTAINER_RUNTIME_UID}"
+    local gid="${CONTAINER_RUNTIME_GID}"
 
-    local img="${HOST_HOMES_DIR}/${username}.img"
-    local mount_point="${HOST_HOMES_DIR}/${username}"
+    local img="${HOST_HOMES_DIR}/${user_id}.img"
+    local mount_point="${HOST_HOMES_DIR}/${user_id}"
 
     if mountpoint -q "$mount_point"; then
         echo "[=] Already mounted: $mount_point"
@@ -108,7 +108,7 @@ create_user_disk() {
     fi
 
     if [ ! -f "$img" ]; then
-        echo "[+] Creating disk for $username (${size}MB)"
+        echo "[+] Creating disk for $user_id (${size}MB)"
         sudo dd if=/dev/zero of="$img" bs=1M count="$size"
         sudo mkfs.ext4 -F "$img"
     fi
@@ -125,7 +125,6 @@ create_user_disk() {
 
 declare -a USER_IDS=()
 declare -a SAFE_IDS=()
-declare -a USERNAMES=()
 declare -A SEEN=()
 
 while IFS= read -r line || [ -n "$line" ]; do
@@ -149,7 +148,6 @@ while IFS= read -r line || [ -n "$line" ]; do
     fi
 
     safe_id="$(sanitize_name "$user_id")"
-    username="${USER_PREFIX}${user_id}"
 
     if [ "$user_id" == "$ADMIN_USER_ID" ]; then
         continue
@@ -158,7 +156,6 @@ while IFS= read -r line || [ -n "$line" ]; do
     SEEN["$user_id"]=1
     USER_IDS+=("$user_id")
     SAFE_IDS+=("$safe_id")
-    USERNAMES+=("$username")
 done < "$AUTH_LIST_FILE"
 
 if [ "${#USER_IDS[@]}" -eq 0 ]; then
@@ -186,6 +183,7 @@ services:
       - SERVICE_PATH=${URL_SERVICE_PATH}
       - TERMINAL_PATH=${URL_TERMINAL_PATH}
       - ADMIN_USER_ID=${ADMIN_USER_ID}
+      - USER_CONTAINER_NAME_PREFIX=${USER_CONTAINER_NAME_PREFIX}
     volumes:
       - ${AUTH_LIST_FILE}:${AUTH_LIST_MOUNT_PATH}:rw
     ports:
@@ -203,23 +201,25 @@ done
 
 # Connect auth to admin-private network
 cat >> "$OUTPUT_FILE" <<EOF
-      - ${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}
+      - ${USER_NETWORK_PREFIX}${ADMIN_SAFE_NAME}
 
 EOF
 
 for ((i=0; i<${#USER_IDS[@]}; i++)); do
     USER_ID="${USER_IDS[$i]}"
     SAFE_ID="${SAFE_IDS[$i]}"
-    USERNAME="${USERNAMES[$i]}"
     
-    create_user_disk "$USERNAME"
+    create_user_disk "$USER_ID"
 
     cat >> "$OUTPUT_FILE" <<EOF
   ${USER_CONTAINER_NAME_PREFIX}${SAFE_ID}:
     user: ${CONTAINER_RUNTIME_UID}:${CONTAINER_RUNTIME_GID}
-    build: ${USER_SOURCE_DIR}
+    build: 
+      context: ${USER_SOURCE_DIR}
+      args:
+        - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
     container_name: ${USER_CONTAINER_NAME_PREFIX}${SAFE_ID}
-    hostname: ${USER_HOSTNAME}
+    hostname: ${CONTAINER_RUNTIME_HOSTNAME}
     working_dir: /home/${CONTAINER_RUNTIME_USER}
     read_only: true
     tmpfs:
@@ -229,14 +229,13 @@ for ((i=0; i<${#USER_IDS[@]}; i++)); do
     environment:
       - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${USER_ID}
-      - USERNAME_PREFIX=${USER_PREFIX}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
       - READONLY_DIR=${CONTAINER_READONLY_DIR}
       - IS_ADMIN=false
     expose:
       - "7681"
     volumes:
-      - ${HOST_HOMES_DIR}/${USERNAME}:/home/${CONTAINER_RUNTIME_USER}:rw
+      - ${HOST_HOMES_DIR}/${USER_ID}:/home/${CONTAINER_RUNTIME_USER}:rw
       - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
       - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:ro
     restart: unless-stopped
@@ -257,14 +256,17 @@ for ((i=0; i<${#USER_IDS[@]}; i++)); do
 EOF
 done
 
-create_user_disk "${ADMIN_PREFIX}${ADMIN_USER_ID}"
+create_user_disk "${ADMIN_USER_ID}"
 
 cat >> "$OUTPUT_FILE" <<EOF
-  ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}:
+  ${USER_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}:
     user: ${CONTAINER_RUNTIME_UID}:${CONTAINER_RUNTIME_GID}
-    build: ${ADMIN_SOURCE_DIR}
-    container_name: ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}
-    hostname: ${ADMIN_HOSTNAME}
+    build: 
+      context: ${USER_SOURCE_DIR}
+      args:
+        - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
+    container_name: ${USER_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}
+    hostname: ${CONTAINER_RUNTIME_HOSTNAME}
     working_dir: /home/${CONTAINER_RUNTIME_USER}
     read_only: true
     tmpfs:
@@ -274,14 +276,13 @@ cat >> "$OUTPUT_FILE" <<EOF
     environment:
       - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${ADMIN_USER_ID}
-      - USERNAME_PREFIX=${ADMIN_PREFIX}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
       - READONLY_DIR=${CONTAINER_READONLY_DIR}
       - IS_ADMIN=true
     expose:
       - "7681"
     volumes:
-      - ${HOST_HOMES_DIR}/${ADMIN_PREFIX}${ADMIN_USER_ID}:/home/${CONTAINER_RUNTIME_USER}:rw
+      - ${HOST_HOMES_DIR}/${ADMIN_USER_ID}:/home/${CONTAINER_RUNTIME_USER}:rw
       - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
       - ${HOST_READONLY_DIR}:${CONTAINER_READONLY_DIR}:rw
     restart: unless-stopped
@@ -297,7 +298,7 @@ cat >> "$OUTPUT_FILE" <<EOF
         soft: ${ADMIN_ULIMITS_NOFILE_SOFT}
         hard: ${ADMIN_ULIMITS_NOFILE_HARD}
     networks:
-      - ${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}
+      - ${USER_NETWORK_PREFIX}${ADMIN_SAFE_NAME}
 
 networks:
 EOF
@@ -318,11 +319,11 @@ done
 
 # One private network for admin
 cat >> "$OUTPUT_FILE" <<EOF
-  ${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}:
+  ${USER_NETWORK_PREFIX}${ADMIN_SAFE_NAME}:
     driver: bridge
     ipam:
       config:
-        - subnet: $(get_ip "$ADMIN_BASE_IP" "$seq_i")
+        - subnet: $(get_ip "$USER_BASE_IP" "$seq_i")
 EOF
 
 # =========================
@@ -338,9 +339,9 @@ echo "  http://localhost:${AUTH_EXTERNAL_PORT}/${URL_LOGIN_PATH}"
 echo
 echo "Users:"
 for ((i=0; i<${#USER_IDS[@]}; i++)); do
-    echo "  ID=${USER_IDS[$i]} USER=${USERNAMES[$i]} SERVICE=${USER_CONTAINER_NAME_PREFIX}${SAFE_IDS[$i]} NET=${USER_NETWORK_PREFIX}${SAFE_IDS[$i]}"
+    echo "  ID=${USER_IDS[$i]} SERVICE=${USER_CONTAINER_NAME_PREFIX}${SAFE_IDS[$i]} NET=${USER_NETWORK_PREFIX}${SAFE_IDS[$i]}"
 done
-echo "  ADMIN=${ADMIN_USER_ID} NET=${ADMIN_NETWORK_PREFIX}${ADMIN_SAFE_NAME}"
+echo "  ADMIN=${ADMIN_USER_ID} NET=${USER_NETWORK_PREFIX}${ADMIN_SAFE_NAME}"
 echo
 echo "Run:"
 echo "  docker compose -f $OUTPUT_FILE up -d --build"

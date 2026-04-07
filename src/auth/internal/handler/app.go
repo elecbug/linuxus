@@ -13,15 +13,16 @@ import (
 )
 
 type App struct {
-	users        map[string]string
-	sessionKey   []byte
-	loginTmpl    *template.Template
-	serviceTmpl  *template.Template
-	loginPath    string
-	logoutPath   string
-	servicePath  string
-	terminalPath string
-	adminUserID  string
+	users                   map[string]string
+	sessionKey              []byte
+	loginTmpl               *template.Template
+	serviceTmpl             *template.Template
+	loginPath               string
+	logoutPath              string
+	servicePath             string
+	terminalPath            string
+	adminUserID             string
+	userContainerNamePrefix string
 }
 
 func NewApp(
@@ -31,16 +32,18 @@ func NewApp(
 	logoutPath,
 	servicePath,
 	terminalPath,
-	adminUserID string,
+	adminUserID,
+	userContainerNamePrefix string,
 ) *App {
 	return &App{
-		users:        users,
-		sessionKey:   sessionKey,
-		loginPath:    loginPath,
-		logoutPath:   logoutPath,
-		servicePath:  servicePath,
-		terminalPath: terminalPath,
-		adminUserID:  adminUserID,
+		users:                   users,
+		sessionKey:              sessionKey,
+		loginPath:               loginPath,
+		logoutPath:              logoutPath,
+		servicePath:             servicePath,
+		terminalPath:            terminalPath,
+		adminUserID:             adminUserID,
+		userContainerNamePrefix: userContainerNamePrefix,
 	}
 }
 
@@ -170,7 +173,7 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	safeID := sanitizeID(id)
-	targetURL := fmt.Sprintf("http://linuxus_service_%s:7681", safeID)
+	targetURL := fmt.Sprintf("http://%s%s:7681", a.userContainerNamePrefix, safeID)
 
 	target, err := url.Parse(targetURL)
 	if err != nil {
