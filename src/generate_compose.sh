@@ -90,14 +90,14 @@ get_ip() {
 
 create_user_disk() {
     local username="$1"
-    local size="${USER_DISK_LIMIT:-1024}"
+    local size="${USER_DISK_LIMIT}"
 
     if [ "$username" == "${ADMIN_PREFIX}${ADMIN_USER_ID}" ]; then
-        size="${ADMIN_DISK_LIMIT:-1024}"
+        size="${ADMIN_DISK_LIMIT}"
     fi
 
-    local uid="${CONTAINER_RUNTIME_UID:-1000}"
-    local gid="${CONTAINER_RUNTIME_GID:-1000}"
+    local uid="${CONTAINER_RUNTIME_UID}"
+    local gid="${CONTAINER_RUNTIME_GID}"
 
     local img="${HOST_HOMES_DIR}/${username}.img"
     local mount_point="${HOST_HOMES_DIR}/${username}"
@@ -217,7 +217,10 @@ for ((i=0; i<${#USER_IDS[@]}; i++)); do
     cat >> "$OUTPUT_FILE" <<EOF
   ${USER_CONTAINER_NAME_PREFIX}${SAFE_ID}:
     user: ${CONTAINER_RUNTIME_UID}:${CONTAINER_RUNTIME_GID}
-    build: ${USER_SOURCE_DIR}
+    build: 
+      context: ${USER_SOURCE_DIR}
+      args:
+        - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
     container_name: ${USER_CONTAINER_NAME_PREFIX}${SAFE_ID}
     hostname: ${USER_HOSTNAME}
     working_dir: /home/${CONTAINER_RUNTIME_USER}
@@ -262,7 +265,10 @@ create_user_disk "${ADMIN_PREFIX}${ADMIN_USER_ID}"
 cat >> "$OUTPUT_FILE" <<EOF
   ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}:
     user: ${CONTAINER_RUNTIME_UID}:${CONTAINER_RUNTIME_GID}
-    build: ${ADMIN_SOURCE_DIR}
+    build: 
+      context: ${ADMIN_SOURCE_DIR}
+      args:
+        - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
     container_name: ${ADMIN_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}
     hostname: ${ADMIN_HOSTNAME}
     working_dir: /home/${CONTAINER_RUNTIME_USER}

@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     vim \
     nano \
+    tree \
     git \
     gcc \
     g++ \
@@ -32,8 +33,10 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
+ARG CONTAINER_RUNTIME_USER=linuxus
+
 # Create a fixed runtime user at build time
-RUN groupadd -g 1000 linuxus && useradd -m -u 1000 -g 1000 -s /bin/bash linuxus
+RUN groupadd -g 1000 $CONTAINER_RUNTIME_USER && useradd -m -u 1000 -g 1000 -s /bin/bash $CONTAINER_RUNTIME_USER
 
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
