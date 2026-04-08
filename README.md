@@ -53,14 +53,14 @@
 3. Add the authentication file:
 
    ```bash
-   mkdir -p src/data
-   touch src/data/AUTH_LIST
+   mkdir -p ./src/data
+   touch ./src/data/AUTH_LIST
    ```
 
 4. Create user accounts by appending credentials using:
 
    ```bash
-   ./util/make_hash.out <ID> <PASSWORD> >> src/data/AUTH_LIST
+   ./util/make_hash.out <ID> <PASSWORD> >> ./src/data/AUTH_LIST
    ```
 
    > ⚠️ The default admin account ID is `alpha`.
@@ -82,15 +82,15 @@
 
    The following options control container behavior:
 
-   | Option | Description |
-   |--------|------------|
-   | `--generate`, `-g` | Generate compose file |
-   | `--up`, `-u` | Start all user containers |
-   | `--down`, `-d` | Stop all user containers |
-   | `--restart`, `-r` | Restart all user containers |
-   | `--volume-clean`, `-v` | Reset all user directories |
+   | Option                 | Description                 |
+   |------------------------|-----------------------------|
+   | `--generate`, `-g`     | Generate compose file       |
+   | `--up`, `-u`           | Start all user containers   |
+   | `--down`, `-d`         | Stop all user containers    |
+   | `--restart`, `-r`      | Restart all user containers |
+   | `--volume-clean`, `-v` | Reset all user directories  |
 
-6. After running the services, a `src/volumes` directory will be created automatically.
+6. After running the services, a `./src/volumes` directory will be created automatically.
 
    Inside this directory (automatically managed by Linuxus):
 
@@ -101,7 +101,7 @@
    **Directory Structure**
 
    ```
-   src/volumes/
+   ./src/volumes/
    ├── homes/
    │   ├── <USER1>/
    │   ├── <USER2>/
