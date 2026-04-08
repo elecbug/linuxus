@@ -25,6 +25,11 @@ echo "  - Readonly directory : $READONLY_DIR"
 echo ""
 echo "+---------------------------------------------------+"
 echo ""
+if [ -n "\$PROMPT_COMMAND" ]; then
+    PROMPT_COMMAND="\$PROMPT_COMMAND; history -a"
+else
+    PROMPT_COMMAND='history -a'
+fi
 EOF
 fi
 
