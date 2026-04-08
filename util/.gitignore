@@ -1,0 +1,8 @@
+# Ignore build artifacts and temporary files.
+*.out
+
+# Logs and temporary files.
+logs/
+tmp/
+*.log
+*.tmp
