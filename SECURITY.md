@@ -6,7 +6,7 @@ If you discover a security vulnerability in Linuxus, **do NOT open a public issu
 
 Instead, please report it privately via:
 
-- Email: deveb1479@gmail.com (or replace with your preferred contact)
+- Email: deveb1479@gmail.com
 
 ---
 
