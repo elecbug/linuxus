@@ -132,4 +132,4 @@ fork → branch → commit → PR → review → merge
 
 ## 📄 License
 
-By contributing to this project, you agree that your contributions will be licensed under the [MIT](./LICENSE) License.
+By contributing to this project, you agree that your contributions will be licensed under the [MIT License](./LICENSE).
