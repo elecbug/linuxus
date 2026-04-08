@@ -2,6 +2,8 @@
 
 > Linuxus, a Docker-based service that provides Ubuntu shell environments via a web browser for Linux education
 
+---
+
 ## 🌐 Preview
 
 > ![LOGIN](./doc/fig/01-login.png)
@@ -9,6 +11,8 @@
 
 > ![SHELL](./doc/fig/02-in_service.png)
 >
+
+---
 
 ## 🚀 Usage
 
@@ -125,20 +129,37 @@
      * **Write access is restricted to the admin account only**.
      * Mounted to `/home/readonly` inside each container.
 
+---
+
 ## 📄 License
 
-This project is licensed under the [**MIT License**](./LICENSE).
+This project is licensed under the [MIT License](./LICENSE).
+
+---
 
 ## 🌱 Open Source & Contributions
 
-This project is open source, and contributions are always welcome.
+Linuxus is an open-source project, and contributions are welcome.
 
-* Feel free to open issues for bugs, questions, or suggestions.
-* Pull requests (PRs) are highly encouraged.
-* Any form of contribution — code, documentation, or ideas — is appreciated.
+- Report bugs, request features, or ask questions via Issues
+- Submit pull requests following the contribution guidelines
+- See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on PR types and workflow
+- Please follow the [Code of Conduct](./CODE_OF_CONDUCT.md)
+
+---
+
+## 🔐 Security
+
+If you discover a security vulnerability, **do not open a public issue**.
+
+Please refer to [SECURITY.md](./SECURITY.md) for responsible disclosure instructions.
+
+---
 
 ## 🚧 Upcoming Features
 
-We are currently working on adding a **sign-up feature that can be used during runtime**.
+The following features are currently under development:
 
-This feature is under development and will be available in a future update.
+- Runtime sign-up system (account creation without service restart)
+
+More updates will be added in future releases.
