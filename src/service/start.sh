@@ -25,6 +25,7 @@ echo "  - Readonly directory : $READONLY_DIR"
 echo ""
 echo "+---------------------------------------------------+"
 echo ""
+PROMPT_COMMAND='history -a'
 EOF
 fi
 
