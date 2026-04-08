@@ -1,0 +1,36 @@
+name: PR Title Check
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+
+jobs:
+  check-pr-title:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate PR title prefix
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "Checking PR title: $PR_TITLE"
+
+          if [[ "$PR_TITLE" =~ ^\[(CHORE|REFACTOR|DOCS|FEATURE|GENESIS|BUG|DUP)\]\  ]]; then
+            echo "PR title format is valid."
+            exit 0
+          fi
+
+          echo "Invalid PR title."
+          echo "PR title must start with one of:"
+          echo "  [CHORE] ..."
+          echo "  [REFACTOR] ..."
+          echo "  [DOCS] ..."
+          echo "  [FEATURE] ..."
+          echo "  [GENESIS] ..."
+          echo "  [BUG] ..."
+          echo "  [DUP] ..."
+          exit 1
