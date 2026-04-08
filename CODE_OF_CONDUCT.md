@@ -52,7 +52,7 @@ This is a **technical project**, not a social platform.
 
 If you experience unacceptable behavior, contact:
 
-- deveb1479@gmail.com (or preferred contact)
+- deveb1479@gmail.com
 
 ---
 
