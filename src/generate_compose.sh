@@ -243,8 +243,6 @@ emit_user_service() {
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
       - READONLY_DIR=${CONTAINER_READONLY_DIR}
       - IS_ADMIN=false
-    expose:
-      - "7681"
     volumes:
       - ${HOST_HOMES_DIR}/${user_id}:/home/${CONTAINER_RUNTIME_USER}:rw
       - ${HOST_SHARE_DIR}:${CONTAINER_SHARE_DIR}:rw
