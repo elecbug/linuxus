@@ -29,7 +29,7 @@
    sudo snap install go --classic
    ```
 
-   ```
+   ```bash
    # Install Docker
    ./util/docker_reinstall.sh
    ```

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation / README
+    url: https://github.com/elecbug/linuxus
+    about: Please check the README before opening an issue.
