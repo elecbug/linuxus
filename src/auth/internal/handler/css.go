@@ -70,6 +70,25 @@ func getLoginCSS() *page.CSS {
 	)
 }
 
+func getErrorCSS() *page.CSS {
+	return page.NewCSS(
+		page.NewCSSContent("body",
+			page.NewAttributes(
+				"font-family", BASE_FONT_FAMILY,
+				"max-width", "420px",
+				"margin", "60px auto",
+				"background", BASE_BACKGROUND,
+				"color", BASE_COLOR,
+			)...,
+		),
+		page.NewCSSContent("p.error",
+			page.NewAttributes(
+				"color", DANGER_COLOR,
+			)...,
+		),
+	)
+}
+
 func getServiceCSS() *page.CSS {
 	return page.NewCSS(
 		page.NewCSSContent("html, body",

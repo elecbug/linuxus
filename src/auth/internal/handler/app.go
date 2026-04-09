@@ -21,6 +21,7 @@ type App struct {
 	sessionKey              []byte
 	loginTmpl               *template.Template
 	serviceTmpl             *template.Template
+	errorTmpl               *template.Template
 	loginPath               string
 	logoutPath              string
 	servicePath             string
@@ -107,7 +108,6 @@ func (a *App) Start(addr string) error {
 	return http.ListenAndServe(addr, a.Muxer())
 }
 
-// Stop shuts down the background cleanup goroutine.
 func (a *App) Stop() {
 	close(a.done)
 }
@@ -123,8 +123,14 @@ func (a *App) RegisterRoutes() {
 		log.Fatalf("failed to parse service template: %v", err)
 	}
 
+	errorTmpl, err := template.New("error").Parse(a.GetErrorPage())
+	if err != nil {
+		log.Fatalf("failed to parse error template: %v", err)
+	}
+
 	a.loginTmpl = loginTmpl
 	a.serviceTmpl = serviceTmpl
+	a.errorTmpl = errorTmpl
 
 	a.mux.HandleFunc("/", a.handleRoot)
 	a.mux.HandleFunc("/"+a.loginPath, a.handleLogin)
@@ -152,7 +158,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			a.renderError(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
@@ -163,7 +169,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// 1) Block check
 		if ok, until := a.isBlocked(ip, id); ok {
 			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(until).Seconds())+1))
-			http.Error(w, "Too many login attempts. Please try again later: "+printTime(until), http.StatusTooManyRequests)
+			a.renderError(w, "Too many login attempts. Please try again later: "+printTime(until), http.StatusTooManyRequests)
 			return
 		}
 
@@ -197,7 +203,8 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		a.renderError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
 }
 

@@ -24,6 +24,19 @@ func (a *App) renderLogin(w http.ResponseWriter, errMsg string) {
 	}
 }
 
+func (a *App) renderError(w http.ResponseWriter, errMsg string, statusCode int) {
+	data := struct {
+		Error string
+	}{
+		Error: errMsg,
+	}
+
+	w.WriteHeader(statusCode)
+	if err := a.errorTmpl.Execute(w, data); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+	}
+}
+
 func (a *App) setSessionCookie(w http.ResponseWriter, id string) {
 	signature := a.sign(id)
 	payload := id + "|" + signature

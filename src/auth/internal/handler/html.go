@@ -118,6 +118,43 @@ func (a *App) GetServicePage() string {
 	return htmlpage.Render()
 }
 
+func (a *App) GetErrorPage() string {
+	htmlpage := page.NewHTMLPage(
+		"Linuxus | Error",
+		getBaseMeta(),
+		getErrorCSS(),
+		page.NewHTML(
+			"h2",
+			page.NewAttributes(),
+			"An Error Occurred",
+		),
+		page.NewHTML(
+			"p",
+			page.NewAttributes("class", "error"),
+			"{{.Error}}",
+		),
+		page.NewHTML(
+			"p",
+			page.NewAttributes("class", "tooltip"),
+			"Please try again or contact the administrator.",
+		),
+		page.NewHTML(
+			"footer",
+			page.NewAttributes(),
+			"© 2026 ",
+			page.NewHTML(
+				"a",
+				page.NewAttributes("href", "https://github.com/elecbug/linuxus"),
+				"Linuxus",
+			),
+			". All rights reserved.",
+		),
+	)
+
+	return htmlpage.Render()
+
+}
+
 func getBaseMeta() []page.Attribute {
 	return page.NewAttributes(
 		"charset", "UTF-8",
