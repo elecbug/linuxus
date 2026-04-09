@@ -98,10 +98,7 @@ func getEnvs() (
 	if err != nil {
 		log.Fatalf("failed to get environment variable: %v", err)
 	}
-	trustedProxies, err = getEnv("TRUSTED_PROXIES")
-	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
-	}
+	trustedProxies = os.Getenv("TRUSTED_PROXIES")
 
 	return
 }

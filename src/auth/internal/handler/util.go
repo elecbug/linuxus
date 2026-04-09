@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -31,10 +32,14 @@ func (a *App) renderError(w http.ResponseWriter, errMsg string, statusCode int) 
 		Error: errMsg,
 	}
 
-	w.WriteHeader(statusCode)
-	if err := a.errorTmpl.Execute(w, data); err != nil {
+	var buf bytes.Buffer
+	if err := a.errorTmpl.Execute(&buf, data); err != nil {
 		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
 	}
+
+	w.WriteHeader(statusCode)
+	_, _ = buf.WriteTo(w)
 }
 
 func (a *App) setSessionCookie(w http.ResponseWriter, id string) {
