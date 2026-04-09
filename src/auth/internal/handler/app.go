@@ -21,6 +21,7 @@ type App struct {
 	sessionKey              []byte
 	loginTmpl               *template.Template
 	serviceTmpl             *template.Template
+	errorTmpl               *template.Template
 	loginPath               string
 	logoutPath              string
 	servicePath             string
@@ -34,6 +35,8 @@ type App struct {
 	userFails map[string]*LoginAttempt
 
 	done chan struct{}
+
+	mux *http.ServeMux
 }
 
 type LoginAttempt struct {
@@ -55,6 +58,7 @@ func NewApp(
 	trustedProxyCIDRs []string,
 ) *App {
 	var trustedProxies []*net.IPNet
+
 	for _, cidr := range trustedProxyCIDRs {
 		_, network, err := net.ParseCIDR(cidr)
 		if err == nil {
@@ -74,6 +78,7 @@ func NewApp(
 		adminUserID:             adminUserID,
 		userContainerNamePrefix: userContainerNamePrefix,
 		trustedProxies:          trustedProxies,
+		mux:                     http.NewServeMux(),
 
 		mu:        sync.Mutex{},
 		ipFails:   make(map[string]*LoginAttempt),
@@ -98,12 +103,16 @@ func NewApp(
 	return app
 }
 
-// Stop shuts down the background cleanup goroutine.
+func (a *App) Start(addr string) error {
+	log.Printf("Auth server listening on %s", addr)
+	return http.ListenAndServe(addr, a.Muxer())
+}
+
 func (a *App) Stop() {
 	close(a.done)
 }
 
-func (a *App) RegisterRoutes(mux *http.ServeMux) {
+func (a *App) RegisterRoutes() {
 	loginTmpl, err := template.New(a.loginPath).Parse(a.GetLoginPage())
 	if err != nil {
 		log.Fatalf("failed to parse template: %v", err)
@@ -114,17 +123,23 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 		log.Fatalf("failed to parse service template: %v", err)
 	}
 
+	errorTmpl, err := template.New("error").Parse(a.GetErrorPage())
+	if err != nil {
+		log.Fatalf("failed to parse error template: %v", err)
+	}
+
 	a.loginTmpl = loginTmpl
 	a.serviceTmpl = serviceTmpl
+	a.errorTmpl = errorTmpl
 
-	mux.HandleFunc("/", a.handleRoot)
-	mux.HandleFunc("/"+a.loginPath, a.handleLogin)
-	mux.HandleFunc("/"+a.logoutPath, a.handleLogout)
+	a.mux.HandleFunc("/", a.handleRoot)
+	a.mux.HandleFunc("/"+a.loginPath, a.handleLogin)
+	a.mux.HandleFunc("/"+a.logoutPath, a.handleLogout)
 
-	mux.HandleFunc("/"+a.servicePath, a.handleServiceRedirect)
-	mux.HandleFunc("/"+a.servicePath+"/", a.handleServicePage)
-	mux.HandleFunc("/"+a.terminalPath, a.handleTerminalRedirect)
-	mux.HandleFunc("/"+a.terminalPath+"/", a.handleTerminalProxy)
+	a.mux.HandleFunc("/"+a.servicePath, a.handleServiceRedirect)
+	a.mux.HandleFunc("/"+a.servicePath+"/", a.handleServicePage)
+	a.mux.HandleFunc("/"+a.terminalPath, a.handleTerminalRedirect)
+	a.mux.HandleFunc("/"+a.terminalPath+"/", a.handleTerminalProxy)
 }
 
 func (a *App) handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -143,7 +158,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			a.renderError(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
@@ -154,7 +169,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// 1) Block check
 		if ok, until := a.isBlocked(ip, id); ok {
 			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(until).Seconds())+1))
-			http.Error(w, "Too many login attempts. Please try again later: "+printTime(until), http.StatusTooManyRequests)
+			a.renderError(w, "Too many login attempts. Please try again later: "+printTime(until), http.StatusTooManyRequests)
 			return
 		}
 
@@ -188,7 +203,8 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		a.renderError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
 }
 

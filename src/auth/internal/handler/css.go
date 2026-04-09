@@ -70,6 +70,64 @@ func getLoginCSS() *page.CSS {
 	)
 }
 
+func getErrorCSS() *page.CSS {
+	return page.NewCSS(
+		page.NewCSSContent("body",
+			page.NewAttributes(
+				"font-family", BASE_FONT_FAMILY,
+				"max-width", "420px",
+				"margin", "60px auto",
+				"background", BASE_BACKGROUND,
+				"color", BASE_COLOR,
+			)...,
+		),
+		page.NewCSSContent("p.error",
+			page.NewAttributes(
+				"color", DANGER_COLOR,
+			)...,
+		),
+		page.NewCSSContent("p.tooltip",
+			page.NewAttributes(
+				"color", TOOLTIP_COLOR,
+				"font-size", "0.9em",
+				"font-style", "italic",
+			)...,
+		),
+		page.NewCSSContent("footer",
+			page.NewAttributes(
+				"margin-top", "40px",
+				"font-size", "0.9em",
+				"text-align", "center",
+				"color", FOOTER_COLOR,
+			)...,
+		),
+		page.NewCSSContent("footer a",
+			page.NewAttributes(
+				"color", FOOTER_LINK_COLOR,
+				"text-decoration", "none",
+			)...,
+		),
+		page.NewCSSContent("footer a:hover",
+			page.NewAttributes(
+				"color", FOOTER_LINK_HOVER_COLOR,
+				"text-decoration", "underline",
+			)...,
+		),
+		page.NewCSSContent("footer a:active",
+			page.NewAttributes(
+				"color", FOOTER_LINK_ACTIVE_COLOR,
+				"text-decoration", "underline",
+			)...,
+		),
+		page.NewCSSContent("footer a:visited",
+			page.NewAttributes(
+				"color", FOOTER_LINK_VISITED_COLOR,
+				"text-decoration", "underline",
+			)...,
+		),
+	)
+}
+
 func getServiceCSS() *page.CSS {
 	return page.NewCSS(
 		page.NewCSSContent("html, body",
