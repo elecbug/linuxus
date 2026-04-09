@@ -8,6 +8,8 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -23,6 +25,17 @@ type App struct {
 	terminalPath            string
 	adminUserID             string
 	userContainerNamePrefix string
+
+	mu        sync.Mutex
+	ipFails   map[string]*LoginAttempt
+	userFails map[string]*LoginAttempt
+}
+
+type LoginAttempt struct {
+	FailCount   int
+	LockCount   int
+	LockedUntil time.Time
+	LastFailAt  time.Time
 }
 
 func NewApp(
@@ -44,6 +57,10 @@ func NewApp(
 		terminalPath:            terminalPath,
 		adminUserID:             adminUserID,
 		userContainerNamePrefix: userContainerNamePrefix,
+
+		mu:        sync.Mutex{},
+		ipFails:   make(map[string]*LoginAttempt),
+		userFails: make(map[string]*LoginAttempt),
 	}
 }
 
@@ -93,18 +110,42 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 		id := strings.TrimSpace(r.FormValue("id"))
 		password := r.FormValue("password")
+		ip := clientIP(r)
 
+		// 1) Block check
+		if ok, delay := a.isBlocked(ip, id); ok {
+			time.Sleep(800 * time.Millisecond)
+			a.renderLogin(w, "Too many login attempts. Please try again later: "+printTime(delay))
+			return
+		}
+
+		// 2) Exists user
 		hash, ok := a.users[id]
 		if !ok {
+			hash = string(dummyHash)
+		}
+
+		// 3) Compare password
+		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+
+		// 3) Compare password and record fail if needed
+		if err != nil {
+			a.recordFail(ip, id)
+			time.Sleep(a.failDelay(ip, id))
 			a.renderLogin(w, "Invalid ID or password")
 			return
 		}
 
-		if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
+		// 4) Check if user do not exists
+		if !ok {
+			a.recordFail(ip, id)
+			time.Sleep(a.failDelay(ip, id))
 			a.renderLogin(w, "Invalid ID or password")
 			return
 		}
 
+		// 5) Success
+		a.clearFail(ip, id)
 		a.setSessionCookie(w, id)
 		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
 		return
