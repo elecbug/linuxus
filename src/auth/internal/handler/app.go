@@ -4,10 +4,14 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -23,6 +27,20 @@ type App struct {
 	terminalPath            string
 	adminUserID             string
 	userContainerNamePrefix string
+	trustedProxies          []*net.IPNet
+
+	mu        sync.Mutex
+	ipFails   map[string]*LoginAttempt
+	userFails map[string]*LoginAttempt
+
+	done chan struct{}
+}
+
+type LoginAttempt struct {
+	FailCount   int
+	LockCount   int
+	LockedUntil time.Time
+	LastFailAt  time.Time
 }
 
 func NewApp(
@@ -34,8 +52,19 @@ func NewApp(
 	terminalPath,
 	adminUserID,
 	userContainerNamePrefix string,
+	trustedProxyCIDRs []string,
 ) *App {
-	return &App{
+	var trustedProxies []*net.IPNet
+	for _, cidr := range trustedProxyCIDRs {
+		_, network, err := net.ParseCIDR(cidr)
+		if err == nil {
+			trustedProxies = append(trustedProxies, network)
+		} else {
+			log.Printf("warning: ignoring invalid trusted proxy CIDR %q: %v", cidr, err)
+		}
+	}
+
+	app := &App{
 		users:                   users,
 		sessionKey:              sessionKey,
 		loginPath:               loginPath,
@@ -44,7 +73,34 @@ func NewApp(
 		terminalPath:            terminalPath,
 		adminUserID:             adminUserID,
 		userContainerNamePrefix: userContainerNamePrefix,
+		trustedProxies:          trustedProxies,
+
+		mu:        sync.Mutex{},
+		ipFails:   make(map[string]*LoginAttempt),
+		userFails: make(map[string]*LoginAttempt),
+
+		done: make(chan struct{}),
 	}
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				app.evictStaleEntries()
+			case <-app.done:
+				return
+			}
+		}
+	}()
+
+	return app
+}
+
+// Stop shuts down the background cleanup goroutine.
+func (a *App) Stop() {
+	close(a.done)
 }
 
 func (a *App) RegisterRoutes(mux *http.ServeMux) {
@@ -93,18 +149,40 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 		id := strings.TrimSpace(r.FormValue("id"))
 		password := r.FormValue("password")
+		ip := a.clientIP(r)
 
+		// 1) Block check
+		if ok, until := a.isBlocked(ip, id); ok {
+			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(until).Seconds())+1))
+			http.Error(w, "Too many login attempts. Please try again later: "+printTime(until), http.StatusTooManyRequests)
+			return
+		}
+
+		// 2) Look up user
 		hash, ok := a.users[id]
 		if !ok {
+			hash = string(dummyHash)
+		}
+
+		// 3) Compare password
+		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+
+		// 4) Handle failed comparison
+		if err != nil {
+			a.recordFail(ip, id, ok)
 			a.renderLogin(w, "Invalid ID or password")
 			return
 		}
 
-		if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
+		// 5) Check if user does not exist
+		if !ok {
+			a.recordFail(ip, id, false)
 			a.renderLogin(w, "Invalid ID or password")
 			return
 		}
 
+		// 6) Success
+		a.clearFail(ip, id)
 		a.setSessionCookie(w, id)
 		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
 		return
