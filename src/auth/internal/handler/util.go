@@ -173,7 +173,7 @@ func (a *App) clearFail(ip, id string) {
 	delete(a.userFails, id)
 }
 
-func (a *App) failDelay(ip, id string) time.Duration {
+func (a *App) failDelay(id string) time.Duration {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -239,4 +239,23 @@ func lockDuration(lockCount int) time.Duration {
 	default:
 		return 8 * time.Minute
 	}
+}
+
+func ParseTrustedProxies(trustedProxies string) []string {
+	var trustedProxyCIDRs []string
+
+	if tp := trustedProxies; tp != "" {
+		for _, cidr := range strings.Split(tp, ",") {
+			cidr = strings.TrimSpace(cidr)
+			if cidr != "" {
+				trustedProxyCIDRs = append(trustedProxyCIDRs, cidr)
+			}
+		}
+	}
+
+	return trustedProxyCIDRs
+}
+
+func (a *App) Muxer() *http.ServeMux {
+	return a.mux
 }

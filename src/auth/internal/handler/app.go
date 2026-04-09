@@ -34,6 +34,8 @@ type App struct {
 	userFails map[string]*LoginAttempt
 
 	done chan struct{}
+
+	mux *http.ServeMux
 }
 
 type LoginAttempt struct {
@@ -55,6 +57,7 @@ func NewApp(
 	trustedProxyCIDRs []string,
 ) *App {
 	var trustedProxies []*net.IPNet
+
 	for _, cidr := range trustedProxyCIDRs {
 		_, network, err := net.ParseCIDR(cidr)
 		if err == nil {
@@ -74,6 +77,7 @@ func NewApp(
 		adminUserID:             adminUserID,
 		userContainerNamePrefix: userContainerNamePrefix,
 		trustedProxies:          trustedProxies,
+		mux:                     http.NewServeMux(),
 
 		mu:        sync.Mutex{},
 		ipFails:   make(map[string]*LoginAttempt),
@@ -98,12 +102,17 @@ func NewApp(
 	return app
 }
 
+func (a *App) Start(addr string) error {
+	log.Printf("Auth server listening on %s", addr)
+	return http.ListenAndServe(addr, a.Muxer())
+}
+
 // Stop shuts down the background cleanup goroutine.
 func (a *App) Stop() {
 	close(a.done)
 }
 
-func (a *App) RegisterRoutes(mux *http.ServeMux) {
+func (a *App) RegisterRoutes() {
 	loginTmpl, err := template.New(a.loginPath).Parse(a.GetLoginPage())
 	if err != nil {
 		log.Fatalf("failed to parse template: %v", err)
@@ -117,14 +126,14 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	a.loginTmpl = loginTmpl
 	a.serviceTmpl = serviceTmpl
 
-	mux.HandleFunc("/", a.handleRoot)
-	mux.HandleFunc("/"+a.loginPath, a.handleLogin)
-	mux.HandleFunc("/"+a.logoutPath, a.handleLogout)
+	a.mux.HandleFunc("/", a.handleRoot)
+	a.mux.HandleFunc("/"+a.loginPath, a.handleLogin)
+	a.mux.HandleFunc("/"+a.logoutPath, a.handleLogout)
 
-	mux.HandleFunc("/"+a.servicePath, a.handleServiceRedirect)
-	mux.HandleFunc("/"+a.servicePath+"/", a.handleServicePage)
-	mux.HandleFunc("/"+a.terminalPath, a.handleTerminalRedirect)
-	mux.HandleFunc("/"+a.terminalPath+"/", a.handleTerminalProxy)
+	a.mux.HandleFunc("/"+a.servicePath, a.handleServiceRedirect)
+	a.mux.HandleFunc("/"+a.servicePath+"/", a.handleServicePage)
+	a.mux.HandleFunc("/"+a.terminalPath, a.handleTerminalRedirect)
+	a.mux.HandleFunc("/"+a.terminalPath+"/", a.handleTerminalProxy)
 }
 
 func (a *App) handleRoot(w http.ResponseWriter, r *http.Request) {

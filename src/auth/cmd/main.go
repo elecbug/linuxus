@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
-	"strings"
 
 	"github.com/elecbug/linuxus/src/auth/internal/handler"
 	"github.com/elecbug/linuxus/src/auth/internal/user"
@@ -19,24 +17,15 @@ func main() {
 		servicePath,
 		terminalPath,
 		adminUserID,
-		userContainerNamePrefix = getEnvs()
+		userContainerNamePrefix,
+		trustedProxies = getEnvs()
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
 		log.Fatalf("failed to load users: %v", err)
 	}
 
-	mux := http.NewServeMux()
-
-	var trustedProxyCIDRs []string
-	if tp := os.Getenv("TRUSTED_PROXIES"); tp != "" {
-		for _, cidr := range strings.Split(tp, ",") {
-			cidr = strings.TrimSpace(cidr)
-			if cidr != "" {
-				trustedProxyCIDRs = append(trustedProxyCIDRs, cidr)
-			}
-		}
-	}
+	trustedProxyCIDRs := handler.ParseTrustedProxies(trustedProxies)
 
 	app := handler.NewApp(
 		users,
@@ -49,11 +38,11 @@ func main() {
 		userContainerNamePrefix,
 		trustedProxyCIDRs,
 	)
-	app.RegisterRoutes(mux)
+	app.RegisterRoutes()
 
-	addr := ":8080"
-	log.Printf("Auth server listening on %s", addr)
-	log.Fatal(http.ListenAndServe(addr, mux))
+	if err := app.Start(":8080"); err != nil {
+		log.Fatalf("failed to start server: %v", err)
+	}
 }
 
 func getEnv(key string) (string, error) {
@@ -72,7 +61,8 @@ func getEnvs() (
 	servicePath,
 	terminalPath,
 	adminUserID,
-	userContainerNamePrefix string,
+	userContainerNamePrefix,
+	trustedProxies string,
 ) {
 	var err error
 
@@ -105,6 +95,10 @@ func getEnvs() (
 		log.Fatalf("failed to get environment variable: %v", err)
 	}
 	userContainerNamePrefix, err = getEnv("USER_CONTAINER_NAME_PREFIX")
+	if err != nil {
+		log.Fatalf("failed to get environment variable: %v", err)
+	}
+	trustedProxies, err = getEnv("TRUSTED_PROXIES")
 	if err != nil {
 		log.Fatalf("failed to get environment variable: %v", err)
 	}
