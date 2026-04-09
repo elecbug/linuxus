@@ -109,7 +109,7 @@ func (a *App) isBlocked(ip, id string) (bool, time.Time) {
 	return false, time.Time{}
 }
 
-func (a *App) recordFail(ip, id string) {
+func (a *App) recordFail(ip, id string, trackUser bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -141,7 +141,28 @@ func (a *App) recordFail(ip, id string) {
 	}
 
 	update(a.ipFails, ip, 20)
-	update(a.userFails, id, 5)
+	if trackUser {
+		update(a.userFails, id, 5)
+	}
+}
+
+func (a *App) evictStaleEntries() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	now := time.Now()
+	const staleDuration = 30 * time.Minute
+
+	for ip, s := range a.ipFails {
+		if now.Sub(s.LastFailAt) > staleDuration && (s.LockedUntil.IsZero() || now.After(s.LockedUntil)) {
+			delete(a.ipFails, ip)
+		}
+	}
+	for id, s := range a.userFails {
+		if now.Sub(s.LastFailAt) > staleDuration && (s.LockedUntil.IsZero() || now.After(s.LockedUntil)) {
+			delete(a.userFails, id)
+		}
+	}
 }
 
 func (a *App) clearFail(ip, id string) {

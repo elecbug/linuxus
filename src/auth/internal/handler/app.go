@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -31,6 +32,8 @@ type App struct {
 	mu        sync.Mutex
 	ipFails   map[string]*LoginAttempt
 	userFails map[string]*LoginAttempt
+
+	done chan struct{}
 }
 
 type LoginAttempt struct {
@@ -61,7 +64,7 @@ func NewApp(
 		}
 	}
 
-	return &App{
+	app := &App{
 		users:                   users,
 		sessionKey:              sessionKey,
 		loginPath:               loginPath,
@@ -75,7 +78,29 @@ func NewApp(
 		mu:        sync.Mutex{},
 		ipFails:   make(map[string]*LoginAttempt),
 		userFails: make(map[string]*LoginAttempt),
+
+		done: make(chan struct{}),
 	}
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				app.evictStaleEntries()
+			case <-app.done:
+				return
+			}
+		}
+	}()
+
+	return app
+}
+
+// Stop shuts down the background cleanup goroutine.
+func (a *App) Stop() {
+	close(a.done)
 }
 
 func (a *App) RegisterRoutes(mux *http.ServeMux) {
@@ -127,13 +152,13 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		ip := a.clientIP(r)
 
 		// 1) Block check
-		if ok, delay := a.isBlocked(ip, id); ok {
-			time.Sleep(800 * time.Millisecond)
-			a.renderLogin(w, "Too many login attempts. Please try again later: "+printTime(delay))
+		if ok, until := a.isBlocked(ip, id); ok {
+			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(until).Seconds())+1))
+			http.Error(w, "Too many login attempts. Please try again later: "+printTime(until), http.StatusTooManyRequests)
 			return
 		}
 
-		// 2) Exists user
+		// 2) Look up user
 		hash, ok := a.users[id]
 		if !ok {
 			hash = string(dummyHash)
@@ -142,23 +167,21 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// 3) Compare password
 		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 
-		// 3) Compare password and record fail if needed
+		// 4) Handle failed comparison
 		if err != nil {
-			a.recordFail(ip, id)
-			time.Sleep(a.failDelay(ip, id))
+			a.recordFail(ip, id, ok)
 			a.renderLogin(w, "Invalid ID or password")
 			return
 		}
 
-		// 4) Check if user do not exists
+		// 5) Check if user does not exist
 		if !ok {
-			a.recordFail(ip, id)
-			time.Sleep(a.failDelay(ip, id))
+			a.recordFail(ip, id, false)
 			a.renderLogin(w, "Invalid ID or password")
 			return
 		}
 
-		// 5) Success
+		// 6) Success
 		a.clearFail(ip, id)
 		a.setSessionCookie(w, id)
 		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)

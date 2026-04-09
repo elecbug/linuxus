@@ -1,7 +1,5 @@
 FROM golang:1.25 AS builder
 
-ENV TZ=Asia/Seoul
-
 WORKDIR /app
 
 COPY go.mod ./
@@ -13,6 +11,10 @@ COPY internal ./internal
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o auth-server cmd/main.go
 
 FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=Asia/Seoul
 
 WORKDIR /app
 
