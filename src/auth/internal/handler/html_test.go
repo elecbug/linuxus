@@ -11,6 +11,7 @@ func TestHTMLRendering(t *testing.T) {
 		nil, nil,
 		"login", "logout", "service", "terminal",
 		"adminContainer", "linuxus-user-",
+		nil,
 	)
 	loginPage := app.GetLoginPage()
 	if loginPage == "" {

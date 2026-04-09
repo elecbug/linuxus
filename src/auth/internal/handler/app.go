@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -25,6 +26,7 @@ type App struct {
 	terminalPath            string
 	adminUserID             string
 	userContainerNamePrefix string
+	trustedProxies          []*net.IPNet
 
 	mu        sync.Mutex
 	ipFails   map[string]*LoginAttempt
@@ -47,7 +49,18 @@ func NewApp(
 	terminalPath,
 	adminUserID,
 	userContainerNamePrefix string,
+	trustedProxyCIDRs []string,
 ) *App {
+	var trustedProxies []*net.IPNet
+	for _, cidr := range trustedProxyCIDRs {
+		_, network, err := net.ParseCIDR(cidr)
+		if err == nil {
+			trustedProxies = append(trustedProxies, network)
+		} else {
+			log.Printf("warning: ignoring invalid trusted proxy CIDR %q: %v", cidr, err)
+		}
+	}
+
 	return &App{
 		users:                   users,
 		sessionKey:              sessionKey,
@@ -57,6 +70,7 @@ func NewApp(
 		terminalPath:            terminalPath,
 		adminUserID:             adminUserID,
 		userContainerNamePrefix: userContainerNamePrefix,
+		trustedProxies:          trustedProxies,
 
 		mu:        sync.Mutex{},
 		ipFails:   make(map[string]*LoginAttempt),
@@ -110,7 +124,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 		id := strings.TrimSpace(r.FormValue("id"))
 		password := r.FormValue("password")
-		ip := clientIP(r)
+		ip := a.clientIP(r)
 
 		// 1) Block check
 		if ok, delay := a.isBlocked(ip, id); ok {

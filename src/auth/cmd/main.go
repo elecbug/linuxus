@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/elecbug/linuxus/src/auth/internal/handler"
 	"github.com/elecbug/linuxus/src/auth/internal/user"
@@ -27,6 +28,16 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	var trustedProxyCIDRs []string
+	if tp := os.Getenv("TRUSTED_PROXIES"); tp != "" {
+		for _, cidr := range strings.Split(tp, ",") {
+			cidr = strings.TrimSpace(cidr)
+			if cidr != "" {
+				trustedProxyCIDRs = append(trustedProxyCIDRs, cidr)
+			}
+		}
+	}
+
 	app := handler.NewApp(
 		users,
 		[]byte(sessionSecret),
@@ -36,6 +47,7 @@ func main() {
 		terminalPath,
 		adminUserID,
 		userContainerNamePrefix,
+		trustedProxyCIDRs,
 	)
 	app.RegisterRoutes(mux)
 
