@@ -245,6 +245,7 @@ emit_user_service() {
       - /run:rw,noexec,nosuid,nodev,size=16m
       - /var/tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
+      - TZ=${CONTAINER_TIMEZONE}
       - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${user_id}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
@@ -292,6 +293,7 @@ emit_admin_service() {
       - /run:rw,noexec,nosuid,nodev,size=16m
       - /var/tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
+      - TZ=${CONTAINER_TIMEZONE}
       - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${ADMIN_USER_ID}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
