@@ -8,7 +8,7 @@ func getLoginCSS() *page.CSS {
 		loginTooltipCSS(),
 		loginErrorCSS(),
 	).AddContents(
-		loginFooterCSS()...,
+		footerCSS()...,
 	).AddContents(
 		loginFormCSS()...,
 	).AddContents(
@@ -22,7 +22,7 @@ func getErrorCSS() *page.CSS {
 		loginTooltipCSS(),
 		loginErrorCSS(),
 	).AddContents(
-		loginFooterCSS()...,
+		footerCSS()...,
 	)
 }
 
@@ -35,23 +35,13 @@ func getServiceCSS() *page.CSS {
 		serviceIframeCSS()...,
 	).AddContents(
 		serviceButtonCSS()...,
+	).AddContents(
+		footerCSS()...,
 	)
 
 }
 
-func loginBodyCSS() *page.CSSContent {
-	return page.NewCSSContent("body",
-		page.NewAttributes(
-			"font-family", BASE_FONT_FAMILY,
-			"max-width", "420px",
-			"margin", "60px auto",
-			"background", BASE_BACKGROUND,
-			"color", BASE_COLOR,
-		)...,
-	)
-}
-
-func loginFooterCSS() []*page.CSSContent {
+func footerCSS() []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("footer",
 			page.NewAttributes(
@@ -86,6 +76,18 @@ func loginFooterCSS() []*page.CSSContent {
 			)...,
 		),
 	}
+}
+
+func loginBodyCSS() *page.CSSContent {
+	return page.NewCSSContent("body",
+		page.NewAttributes(
+			"font-family", BASE_FONT_FAMILY,
+			"max-width", "420px",
+			"margin", "60px auto",
+			"background", BASE_BACKGROUND,
+			"color", BASE_COLOR,
+		)...,
+	)
 }
 
 func loginFormCSS() []*page.CSSContent {
@@ -133,6 +135,8 @@ func serviceBodyCSS() *page.CSSContent {
 			"padding", "0",
 			"height", "100%",
 			"font-family", BASE_FONT_FAMILY,
+			"background", BASE_BACKGROUND,
+			"color", BASE_COLOR,
 		)...,
 	)
 }
@@ -148,8 +152,6 @@ func serviceToorBarCSS() []*page.CSSContent {
 				"padding", "0 16px",
 				"box-sizing", "border-box",
 				"border-bottom", DARK_BORDER,
-				"background", BASE_BACKGROUND,
-				"color", BASE_COLOR,
 			)...,
 		),
 		page.NewCSSContent("div.left",
@@ -170,7 +172,7 @@ func serviceIframeCSS() []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("div.frame-wrap",
 			page.NewAttributes(
-				"height", "calc(100% - 56px)",
+				"height", "calc(100% - 56px - 40px - 1.3em)",
 			)...,
 		),
 		page.NewCSSContent("iframe",
