@@ -1,19 +1,15 @@
 package handler
 
 import (
-	"fmt"
+	"crypto/hmac"
+	"encoding/base64"
 	"html/template"
 	"log"
 	"net"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 type App struct {
@@ -31,35 +27,37 @@ type App struct {
 	trustedProxies          []*net.IPNet
 
 	mu        sync.Mutex
-	ipFails   map[string]*LoginAttempt
-	userFails map[string]*LoginAttempt
+	ipFails   map[string]*loginAttempt
+	userFails map[string]*loginAttempt
 
 	done chan struct{}
 
 	mux *http.ServeMux
 }
 
-type LoginAttempt struct {
+type AppConfig struct {
+	Users                   map[string]string
+	SessionKey              []byte
+	LoginPath               string
+	LogoutPath              string
+	ServicePath             string
+	TerminalPath            string
+	AdminUserID             string
+	UserContainerNamePrefix string
+	TrustedProxies          []string
+}
+
+type loginAttempt struct {
 	FailCount   int
 	LockCount   int
 	LockedUntil time.Time
 	LastFailAt  time.Time
 }
 
-func NewApp(
-	users map[string]string,
-	sessionKey []byte,
-	loginPath,
-	logoutPath,
-	servicePath,
-	terminalPath,
-	adminUserID,
-	userContainerNamePrefix string,
-	trustedProxyCIDRs []string,
-) *App {
+func NewApp(config AppConfig) *App {
 	var trustedProxies []*net.IPNet
 
-	for _, cidr := range trustedProxyCIDRs {
+	for _, cidr := range config.TrustedProxies {
 		_, network, err := net.ParseCIDR(cidr)
 		if err == nil {
 			trustedProxies = append(trustedProxies, network)
@@ -69,20 +67,20 @@ func NewApp(
 	}
 
 	app := &App{
-		users:                   users,
-		sessionKey:              sessionKey,
-		loginPath:               loginPath,
-		logoutPath:              logoutPath,
-		servicePath:             servicePath,
-		terminalPath:            terminalPath,
-		adminUserID:             adminUserID,
-		userContainerNamePrefix: userContainerNamePrefix,
+		users:                   config.Users,
+		sessionKey:              config.SessionKey,
+		loginPath:               config.LoginPath,
+		logoutPath:              config.LogoutPath,
+		servicePath:             config.ServicePath,
+		terminalPath:            config.TerminalPath,
+		adminUserID:             config.AdminUserID,
+		userContainerNamePrefix: config.UserContainerNamePrefix,
 		trustedProxies:          trustedProxies,
 		mux:                     http.NewServeMux(),
 
 		mu:        sync.Mutex{},
-		ipFails:   make(map[string]*LoginAttempt),
-		userFails: make(map[string]*LoginAttempt),
+		ipFails:   make(map[string]*loginAttempt),
+		userFails: make(map[string]*loginAttempt),
 
 		done: make(chan struct{}),
 	}
@@ -101,6 +99,10 @@ func NewApp(
 	}()
 
 	return app
+}
+
+func (a *App) Muxer() *http.ServeMux {
+	return a.mux
 }
 
 func (a *App) Start(addr string) error {
@@ -142,168 +144,48 @@ func (a *App) RegisterRoutes() {
 	a.mux.HandleFunc("/"+a.terminalPath+"/", a.handleTerminalProxy)
 }
 
-func (a *App) handleRoot(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.getSessionID(r); ok {
-		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
-		return
-	}
-	http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
-}
+func (a *App) evictStaleEntries() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
-func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		a.renderLogin(w, "")
-		return
+	now := time.Now()
+	const staleDuration = 30 * time.Minute
 
-	case http.MethodPost:
-		if err := r.ParseForm(); err != nil {
-			a.renderError(w, "Bad request", http.StatusBadRequest)
-			return
+	for ip, s := range a.ipFails {
+		if now.Sub(s.LastFailAt) > staleDuration && (s.LockedUntil.IsZero() || now.After(s.LockedUntil)) {
+			delete(a.ipFails, ip)
 		}
-
-		id := strings.TrimSpace(r.FormValue("id"))
-		password := r.FormValue("password")
-		ip := a.clientIP(r)
-
-		// 1) Block check
-		if ok, until := a.isBlocked(ip, id); ok {
-			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(until).Seconds())+1))
-			a.renderError(w, "Too many login attempts. Please try again later: "+printTime(until), http.StatusTooManyRequests)
-			return
+	}
+	for id, s := range a.userFails {
+		if now.Sub(s.LastFailAt) > staleDuration && (s.LockedUntil.IsZero() || now.After(s.LockedUntil)) {
+			delete(a.userFails, id)
 		}
-
-		// 2) Look up user
-		hash, ok := a.users[id]
-		if !ok {
-			hash = string(dummyHash)
-		}
-
-		// 3) Compare password
-		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-
-		// 4) Handle failed comparison
-		if err != nil {
-			a.recordFail(ip, id, ok)
-			a.renderLogin(w, "Invalid ID or password")
-			return
-		}
-
-		// 5) Check if user does not exist
-		if !ok {
-			a.recordFail(ip, id, false)
-			a.renderLogin(w, "Invalid ID or password")
-			return
-		}
-
-		// 6) Success
-		a.clearFail(ip, id)
-		a.setSessionCookie(w, id)
-		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
-		return
-
-	default:
-		a.renderError(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
 	}
 }
 
-func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		MaxAge:   -1,
-	})
-
-	http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
-}
-
-func (a *App) handleServiceRedirect(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.getSessionID(r); !ok {
-		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
-		return
-	}
-
-	http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
-}
-
-func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
-	id, ok := a.getSessionID(r)
-	if !ok {
-		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
-		return
-	}
-
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Pragma", "no-cache")
-
-	data := struct {
-		ID string
-	}{
-		ID: id,
-	}
-
-	if err := a.serviceTmpl.Execute(w, data); err != nil {
-		http.Error(w, "Template error", http.StatusInternalServerError)
-	}
-}
-
-func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.getSessionID(r); !ok {
-		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
-		return
-	}
-
-	http.Redirect(w, r, "/"+a.terminalPath+"/", http.StatusSeeOther)
-}
-
-func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
-	id, ok := a.getSessionID(r)
-	if !ok {
-		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
-		return
-	}
-
-	safeID := sanitizeID(id)
-	targetURL := fmt.Sprintf("http://%s%s:7681", a.userContainerNamePrefix, safeID)
-
-	target, err := url.Parse(targetURL)
+func (a *App) getSessionID(r *http.Request) (string, bool) {
+	cookie, err := r.Cookie("session")
 	if err != nil {
-		http.Error(w, "Invalid backend target", http.StatusInternalServerError)
-		return
+		return "", false
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(target)
-
-	originalDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
-
-		req.URL.Scheme = target.Scheme
-		req.URL.Host = target.Host
-		req.Host = target.Host
-
-		// Strip "/$TERMINAL_PATH" prefix
-		newPath := strings.TrimPrefix(req.URL.Path, "/"+a.terminalPath)
-		if newPath == "" {
-			newPath = "/"
-		}
-		if !strings.HasPrefix(newPath, "/") {
-			newPath = "/" + newPath
-		}
-		req.URL.Path = newPath
-		req.URL.RawPath = ""
-
-		req.Header.Set("X-Forwarded-Host", r.Host)
-		req.Header.Set("X-Forwarded-Proto", "http")
+	raw, err := base64.StdEncoding.DecodeString(cookie.Value)
+	if err != nil {
+		return "", false
 	}
 
-	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		log.Printf("proxy error for %s: %v", id, err)
-		http.Error(w, "Shell backend is unavailable", http.StatusBadGateway)
+	parts := strings.SplitN(string(raw), "|", 2)
+	if len(parts) != 2 {
+		return "", false
 	}
 
-	proxy.ServeHTTP(w, r)
+	id := parts[0]
+	signature := parts[1]
+
+	expected := a.sign(id)
+	if !hmac.Equal([]byte(signature), []byte(expected)) {
+		return "", false
+	}
+
+	return id, true
 }

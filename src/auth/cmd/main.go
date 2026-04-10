@@ -10,34 +10,12 @@ import (
 )
 
 func main() {
-	var authListFile,
-		sessionSecret,
-		loginPath,
-		logoutPath,
-		servicePath,
-		terminalPath,
-		adminUserID,
-		userContainerNamePrefix,
-		trustedProxies = getEnvs()
-
-	users, err := user.LoadUsers(authListFile)
+	config, err := parseConfig()
 	if err != nil {
-		log.Fatalf("failed to load users: %v", err)
+		log.Fatalf("failed to parse config: %v", err)
 	}
 
-	trustedProxyCIDRs := handler.ParseTrustedProxies(trustedProxies)
-
-	app := handler.NewApp(
-		users,
-		[]byte(sessionSecret),
-		loginPath,
-		logoutPath,
-		servicePath,
-		terminalPath,
-		adminUserID,
-		userContainerNamePrefix,
-		trustedProxyCIDRs,
-	)
+	app := handler.NewApp(*config)
 	app.RegisterRoutes()
 
 	if err := app.Start(":8080"); err != nil {
@@ -53,52 +31,57 @@ func getEnv(key string) (string, error) {
 	return value, nil
 }
 
-func getEnvs() (
-	authListFile,
-	sessionSecret,
-	loginPath,
-	logoutPath,
-	servicePath,
-	terminalPath,
-	adminUserID,
-	userContainerNamePrefix,
-	trustedProxies string,
-) {
+func parseConfig() (*handler.AppConfig, error) {
 	var err error
 
-	authListFile, err = getEnv("AUTH_LIST")
+	authListFile, err := getEnv("AUTH_LIST")
 	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
-	sessionSecret, err = getEnv("SESSION_SECRET")
+	sessionSecret, err := getEnv("SESSION_SECRET")
 	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
-	loginPath, err = getEnv("LOGIN_PATH")
+	loginPath, err := getEnv("LOGIN_PATH")
 	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
-	logoutPath, err = getEnv("LOGOUT_PATH")
+	logoutPath, err := getEnv("LOGOUT_PATH")
 	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
-	servicePath, err = getEnv("SERVICE_PATH")
+	servicePath, err := getEnv("SERVICE_PATH")
 	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
-	terminalPath, err = getEnv("TERMINAL_PATH")
+	terminalPath, err := getEnv("TERMINAL_PATH")
 	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
-	adminUserID, err = getEnv("ADMIN_USER_ID")
+	adminUserID, err := getEnv("ADMIN_USER_ID")
 	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
-	userContainerNamePrefix, err = getEnv("USER_CONTAINER_NAME_PREFIX")
+	userContainerNamePrefix, err := getEnv("USER_CONTAINER_NAME_PREFIX")
 	if err != nil {
-		log.Fatalf("failed to get environment variable: %v", err)
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
-	trustedProxies = os.Getenv("TRUSTED_PROXIES")
+	trustedProxies := os.Getenv("TRUSTED_PROXIES")
 
-	return
+	users, err := user.LoadUsers(authListFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load users: %v", err)
+	}
+
+	return &handler.AppConfig{
+		Users:                   users,
+		SessionKey:              []byte(sessionSecret),
+		LoginPath:               loginPath,
+		LogoutPath:              logoutPath,
+		ServicePath:             servicePath,
+		TerminalPath:            terminalPath,
+		AdminUserID:             adminUserID,
+		UserContainerNamePrefix: userContainerNamePrefix,
+		TrustedProxies:          handler.ParseTrustedProxies(trustedProxies),
+	}, nil
 }

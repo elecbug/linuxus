@@ -7,12 +7,19 @@ import (
 )
 
 func TestHTMLRendering(t *testing.T) {
-	app := handler.NewApp(
-		nil, nil,
-		"login", "logout", "service", "terminal",
-		"adminContainer", "linuxus-user-",
-		nil,
-	)
+	config := handler.AppConfig{
+		Users:                   nil,
+		SessionKey:              nil,
+		LoginPath:               "login",
+		LogoutPath:              "logout",
+		ServicePath:             "service",
+		TerminalPath:            "terminal",
+		AdminUserID:             "adminContainer",
+		UserContainerNamePrefix: "linuxus-user-",
+		TrustedProxies:          nil,
+	}
+
+	app := handler.NewApp(config)
 	loginPage := app.GetLoginPage()
 	if loginPage == "" {
 		t.Error("GetLoginPage returned an empty string")
@@ -23,12 +30,19 @@ func TestHTMLRendering(t *testing.T) {
 }
 
 func TestGetErrorPageRendering(t *testing.T) {
-	app := handler.NewApp(
-		nil, nil,
-		"login", "logout", "service", "terminal",
-		"adminContainer", "linuxus-user-",
-		nil,
-	)
+	config := handler.AppConfig{
+		Users:                   nil,
+		SessionKey:              nil,
+		LoginPath:               "login",
+		LogoutPath:              "logout",
+		ServicePath:             "service",
+		TerminalPath:            "terminal",
+		AdminUserID:             "adminContainer",
+		UserContainerNamePrefix: "linuxus-user-",
+		TrustedProxies:          nil,
+	}
+
+	app := handler.NewApp(config)
 	errorPage := app.GetErrorPage()
 	if errorPage == "" {
 		t.Error("GetErrorPage returned an empty string")
