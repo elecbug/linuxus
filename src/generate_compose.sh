@@ -186,9 +186,14 @@ emit_auth_service() {
 
     cat >> "$OUTPUT_FILE" <<EOF
   ${AUTH_CONTAINER_NAME}:
-    build: ${AUTH_SOURCE_DIR}
+    build: 
+      context: ${AUTH_SOURCE_DIR}
+      args:
+        - TIMEZONE=${AUTH_TIMEZONE}
     container_name: ${AUTH_CONTAINER_NAME}
+
     environment:
+      - TZ=${AUTH_TIMEZONE}
       - AUTH_LIST=${AUTH_LIST_MOUNT_PATH}
       - SESSION_SECRET=${AUTH_SESSION_SECRET}
       - LOGIN_PATH=${URL_LOGIN_PATH}
@@ -230,6 +235,7 @@ emit_user_service() {
       context: ${USER_SOURCE_DIR}
       args:
         - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
+        - TIMEZONE=${CONTAINER_TIMEZONE}
     container_name: ${USER_CONTAINER_NAME_PREFIX}${safe_id}
     hostname: ${CONTAINER_RUNTIME_HOSTNAME}
     working_dir: /home/${CONTAINER_RUNTIME_USER}
@@ -239,6 +245,7 @@ emit_user_service() {
       - /run:rw,noexec,nosuid,nodev,size=16m
       - /var/tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
+      - TZ=${CONTAINER_TIMEZONE}
       - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${user_id}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
@@ -276,6 +283,7 @@ emit_admin_service() {
       context: ${USER_SOURCE_DIR}
       args:
         - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
+        - TIMEZONE=${CONTAINER_TIMEZONE}
     container_name: ${USER_CONTAINER_NAME_PREFIX}${ADMIN_USER_ID}
     hostname: ${CONTAINER_RUNTIME_HOSTNAME}
     working_dir: /home/${CONTAINER_RUNTIME_USER}
@@ -285,6 +293,7 @@ emit_admin_service() {
       - /run:rw,noexec,nosuid,nodev,size=16m
       - /var/tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
+      - TZ=${CONTAINER_TIMEZONE}
       - CONTAINER_RUNTIME_USER=${CONTAINER_RUNTIME_USER}
       - USER_ID=${ADMIN_USER_ID}
       - SHARED_DIR=${CONTAINER_SHARE_DIR}
