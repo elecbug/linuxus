@@ -4,7 +4,7 @@ import (
 	"github.com/elecbug/linuxus/src/auth/internal/page"
 )
 
-func GetLoginPage(app *App) string {
+func getLoginPage(app *App) string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | Login",
 		getBaseMeta(),
@@ -61,7 +61,7 @@ func GetLoginPage(app *App) string {
 	return htmlpage.Render()
 }
 
-func GetServicePage(app *App) string {
+func getServicePage(app *App) string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | {{.ID}}",
 		getBaseMeta(),
@@ -110,7 +110,7 @@ func GetServicePage(app *App) string {
 	return htmlpage.Render()
 }
 
-func GetErrorPage(app *App) string {
+func getErrorPage() string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | Error",
 		getBaseMeta(),
