@@ -29,13 +29,12 @@ RUN apt-get update && apt-get install -y \
 
 RUN locale-gen en_US.UTF-8
 
-ARG TIMEZONE=Asia/Seoul
 ARG CONTAINER_RUNTIME_USER=linuxus
 
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
-ENV TZ=$TIMEZONE
+
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone
 
