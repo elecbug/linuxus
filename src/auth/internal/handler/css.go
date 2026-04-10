@@ -172,7 +172,7 @@ func serviceIframeCSS() []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("div.frame-wrap",
 			page.NewAttributes(
-				"height", "calc(100% - 56px - 40px - 1.3em)",
+				"height", "calc(100% - 56px - 40px - 40px)",
 			)...,
 		),
 		page.NewCSSContent("iframe",
