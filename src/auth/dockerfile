@@ -14,7 +14,9 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
 
-ENV TZ=Asia/Seoul
+ARG TIMEZONE=Asia/Seoul
+
+ENV TZ=$TIMEZONE
 
 WORKDIR /app
 
