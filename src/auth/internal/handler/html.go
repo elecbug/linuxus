@@ -1,8 +1,10 @@
 package handler
 
-import "github.com/elecbug/linuxus/src/auth/internal/page"
+import (
+	"github.com/elecbug/linuxus/src/auth/internal/page"
+)
 
-func (a *App) GetLoginPage() string {
+func GetLoginPage(app *App) string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | Login",
 		getBaseMeta(),
@@ -22,7 +24,7 @@ func (a *App) GetLoginPage() string {
 			page.NewAttributes(
 				"class", "login-form",
 				"method", "post",
-				"action", "/"+a.loginPath,
+				"action", "/"+app.LoginPath(),
 			),
 			page.NewHTML(
 				"input",
@@ -69,7 +71,7 @@ func (a *App) GetLoginPage() string {
 	return htmlpage.Render()
 }
 
-func (a *App) GetServicePage() string {
+func GetServicePage(app *App) string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | {{.ID}}",
 		getBaseMeta(),
@@ -89,7 +91,7 @@ func (a *App) GetServicePage() string {
 					"a",
 					page.NewAttributes(
 						"class", "btn",
-						"href", "/"+a.terminalPath+"/",
+						"href", "/"+app.TerminalPath()+"/",
 						"target", "shellframe",
 					),
 					"Open Shell",
@@ -98,7 +100,7 @@ func (a *App) GetServicePage() string {
 					"a",
 					page.NewAttributes(
 						"class", "btn btn-danger",
-						"href", "/"+a.logoutPath,
+						"href", "/"+app.LogoutPath(),
 					),
 					"Logout",
 				),
@@ -109,7 +111,7 @@ func (a *App) GetServicePage() string {
 			page.NewAttributes("class", "frame-wrap"),
 			page.NewHTML(
 				"iframe",
-				page.NewAttributes("name", "shellframe", "src", "/"+a.terminalPath+"/"),
+				page.NewAttributes("name", "shellframe", "src", "/"+app.TerminalPath()+"/"),
 				"", // The iframe content will be loaded from the terminal path
 			),
 		),
@@ -118,7 +120,7 @@ func (a *App) GetServicePage() string {
 	return htmlpage.Render()
 }
 
-func (a *App) GetErrorPage() string {
+func GetErrorPage(app *App) string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | Error",
 		getBaseMeta(),

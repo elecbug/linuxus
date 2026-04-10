@@ -1,19 +1,23 @@
-package handler_test
+package handler
 
 import (
 	"testing"
-
-	"github.com/elecbug/linuxus/src/auth/internal/handler"
 )
 
 func TestHTMLRendering(t *testing.T) {
-	app := handler.NewApp(
-		nil, nil,
-		"login", "logout", "service", "terminal",
-		"adminContainer", "linuxus-user-",
-		nil,
-	)
-	loginPage := app.GetLoginPage()
+	config := AppConfig{
+		Users:                   nil,
+		SessionKey:              nil,
+		LoginPath:               "login",
+		LogoutPath:              "logout",
+		ServicePath:             "service",
+		TerminalPath:            "terminal",
+		UserContainerNamePrefix: "linuxus-user-",
+		TrustedProxies:          nil,
+	}
+
+	app := NewApp(config)
+	loginPage := GetLoginPage(app)
 	if loginPage == "" {
 		t.Error("GetLoginPage returned an empty string")
 	} else {
@@ -23,13 +27,19 @@ func TestHTMLRendering(t *testing.T) {
 }
 
 func TestGetErrorPageRendering(t *testing.T) {
-	app := handler.NewApp(
-		nil, nil,
-		"login", "logout", "service", "terminal",
-		"adminContainer", "linuxus-user-",
-		nil,
-	)
-	errorPage := app.GetErrorPage()
+	config := AppConfig{
+		Users:                   nil,
+		SessionKey:              nil,
+		LoginPath:               "login",
+		LogoutPath:              "logout",
+		ServicePath:             "service",
+		TerminalPath:            "terminal",
+		UserContainerNamePrefix: "linuxus-user-",
+		TrustedProxies:          nil,
+	}
+
+	app := NewApp(config)
+	errorPage := GetErrorPage(app)
 	if errorPage == "" {
 		t.Error("GetErrorPage returned an empty string")
 	} else {
