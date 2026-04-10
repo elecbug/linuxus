@@ -52,7 +52,7 @@ type loginAttempt struct {
 	LastFailAt  time.Time
 }
 
-func NewApp(config AppConfig) *App {
+func NewApp(config *AppConfig) *App {
 	var trustedProxies []*net.IPNet
 
 	for _, cidr := range config.TrustedProxies {
@@ -105,12 +105,15 @@ func (a *App) Muxer() *http.ServeMux {
 func (a *App) LoginPath() string {
 	return a.loginPath
 }
+
 func (a *App) LogoutPath() string {
 	return a.logoutPath
 }
+
 func (a *App) ServicePath() string {
 	return a.servicePath
 }
+
 func (a *App) TerminalPath() string {
 	return a.terminalPath
 }
@@ -125,17 +128,17 @@ func (a *App) Stop() {
 }
 
 func (a *App) RegisterRoutes() {
-	loginTmpl, err := template.New(a.loginPath).Parse(GetLoginPage(a))
+	loginTmpl, err := template.New(a.loginPath).Parse(getLoginPage(a))
 	if err != nil {
 		log.Fatalf("failed to parse login template: %v", err)
 	}
 
-	serviceTmpl, err := template.New(a.servicePath).Parse(GetServicePage(a))
+	serviceTmpl, err := template.New(a.servicePath).Parse(getServicePage(a))
 	if err != nil {
 		log.Fatalf("failed to parse service template: %v", err)
 	}
 
-	errorTmpl, err := template.New("error").Parse(GetErrorPage(a))
+	errorTmpl, err := template.New("error").Parse(getErrorPage())
 	if err != nil {
 		log.Fatalf("failed to parse error template: %v", err)
 	}

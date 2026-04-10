@@ -4,7 +4,7 @@ import (
 	"github.com/elecbug/linuxus/src/auth/internal/page"
 )
 
-func GetLoginPage(app *App) string {
+func getLoginPage(app *App) string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | Login",
 		getBaseMeta(),
@@ -55,23 +55,13 @@ func GetLoginPage(app *App) string {
 			page.NewAttributes("class", "tooltip"),
 			"Don't have an account? Contact the administrator.",
 		),
-		page.NewHTML(
-			"footer",
-			page.NewAttributes(),
-			"© 2026 ",
-			page.NewHTML(
-				"a",
-				page.NewAttributes("href", "https://github.com/elecbug/linuxus"),
-				"Linuxus",
-			),
-			". All rights reserved.",
-		),
+		linuxusFooterHTML(),
 	)
 
 	return htmlpage.Render()
 }
 
-func GetServicePage(app *App) string {
+func getServicePage(app *App) string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | {{.ID}}",
 		getBaseMeta(),
@@ -120,7 +110,7 @@ func GetServicePage(app *App) string {
 	return htmlpage.Render()
 }
 
-func GetErrorPage(app *App) string {
+func getErrorPage() string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | Error",
 		getBaseMeta(),
@@ -140,21 +130,10 @@ func GetErrorPage(app *App) string {
 			page.NewAttributes("class", "tooltip"),
 			"Please try again or contact the administrator.",
 		),
-		page.NewHTML(
-			"footer",
-			page.NewAttributes(),
-			"© 2026 ",
-			page.NewHTML(
-				"a",
-				page.NewAttributes("href", "https://github.com/elecbug/linuxus"),
-				"Linuxus",
-			),
-			". All rights reserved.",
-		),
+		linuxusFooterHTML(),
 	)
 
 	return htmlpage.Render()
-
 }
 
 func getBaseMeta() []page.Attribute {
@@ -162,5 +141,19 @@ func getBaseMeta() []page.Attribute {
 		"charset", "UTF-8",
 		"name", "viewport",
 		"content", "width=device-width, initial-scale=1.0",
+	)
+}
+
+func linuxusFooterHTML() *page.HTML {
+	return page.NewHTML(
+		"footer",
+		page.NewAttributes(),
+		"© 2026 ",
+		page.NewHTML(
+			"a",
+			page.NewAttributes("href", "https://github.com/elecbug/linuxus"),
+			"Linuxus",
+		),
+		". All rights reserved.",
 	)
 }

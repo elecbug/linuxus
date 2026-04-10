@@ -5,7 +5,7 @@ import (
 )
 
 func TestHTMLRendering(t *testing.T) {
-	config := AppConfig{
+	config := &AppConfig{
 		Users:                   nil,
 		SessionKey:              nil,
 		LoginPath:               "login",
@@ -17,7 +17,7 @@ func TestHTMLRendering(t *testing.T) {
 	}
 
 	app := NewApp(config)
-	loginPage := GetLoginPage(app)
+	loginPage := getLoginPage(app)
 	if loginPage == "" {
 		t.Error("GetLoginPage returned an empty string")
 	} else {
@@ -27,19 +27,7 @@ func TestHTMLRendering(t *testing.T) {
 }
 
 func TestGetErrorPageRendering(t *testing.T) {
-	config := AppConfig{
-		Users:                   nil,
-		SessionKey:              nil,
-		LoginPath:               "login",
-		LogoutPath:              "logout",
-		ServicePath:             "service",
-		TerminalPath:            "terminal",
-		UserContainerNamePrefix: "linuxus-user-",
-		TrustedProxies:          nil,
-	}
-
-	app := NewApp(config)
-	errorPage := GetErrorPage(app)
+	errorPage := getErrorPage()
 	if errorPage == "" {
 		t.Error("GetErrorPage returned an empty string")
 	} else {
