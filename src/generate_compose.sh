@@ -193,6 +193,7 @@ emit_auth_service() {
     container_name: ${AUTH_CONTAINER_NAME}
 
     environment:
+      - TZ=${AUTH_TIMEZONE}
       - AUTH_LIST=${AUTH_LIST_MOUNT_PATH}
       - SESSION_SECRET=${AUTH_SESSION_SECRET}
       - LOGIN_PATH=${URL_LOGIN_PATH}
