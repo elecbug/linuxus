@@ -1,6 +1,10 @@
 package handler
 
-import "github.com/elecbug/linuxus/src/auth/internal/page"
+import (
+	"fmt"
+
+	"github.com/elecbug/linuxus/src/auth/internal/page"
+)
 
 func getLoginCSS() *page.CSS {
 	return page.NewCSS().AddContents(
@@ -8,7 +12,7 @@ func getLoginCSS() *page.CSS {
 		loginTooltipCSS(),
 		loginErrorCSS(),
 	).AddContents(
-		footerCSS()...,
+		footerCSS(40)...,
 	).AddContents(
 		loginFormCSS()...,
 	).AddContents(
@@ -22,7 +26,7 @@ func getErrorCSS() *page.CSS {
 		loginTooltipCSS(),
 		loginErrorCSS(),
 	).AddContents(
-		footerCSS()...,
+		footerCSS(40)...,
 	)
 }
 
@@ -36,16 +40,16 @@ func getServiceCSS() *page.CSS {
 	).AddContents(
 		serviceButtonCSS()...,
 	).AddContents(
-		footerCSS()...,
+		footerCSS(20)...,
 	)
 
 }
 
-func footerCSS() []*page.CSSContent {
+func footerCSS(marginTop int) []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("footer",
 			page.NewAttributes(
-				"margin-top", "40px",
+				"margin-top", fmt.Sprintf("%dpx", marginTop),
 				"font-size", "0.9em",
 				"text-align", "center",
 				"color", FOOTER_COLOR,
@@ -172,7 +176,7 @@ func serviceIframeCSS() []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("div.frame-wrap",
 			page.NewAttributes(
-				"height", "calc(100% - 56px - 40px - 40px)",
+				"height", "calc(100% - 56px - 50px)",
 			)...,
 		),
 		page.NewCSSContent("iframe",
