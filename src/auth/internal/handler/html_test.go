@@ -1,13 +1,11 @@
-package handler_test
+package handler
 
 import (
 	"testing"
-
-	"github.com/elecbug/linuxus/src/auth/internal/handler"
 )
 
 func TestHTMLRendering(t *testing.T) {
-	config := handler.AppConfig{
+	config := AppConfig{
 		Users:                   nil,
 		SessionKey:              nil,
 		LoginPath:               "login",
@@ -19,8 +17,8 @@ func TestHTMLRendering(t *testing.T) {
 		TrustedProxies:          nil,
 	}
 
-	app := handler.NewApp(config)
-	loginPage := app.GetLoginPage()
+	app := NewApp(config)
+	loginPage := GetLoginPage(app)
 	if loginPage == "" {
 		t.Error("GetLoginPage returned an empty string")
 	} else {
@@ -30,7 +28,7 @@ func TestHTMLRendering(t *testing.T) {
 }
 
 func TestGetErrorPageRendering(t *testing.T) {
-	config := handler.AppConfig{
+	config := AppConfig{
 		Users:                   nil,
 		SessionKey:              nil,
 		LoginPath:               "login",
@@ -42,8 +40,8 @@ func TestGetErrorPageRendering(t *testing.T) {
 		TrustedProxies:          nil,
 	}
 
-	app := handler.NewApp(config)
-	errorPage := app.GetErrorPage()
+	app := NewApp(config)
+	errorPage := GetErrorPage(app)
 	if errorPage == "" {
 		t.Error("GetErrorPage returned an empty string")
 	} else {

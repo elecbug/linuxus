@@ -105,6 +105,19 @@ func (a *App) Muxer() *http.ServeMux {
 	return a.mux
 }
 
+func (a *App) LoginPath() string {
+	return a.loginPath
+}
+func (a *App) LogoutPath() string {
+	return a.logoutPath
+}
+func (a *App) ServicePath() string {
+	return a.servicePath
+}
+func (a *App) TerminalPath() string {
+	return a.terminalPath
+}
+
 func (a *App) Start(addr string) error {
 	log.Printf("Auth server listening on %s", addr)
 	return http.ListenAndServe(addr, a.Muxer())
@@ -115,17 +128,17 @@ func (a *App) Stop() {
 }
 
 func (a *App) RegisterRoutes() {
-	loginTmpl, err := template.New(a.loginPath).Parse(a.GetLoginPage())
+	loginTmpl, err := template.New(a.loginPath).Parse(GetLoginPage(a))
 	if err != nil {
-		log.Fatalf("failed to parse template: %v", err)
+		log.Fatalf("failed to parse login template: %v", err)
 	}
 
-	serviceTmpl, err := template.New(a.servicePath).Parse(a.GetServicePage())
+	serviceTmpl, err := template.New(a.servicePath).Parse(GetServicePage(a))
 	if err != nil {
 		log.Fatalf("failed to parse service template: %v", err)
 	}
 
-	errorTmpl, err := template.New("error").Parse(a.GetErrorPage())
+	errorTmpl, err := template.New("error").Parse(GetErrorPage(a))
 	if err != nil {
 		log.Fatalf("failed to parse error template: %v", err)
 	}
