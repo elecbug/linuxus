@@ -22,7 +22,6 @@ type App struct {
 	logoutPath              string
 	servicePath             string
 	terminalPath            string
-	adminUserID             string
 	userContainerNamePrefix string
 	trustedProxies          []*net.IPNet
 
@@ -42,7 +41,6 @@ type AppConfig struct {
 	LogoutPath              string
 	ServicePath             string
 	TerminalPath            string
-	AdminUserID             string
 	UserContainerNamePrefix string
 	TrustedProxies          []string
 }
@@ -73,7 +71,6 @@ func NewApp(config AppConfig) *App {
 		logoutPath:              config.LogoutPath,
 		servicePath:             config.ServicePath,
 		terminalPath:            config.TerminalPath,
-		adminUserID:             config.AdminUserID,
 		userContainerNamePrefix: config.UserContainerNamePrefix,
 		trustedProxies:          trustedProxies,
 		mux:                     http.NewServeMux(),

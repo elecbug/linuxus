@@ -12,7 +12,6 @@ func TestHTMLRendering(t *testing.T) {
 		LogoutPath:              "logout",
 		ServicePath:             "service",
 		TerminalPath:            "terminal",
-		AdminUserID:             "adminContainer",
 		UserContainerNamePrefix: "linuxus-user-",
 		TrustedProxies:          nil,
 	}
@@ -35,7 +34,6 @@ func TestGetErrorPageRendering(t *testing.T) {
 		LogoutPath:              "logout",
 		ServicePath:             "service",
 		TerminalPath:            "terminal",
-		AdminUserID:             "adminContainer",
 		UserContainerNamePrefix: "linuxus-user-",
 		TrustedProxies:          nil,
 	}

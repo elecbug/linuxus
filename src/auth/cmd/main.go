@@ -58,10 +58,6 @@ func parseConfig() (*handler.AppConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
-	adminUserID, err := getEnv("ADMIN_USER_ID")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
 	userContainerNamePrefix, err := getEnv("USER_CONTAINER_NAME_PREFIX")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
@@ -80,7 +76,6 @@ func parseConfig() (*handler.AppConfig, error) {
 		LogoutPath:              logoutPath,
 		ServicePath:             servicePath,
 		TerminalPath:            terminalPath,
-		AdminUserID:             adminUserID,
 		UserContainerNamePrefix: userContainerNamePrefix,
 		TrustedProxies:          handler.ParseTrustedProxies(trustedProxies),
 	}, nil
