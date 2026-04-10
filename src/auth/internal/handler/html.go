@@ -55,17 +55,7 @@ func GetLoginPage(app *App) string {
 			page.NewAttributes("class", "tooltip"),
 			"Don't have an account? Contact the administrator.",
 		),
-		page.NewHTML(
-			"footer",
-			page.NewAttributes(),
-			"© 2026 ",
-			page.NewHTML(
-				"a",
-				page.NewAttributes("href", "https://github.com/elecbug/linuxus"),
-				"Linuxus",
-			),
-			". All rights reserved.",
-		),
+		linuxusFooterHTML(),
 	)
 
 	return htmlpage.Render()
@@ -140,21 +130,10 @@ func GetErrorPage(app *App) string {
 			page.NewAttributes("class", "tooltip"),
 			"Please try again or contact the administrator.",
 		),
-		page.NewHTML(
-			"footer",
-			page.NewAttributes(),
-			"© 2026 ",
-			page.NewHTML(
-				"a",
-				page.NewAttributes("href", "https://github.com/elecbug/linuxus"),
-				"Linuxus",
-			),
-			". All rights reserved.",
-		),
+		linuxusFooterHTML(),
 	)
 
 	return htmlpage.Render()
-
 }
 
 func getBaseMeta() []page.Attribute {
@@ -162,5 +141,19 @@ func getBaseMeta() []page.Attribute {
 		"charset", "UTF-8",
 		"name", "viewport",
 		"content", "width=device-width, initial-scale=1.0",
+	)
+}
+
+func linuxusFooterHTML() *page.HTML {
+	return page.NewHTML(
+		"footer",
+		page.NewAttributes(),
+		"© 2026 ",
+		page.NewHTML(
+			"a",
+			page.NewAttributes("href", "https://github.com/elecbug/linuxus"),
+			"Linuxus",
+		),
+		". All rights reserved.",
 	)
 }

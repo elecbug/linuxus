@@ -5,7 +5,7 @@ import (
 )
 
 func TestHTMLRendering(t *testing.T) {
-	config := AppConfig{
+	config := &AppConfig{
 		Users:                   nil,
 		SessionKey:              nil,
 		LoginPath:               "login",
@@ -27,7 +27,7 @@ func TestHTMLRendering(t *testing.T) {
 }
 
 func TestGetErrorPageRendering(t *testing.T) {
-	config := AppConfig{
+	config := &AppConfig{
 		Users:                   nil,
 		SessionKey:              nil,
 		LoginPath:               "login",

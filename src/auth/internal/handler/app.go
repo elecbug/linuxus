@@ -52,7 +52,7 @@ type loginAttempt struct {
 	LastFailAt  time.Time
 }
 
-func NewApp(config AppConfig) *App {
+func NewApp(config *AppConfig) *App {
 	var trustedProxies []*net.IPNet
 
 	for _, cidr := range config.TrustedProxies {
@@ -105,12 +105,15 @@ func (a *App) Muxer() *http.ServeMux {
 func (a *App) LoginPath() string {
 	return a.loginPath
 }
+
 func (a *App) LogoutPath() string {
 	return a.logoutPath
 }
+
 func (a *App) ServicePath() string {
 	return a.servicePath
 }
+
 func (a *App) TerminalPath() string {
 	return a.terminalPath
 }

@@ -15,7 +15,7 @@ func main() {
 		log.Fatalf("failed to parse config: %v", err)
 	}
 
-	app := handler.NewApp(*config)
+	app := handler.NewApp(config)
 	app.RegisterRoutes()
 
 	if err := app.Start(":8080"); err != nil {

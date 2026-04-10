@@ -10,8 +10,8 @@ func NewCSS(contents ...*CSSContent) *CSS {
 	}
 }
 
-func (c *CSS) AddContent(content *CSSContent) *CSS {
-	c.contents = append(c.contents, content)
+func (c *CSS) AddContents(content ...*CSSContent) *CSS {
+	c.contents = append(c.contents, content...)
 	return c
 }
 
