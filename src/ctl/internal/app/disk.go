@@ -15,7 +15,17 @@ func (a *App) PrepareUserDisks() error {
 	if err := os.MkdirAll(a.Config.Volumes.Host.Share, 0755); err != nil {
 		return err
 	}
+	if err := runCmd("sudo", "chown",
+		fmt.Sprintf("%d:%d", a.Config.ContainerRuntime.UID, a.Config.ContainerRuntime.GID),
+		a.Config.Volumes.Host.Share); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(a.Config.Volumes.Host.Readonly, 0755); err != nil {
+		return err
+	}
+	if err := runCmd("sudo", "chown",
+		fmt.Sprintf("%d:%d", a.Config.ContainerRuntime.UID, a.Config.ContainerRuntime.GID),
+		a.Config.Volumes.Host.Readonly); err != nil {
 		return err
 	}
 
