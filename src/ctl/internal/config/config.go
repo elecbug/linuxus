@@ -1,31 +1,61 @@
 package config
 
 type Config struct {
-	ContainerRuntime struct {
-		UID      int    `yaml:"uid"`
-		GID      int    `yaml:"gid"`
-		User     string `yaml:"user"`
-		Hostname string `yaml:"hostname"`
-		Timezone string `yaml:"timezone"`
-	} `yaml:"container_runtime"`
-
 	UserService struct {
-		SourceDir           string `yaml:"source_dir"`
-		ContainerNamePrefix string `yaml:"container_name_prefix"`
-		NetworkPrefix       string `yaml:"network_prefix"`
-		BaseIP              string `yaml:"base_ip"`
+		SourceDir string `yaml:"source_dir"`
+
+		Container struct {
+			NamePrefix    string `yaml:"name_prefix"`
+			NetworkPrefix string `yaml:"network_prefix"`
+			BaseIP        string `yaml:"base_ip"`
+
+			Runtime struct {
+				UID      int    `yaml:"uid"`
+				GID      int    `yaml:"gid"`
+				User     string `yaml:"user"`
+				Hostname string `yaml:"hostname"`
+				Timezone string `yaml:"timezone"`
+			} `yaml:"runtime"`
+
+			User struct {
+				Limits Limits `yaml:"limits"`
+			} `yaml:"user"`
+
+			Admin struct {
+				UserID string `yaml:"user_id"`
+				Limits Limits `yaml:"limits"`
+			} `yaml:"admin"`
+		} `yaml:"container"`
 	} `yaml:"user_service"`
 
-	Admin struct {
-		UserID string `yaml:"user_id"`
-	} `yaml:"admin"`
+	AuthService struct {
+		SourceDir string `yaml:"source_dir"`
+		Container struct {
+			Name         string `yaml:"name"`
+			Timezone     string `yaml:"timezone"`
+			ExternalPort int    `yaml:"external_port"`
+		} `yaml:"container"`
 
-	UserLimits  Limits `yaml:"user_limits"`
-	AdminLimits Limits `yaml:"admin_limits"`
+		URLPath struct {
+			Login    string `yaml:"login"`
+			Logout   string `yaml:"logout"`
+			Service  string `yaml:"service"`
+			Terminal string `yaml:"terminal"`
+		} `yaml:"url_path"`
+
+		AuthListFile struct {
+			HostPath      string `yaml:"host_path"`
+			ContainerPath string `yaml:"container_path"`
+		} `yaml:"auth_list_file"`
+
+		Security struct {
+			SessionSecret  string `yaml:"session_secret"`
+			TrustedProxies string `yaml:"trusted_proxies"`
+		} `yaml:"security"`
+	} `yaml:"auth_service"`
 
 	Volumes struct {
 		Host struct {
-			Base     string `yaml:"base"`
 			Homes    string `yaml:"homes"`
 			Share    string `yaml:"share"`
 			Readonly string `yaml:"readonly"`
@@ -35,24 +65,6 @@ type Config struct {
 			Readonly string `yaml:"readonly"`
 		} `yaml:"container"`
 	} `yaml:"volumes"`
-
-	URLPaths struct {
-		Login    string `yaml:"login"`
-		Logout   string `yaml:"logout"`
-		Service  string `yaml:"service"`
-		Terminal string `yaml:"terminal"`
-	} `yaml:"url_paths"`
-
-	AuthService struct {
-		ExternalPort   int    `yaml:"external_port"`
-		Timezone       string `yaml:"timezone"`
-		SourceDir      string `yaml:"source_dir"`
-		ContainerName  string `yaml:"container_name"`
-		ListFile       string `yaml:"list_file"`
-		ListMountPath  string `yaml:"list_mount_path"`
-		SessionSecret  string `yaml:"session_secret"`
-		TrustedProxies string `yaml:"trusted_proxies"`
-	} `yaml:"auth_service"`
 
 	Compose struct {
 		OutputFile string `yaml:"output_file"`

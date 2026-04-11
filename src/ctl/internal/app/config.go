@@ -23,10 +23,10 @@ func (a *App) LoadConfig() error {
 }
 
 func (a *App) ValidateConfig() error {
-	if a.Config.AuthService.ExternalPort <= 0 {
+	if a.Config.AuthService.Container.ExternalPort <= 0 {
 		return errors.New("auth_service.external_port must be a positive integer")
 	}
-	if a.Config.Admin.UserID == "" {
+	if a.Config.UserService.Container.Admin.UserID == "" {
 		return errors.New("admin.user_id must not be empty")
 	}
 	if a.Config.Compose.OutputFile == "" {
@@ -42,9 +42,8 @@ func (a *App) normalizeConfigPaths() {
 	a.Config.UserService.SourceDir = a.absFromSource(a.Config.UserService.SourceDir)
 	a.Config.AuthService.SourceDir = a.absFromSource(a.Config.AuthService.SourceDir)
 
-	a.Config.AuthService.ListFile = a.absFromSource(a.Config.AuthService.ListFile)
+	a.Config.AuthService.AuthListFile.HostPath = a.absFromSource(a.Config.AuthService.AuthListFile.HostPath)
 
-	a.Config.Volumes.Host.Base = a.absFromSource(a.Config.Volumes.Host.Base)
 	a.Config.Volumes.Host.Homes = a.absFromSource(a.Config.Volumes.Host.Homes)
 	a.Config.Volumes.Host.Share = a.absFromSource(a.Config.Volumes.Host.Share)
 	a.Config.Volumes.Host.Readonly = a.absFromSource(a.Config.Volumes.Host.Readonly)
