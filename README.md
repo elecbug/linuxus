@@ -9,7 +9,10 @@
 > ![LOGIN](./doc/fig/01-login.png)
 > 
 
-> ![SHELL](./doc/fig/02-in_service.png)
+> ![SHELL1](./doc/fig/02-shell_1.png)
+>
+
+> ![SHELL2](./doc/fig/03-shell_2.png)
 >
 
 ---
