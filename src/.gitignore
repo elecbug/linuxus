@@ -7,9 +7,6 @@ volumes/
 # Generated docker-compose files for services.
 *.generated.yml
 
-# Ignore build artifacts and temporary files.
-linuxusctl
-
 # Logs and temporary files.
 logs/
 tmp/

@@ -16,7 +16,7 @@ func (a *App) PrepareUserDisks() error {
 		return err
 	}
 	if err := runCmd("sudo", "chown",
-		fmt.Sprintf("%d:%d", a.Config.ContainerRuntime.UID, a.Config.ContainerRuntime.GID),
+		fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
 		a.Config.Volumes.Host.Share); err != nil {
 		return err
 	}
@@ -24,7 +24,7 @@ func (a *App) PrepareUserDisks() error {
 		return err
 	}
 	if err := runCmd("sudo", "chown",
-		fmt.Sprintf("%d:%d", a.Config.ContainerRuntime.UID, a.Config.ContainerRuntime.GID),
+		fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
 		a.Config.Volumes.Host.Readonly); err != nil {
 		return err
 	}
@@ -34,16 +34,16 @@ func (a *App) PrepareUserDisks() error {
 			return err
 		}
 	}
-	if err := a.createUserDisk(a.Config.Admin.UserID, true); err != nil {
+	if err := a.createUserDisk(a.Config.UserService.Container.Admin.UserID, true); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (a *App) createUserDisk(userID string, isAdmin bool) error {
-	size := a.Config.UserLimits.Disk
+	size := a.Config.UserService.Container.User.Limits.Disk
 	if isAdmin {
-		size = a.Config.AdminLimits.Disk
+		size = a.Config.UserService.Container.Admin.Limits.Disk
 	}
 
 	img := filepath.Join(a.Config.Volumes.Host.Homes, userID+".img")
@@ -91,7 +91,7 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	}
 	mounted = true
 	if err = runCmd("sudo", "chown",
-		fmt.Sprintf("%d:%d", a.Config.ContainerRuntime.UID, a.Config.ContainerRuntime.GID),
+		fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
 		mountPoint); err != nil {
 		return err
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 func (a *App) LoadUsers() error {
-	authList := a.Config.AuthService.ListFile
+	authList := a.Config.AuthService.AuthListFile.HostPath
 
 	f, err := os.Open(authList)
 	if err != nil {
@@ -31,7 +31,7 @@ func (a *App) LoadUsers() error {
 		if userID == "" {
 			continue
 		}
-		if userID == a.Config.Admin.UserID {
+		if userID == a.Config.UserService.Container.Admin.UserID {
 			continue
 		}
 		if _, exists := a.Seen[userID]; exists {

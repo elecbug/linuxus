@@ -4,16 +4,15 @@
 
 ---
 
-## 🌐 Preview
+## 🌐 Preview Images
 
-> ![LOGIN](./doc/fig/01-login.png)
-> 
-
-> ![SHELL1](./doc/fig/02-shell_1.png)
->
-
-> ![SHELL2](./doc/fig/03-shell_2.png)
->
+<table>
+  <tr>
+    <td><img src="./doc/fig/01-login.png"></td>
+    <td><img src="./doc/fig/02-shell_1.png"></td>
+    <td><img src="./doc/fig/03-shell_2.png"></td>
+  </tr>
+</table>
 
 ---
 
@@ -21,11 +20,11 @@
 
 Linuxus enables instructors to provide per-user Linux environments without requiring local setup.
 
-🐳 Container-based user isolation (Docker)
-🌐 Web-based shell access (no SSH required)
-📁 Per-user persistent storage
-🔒 Resource and permission control
-⚙️ Fully configurable via YAML
+🐳 Container-based user isolation (Docker)  
+🌐 Web-based shell access (no SSH required)  
+📁 Per-user persistent storage  
+🔒 Resource and permission control  
+⚙️ Fully configurable via YAML  
 
 ---
 
@@ -40,8 +39,8 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
 1. Install required dependencies:
 
-   * Docker (required)
    * Go
+   * Docker
 
    ```bash
    # Install Go
@@ -50,7 +49,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
    ```bash
    # Install Docker
-   ./util/docker_reinstall.sh
+   sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
    ```
 
 2. Build the hash generator:
@@ -68,14 +67,14 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 3. Add the authentication file:
 
    ```bash
-   mkdir -p ./src/data
-   touch ./src/data/AUTH_LIST
+   mkdir -p src/data
+   touch src/data/AUTH_LIST
    ```
 
 4. Create user accounts by appending credentials using:
 
    ```bash
-   ./util/make_hash.out <ID> <PASSWORD> >> ./src/data/AUTH_LIST
+   ./util/make_hash.out <ID> <PASSWORD> >> src/data/AUTH_LIST
    ```
 
    > ⚠️ The default admin account ID is `alpha`.
@@ -91,19 +90,19 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 5. Build the Linuxus-ctl generator:
 
    ```bash
-   ./src/ctl/build.sh
+   ./ctl/build.sh
    ```
 
    This will generate the following executable:
 
    ```bash
-   ./src/linuxusctl --help
+   ./linuxusctl --help
    ```
 
 6. Start the services (containers) for each user:
 
    ```bash
-   ./src/linuxusctl <OPTION>
+   ./linuxusctl <OPTION>
    ```
 
    **⚙️ Options**
@@ -123,16 +122,16 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
    ```bash
    # Generate + run
-   ./src/linuxusctl -g -u
+   ./linuxusctl -g -u
 
    # Restart everything
-   ./src/linuxusctl -r
+   ./linuxusctl -r
 
    # Full reset (⚠️ deletes user data)
-   ./src/linuxusctl -v
+   ./linuxusctl -v
    ```
 
-6. After running the services, a `./src/volumes` directory will be created automatically.
+7. After running the services, a `src/volumes` directory will be created automatically.
 
    Inside this directory (automatically managed by Linuxus):
 
@@ -143,7 +142,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
    **Directory Structure**
 
    ```
-   ./src/volumes/
+   src/volumes/
    ├── homes/
    │   ├── <USER1>/
    │   ├── <USER2>/

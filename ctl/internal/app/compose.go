@@ -10,7 +10,7 @@ import (
 func (a *App) GenerateCompose() error {
 	fmt.Println("[+] Generating compose file...")
 
-	adminSafe := sanitizeName(a.Config.Admin.UserID)
+	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
 
 	cf := ComposeFile{
 		Version:  "3.8",
@@ -18,21 +18,21 @@ func (a *App) GenerateCompose() error {
 		Networks: make(map[string]ComposeNetwork),
 	}
 
-	authServiceName := a.Config.AuthService.ContainerName
+	authServiceName := a.Config.AuthService.Container.Name
 	cf.Services[authServiceName] = a.buildAuthService(adminSafe)
 
 	for i := range a.UserIDs {
-		serviceName := a.Config.UserService.ContainerNamePrefix + a.SafeIDs[i]
+		serviceName := a.Config.UserService.Container.NamePrefix + a.SafeIDs[i]
 		cf.Services[serviceName] = a.buildUserService(a.UserIDs[i], a.SafeIDs[i])
 	}
 
-	adminServiceName := a.Config.UserService.ContainerNamePrefix + a.Config.Admin.UserID
+	adminServiceName := a.Config.UserService.Container.NamePrefix + a.Config.UserService.Container.Admin.UserID
 	cf.Services[adminServiceName] = a.buildAdminService(adminSafe)
 
 	seq := 0
 	for _, safeID := range a.SafeIDs {
-		networkName := a.Config.UserService.NetworkPrefix + safeID
-		subnet, err := getIP(a.Config.UserService.BaseIP, seq)
+		networkName := a.Config.UserService.Container.NetworkPrefix + safeID
+		subnet, err := getIP(a.Config.UserService.Container.BaseIP, seq)
 		if err != nil {
 			return err
 		}
@@ -45,8 +45,8 @@ func (a *App) GenerateCompose() error {
 		seq++
 	}
 
-	adminNetworkName := a.Config.UserService.NetworkPrefix + adminSafe
-	subnet, err := getIP(a.Config.UserService.BaseIP, seq)
+	adminNetworkName := a.Config.UserService.Container.NetworkPrefix + adminSafe
+	subnet, err := getIP(a.Config.UserService.Container.BaseIP, seq)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (a *App) VolumeClean() error {
 
 	if err := runCmd(
 		"sudo", "chown",
-		fmt.Sprintf("%d:%d", a.Config.ContainerRuntime.UID, a.Config.ContainerRuntime.GID),
+		fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
 		a.Config.Volumes.Host.Share,
 		a.Config.Volumes.Host.Readonly,
 	); err != nil {

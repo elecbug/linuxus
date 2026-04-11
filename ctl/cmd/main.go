@@ -46,8 +46,7 @@ func run() error {
 		return err
 	}
 
-	utilDir := filepath.Dir(execPath)
-	repoDir := filepath.Dir(utilDir)
+	repoDir := filepath.Dir(execPath)
 	sourceDir := filepath.Join(repoDir, "src")
 	configFile := filepath.Join(sourceDir, "config.yml")
 
@@ -63,7 +62,6 @@ func run() error {
 	app := &app.App{
 		CurrentDir: currentDir,
 		ExecPath:   execPath,
-		UtilDir:    utilDir,
 		RepoDir:    repoDir,
 		SourceDir:  sourceDir,
 		ConfigFile: configFile,
