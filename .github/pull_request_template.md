@@ -1,46 +1,50 @@
 ## 📌 PR Type
 
-<!-- Select one and remove others -->
+<!-- Select one or more -->
 
 - [ ] [CHORE] Maintenance / config / build changes
 - [ ] [REFACTOR] Code structure improvement (no behavior change)
-- [ ] [DOC] Documentation update
+- [ ] [DOCUMENT] Documentation update
 - [ ] [FEATURE] Minor feature
 - [ ] [GENESIS] Major update / large-scale change
 - [ ] [BUG] Bug fix
-- [ ] [DUP] Duplicate / redundant PR
+- [ ] [DUPLICATE] Duplicate / redundant PR
 
 ---
 
 ## 📝 Description
 
-Describe what this PR does.
+> *Describe what this PR does.*
+
+
 
 ---
 
 ## 🔍 Details
 
-Explain the changes in detail:
+> *Explain the changes in detail:*
+>
+> - *What was changed?*
+> - *Why was it changed?*
+> - *Any important design decisions?*
 
-- What was changed?
-- Why was it changed?
-- Any important design decisions?
+
 
 ---
 
 ## 🧪 How to Test
 
-Steps to verify this PR:
+> *Steps to verify this PR:*
 
-```bash
-# example commands
-```
+
 
 ---
 
 ## 📸 Screenshots (if applicable)
 
-Add screenshots or logs if needed.
+<!-- Add screenshots or logs if needed. -->
+
+
 
 ---
 
@@ -49,14 +53,16 @@ Add screenshots or logs if needed.
 * [ ] Yes
 * [ ] No
 
-If yes, explain:
+> *If yes, explain:*
+
+
 
 ---
 
 ## 🔗 Related Issues
 
-Closes #
-Related to #
+- Closes #
+- Related to #
 
 ---
 
@@ -72,4 +78,5 @@ Related to #
 
 ## 💬 Additional Notes
 
-Anything else reviewers should know.
+> *Anything else reviewers should know.*
+

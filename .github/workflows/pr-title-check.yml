@@ -19,7 +19,7 @@ jobs:
         run: |
           echo "Checking PR title: $PR_TITLE"
 
-          if [[ "$PR_TITLE" =~ ^\[(CHORE|REFACTOR|DOC|FEATURE|GENESIS|BUG|DUP)\]\  ]]; then
+          if [[ "$PR_TITLE" =~ ^\[(CHORE|REFACTOR|DOCUMENT|FEATURE|GENESIS|BUG|DUPLICATE)\]\  ]]; then
             echo "PR title format is valid."
             exit 0
           fi
@@ -28,9 +28,9 @@ jobs:
           echo "PR title must start with one of:"
           echo "  [CHORE] ..."
           echo "  [REFACTOR] ..."
-          echo "  [DOC] ..."
+          echo "  [DOCUMENT] ..."
           echo "  [FEATURE] ..."
           echo "  [GENESIS] ..."
           echo "  [BUG] ..."
-          echo "  [DUP] ..."
+          echo "  [DUPLICATE] ..."
           exit 1
