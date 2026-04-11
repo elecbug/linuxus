@@ -132,7 +132,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
    ./src/linuxusctl -v
    ```
 
-6. After running the services, a `./src/volumes` directory will be created automatically.
+7. After running the services, a `./src/volumes` directory will be created automatically.
 
    Inside this directory (automatically managed by Linuxus):
 
