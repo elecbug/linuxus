@@ -59,7 +59,10 @@ func isMountPoint(path string) (bool, error) {
 	}
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
-		return false, nil
+		if exitErr.ExitCode() == 1 {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check mountpoint %s: %w", path, err)
 	}
 	return false, fmt.Errorf("failed to check mountpoint %s: %w", path, err)
 }
