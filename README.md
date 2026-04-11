@@ -90,19 +90,19 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 5. Build the Linuxus-ctl generator:
 
    ```bash
-   ./src/ctl/build.sh
+   ./ctl/build.sh
    ```
 
    This will generate the following executable:
 
    ```bash
-   ./src/linuxusctl --help
+   ./linuxusctl --help
    ```
 
 6. Start the services (containers) for each user:
 
    ```bash
-   ./src/linuxusctl <OPTION>
+   ./linuxusctl <OPTION>
    ```
 
    **⚙️ Options**
@@ -122,13 +122,13 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
    ```bash
    # Generate + run
-   ./src/linuxusctl -g -u
+   ./linuxusctl -g -u
 
    # Restart everything
-   ./src/linuxusctl -r
+   ./linuxusctl -r
 
    # Full reset (⚠️ deletes user data)
-   ./src/linuxusctl -v
+   ./linuxusctl -v
    ```
 
 7. After running the services, a `src/volumes` directory will be created automatically.

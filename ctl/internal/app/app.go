@@ -7,7 +7,6 @@ import (
 type App struct {
 	CurrentDir string
 	ExecPath   string
-	UtilDir    string
 	RepoDir    string
 	SourceDir  string
 	ConfigFile string
