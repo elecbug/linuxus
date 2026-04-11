@@ -1,4 +1,4 @@
-module github.com/elecbug/linuxus/src/compose-generater
+module github.com/elecbug/linuxus/src/ctl
 
 go 1.22
 

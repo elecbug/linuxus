@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/elecbug/linuxus/src/compose-generater/internal/app"
+	"github.com/elecbug/linuxus/src/ctl/internal/app"
 )
 
 type Option int

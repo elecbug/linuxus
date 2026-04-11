@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/elecbug/linuxus/src/compose-generater/internal/config"
+	"github.com/elecbug/linuxus/src/ctl/internal/config"
 )
 
 type App struct {
