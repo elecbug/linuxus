@@ -2,7 +2,7 @@ package handler
 
 const BOX_DISPLAY = "inline-block"
 const BOX_PADDING = "8px 12px"
-const BOX_FONT_SIZE = "16px"
+const BOX_FONT_SIZE = "1em"
 const BOX_TEXT_DECORATION = "none"
 const BOX_BORDER_RADIUS = "6px"
 

@@ -1,6 +1,10 @@
 package handler
 
-import "github.com/elecbug/linuxus/src/auth/internal/page"
+import (
+	"fmt"
+
+	"github.com/elecbug/linuxus/src/auth/internal/page"
+)
 
 func getLoginCSS() *page.CSS {
 	return page.NewCSS().AddContents(
@@ -8,7 +12,7 @@ func getLoginCSS() *page.CSS {
 		loginTooltipCSS(),
 		loginErrorCSS(),
 	).AddContents(
-		loginFooterCSS()...,
+		footerCSS(40)...,
 	).AddContents(
 		loginFormCSS()...,
 	).AddContents(
@@ -22,7 +26,7 @@ func getErrorCSS() *page.CSS {
 		loginTooltipCSS(),
 		loginErrorCSS(),
 	).AddContents(
-		loginFooterCSS()...,
+		footerCSS(40)...,
 	)
 }
 
@@ -35,27 +39,18 @@ func getServiceCSS() *page.CSS {
 		serviceIframeCSS()...,
 	).AddContents(
 		serviceButtonCSS()...,
+	).AddContents(
+		footerCSS(20)...,
 	)
 
 }
 
-func loginBodyCSS() *page.CSSContent {
-	return page.NewCSSContent("body",
-		page.NewAttributes(
-			"font-family", BASE_FONT_FAMILY,
-			"max-width", "420px",
-			"margin", "60px auto",
-			"background", BASE_BACKGROUND,
-			"color", BASE_COLOR,
-		)...,
-	)
-}
-
-func loginFooterCSS() []*page.CSSContent {
+func footerCSS(marginTop int) []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("footer",
 			page.NewAttributes(
-				"margin-top", "40px",
+				"margin-top", fmt.Sprintf("%dpx", marginTop),
+				"margin-bottom", "20px",
 				"font-size", "0.9em",
 				"text-align", "center",
 				"color", FOOTER_COLOR,
@@ -86,6 +81,18 @@ func loginFooterCSS() []*page.CSSContent {
 			)...,
 		),
 	}
+}
+
+func loginBodyCSS() *page.CSSContent {
+	return page.NewCSSContent("body",
+		page.NewAttributes(
+			"font-family", BASE_FONT_FAMILY,
+			"max-width", "420px",
+			"margin", "60px auto",
+			"background", BASE_BACKGROUND,
+			"color", BASE_COLOR,
+		)...,
+	)
 }
 
 func loginFormCSS() []*page.CSSContent {
@@ -132,7 +139,11 @@ func serviceBodyCSS() *page.CSSContent {
 			"margin", "0",
 			"padding", "0",
 			"height", "100%",
+			"display", "flex",
+			"flex-direction", "column",
 			"font-family", BASE_FONT_FAMILY,
+			"background", BASE_BACKGROUND,
+			"color", BASE_COLOR,
 		)...,
 	)
 }
@@ -142,18 +153,18 @@ func serviceToorBarCSS() []*page.CSSContent {
 		page.NewCSSContent("div.topbar",
 			page.NewAttributes(
 				"height", "56px",
+				"flex-shrink", "0",
 				"display", "flex",
 				"align-items", "center",
 				"justify-content", "space-between",
 				"padding", "0 16px",
 				"box-sizing", "border-box",
 				"border-bottom", DARK_BORDER,
-				"background", BASE_BACKGROUND,
-				"color", BASE_COLOR,
 			)...,
 		),
 		page.NewCSSContent("div.left",
 			page.NewAttributes(
+				"font-size", "1.2em",
 				"font-weight", "bold",
 			)...,
 		),
@@ -170,7 +181,8 @@ func serviceIframeCSS() []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("div.frame-wrap",
 			page.NewAttributes(
-				"height", "calc(100% - 56px)",
+				"flex", "1",
+				"min-height", "0",
 			)...,
 		),
 		page.NewCSSContent("iframe",

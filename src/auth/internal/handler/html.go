@@ -72,7 +72,10 @@ func getServicePage(app *App) string {
 			page.NewHTML(
 				"div",
 				page.NewAttributes("class", "left"),
-				"linuxus | {{.ID}}",
+				page.NewHTML("p",
+					page.NewAttributes(),
+					"Linuxus | {{.ID}}",
+				),
 			),
 			page.NewHTML(
 				"div",
@@ -101,10 +104,14 @@ func getServicePage(app *App) string {
 			page.NewAttributes("class", "frame-wrap"),
 			page.NewHTML(
 				"iframe",
-				page.NewAttributes("name", "shellframe", "src", "/"+app.TerminalPath()+"/"),
+				page.NewAttributes(
+					"name", "shellframe",
+					"src", "/"+app.TerminalPath()+"/",
+				),
 				"", // The iframe content will be loaded from the terminal path
 			),
 		),
+		linuxusFooterHTML(),
 	)
 
 	return htmlpage.Render()
