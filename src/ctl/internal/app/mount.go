@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,6 +36,7 @@ func listMountedDirsDeepestFirst(root string) ([]string, error) {
 		}
 		if mounted {
 			dirs = append(dirs, path)
+			return fs.SkipDir
 		}
 		return nil
 	})
