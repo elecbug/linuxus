@@ -12,9 +12,9 @@
 
 ---
 
-## 📝 Description
+## 📝 Overview
 
-> *Describe what this PR does.*
+<!-- Describe what this PR does. -->
 
 
 
@@ -22,11 +22,10 @@
 
 ## 🔍 Details
 
-> *Explain the changes in detail:*
->
-> - *What was changed?*
-> - *Why was it changed?*
-> - *Any important design decisions?*
+<!-- Explain the changes in detail:    -->
+<!-- - What was changed?               -->
+<!-- - Why was it changed?             -->
+<!-- - Any important design decisions? -->
 
 
 
@@ -34,7 +33,7 @@
 
 ## 🧪 How to Test
 
-> *Steps to verify this PR:*
+<!-- Steps to verify this PR: -->
 
 
 
@@ -53,7 +52,7 @@
 * [ ] Yes
 * [ ] No
 
-> *If yes, explain:*
+<!-- If yes, explain: -->
 
 
 
@@ -78,5 +77,5 @@
 
 ## 💬 Additional Notes
 
-> *Anything else reviewers should know.*
+<!-- Anything else reviewers should know. -->
 
