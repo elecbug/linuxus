@@ -138,6 +138,8 @@ func serviceBodyCSS() *page.CSSContent {
 			"margin", "0",
 			"padding", "0",
 			"height", "100%",
+			"display", "flex",
+			"flex-direction", "column",
 			"font-family", BASE_FONT_FAMILY,
 			"background", BASE_BACKGROUND,
 			"color", BASE_COLOR,
@@ -150,6 +152,7 @@ func serviceToorBarCSS() []*page.CSSContent {
 		page.NewCSSContent("div.topbar",
 			page.NewAttributes(
 				"height", "56px",
+				"flex-shrink", "0",
 				"display", "flex",
 				"align-items", "center",
 				"justify-content", "space-between",
@@ -176,7 +179,8 @@ func serviceIframeCSS() []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("div.frame-wrap",
 			page.NewAttributes(
-				"height", "calc(100% - 56px - 50px)",
+				"flex", "1",
+				"min-height", "0",
 			)...,
 		),
 		page.NewCSSContent("iframe",
