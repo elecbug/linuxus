@@ -17,6 +17,18 @@
 
 ---
 
+## ✨ Overview
+
+Linuxus enables instructors to provide per-user Linux environments without requiring local setup.
+
+🐳 Container-based user isolation (Docker)
+🌐 Web-based shell access (no SSH required)
+📁 Per-user persistent storage
+🔒 Resource and permission control
+⚙️ Fully configurable via YAML
+
+---
+
 ## 🚀 Usage
 
 0. Clone repository:
@@ -29,10 +41,10 @@
 1. Install required dependencies:
 
    * Docker (required)
-   * Go (only required for building the hash generator)
+   * Go
 
    ```bash
-   # Install Go (optional, only needed for hash generator)
+   # Install Go
    sudo snap install go --classic
    ```
 
@@ -67,18 +79,31 @@
    ```
 
    > ⚠️ The default admin account ID is `alpha`.
-   > You can change it by modifying `ADMIN_USER_ID` in `src/config.env`.
+   > You can change it by modifying `ADMIN_USER_ID` in `src/config.yml`.
 
-   ```bash
+   ```yml
    ...
-   ADMIN_USER_ID=alpha
+   admin:
+     user_id: alpha
    ...
    ```
 
-5. Start the services (containers) for each user:
+5. Build the Linuxus-ctl generator:
 
    ```bash
-   ./util/simple_build_and_run.sh <OPTION>
+   ./src/ctl/build.sh
+   ```
+
+   This will generate the following executable:
+
+   ```bash
+   ./src/linuxusctl --help
+   ```
+
+6. Start the services (containers) for each user:
+
+   ```bash
+   ./src/linuxusctl <OPTION>
    ```
 
    **⚙️ Options**
@@ -87,11 +112,25 @@
 
    | Option                 | Description                 |
    |------------------------|-----------------------------|
+   | `--help`, `-h`         | Show help                   |
    | `--generate`, `-g`     | Generate compose file       |
    | `--up`, `-u`           | Start all user containers   |
    | `--down`, `-d`         | Stop all user containers    |
    | `--restart`, `-r`      | Restart all user containers |
    | `--volume-clean`, `-v` | Reset all user directories  |
+
+   **Example**
+
+   ```bash
+   # Generate + run
+   ./src/linuxusctl -g -u
+
+   # Restart everything
+   ./src/linuxusctl -r
+
+   # Full reset (⚠️ deletes user data)
+   ./src/linuxusctl -v
+   ```
 
 6. After running the services, a `./src/volumes` directory will be created automatically.
 
