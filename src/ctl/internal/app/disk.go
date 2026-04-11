@@ -65,16 +65,27 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 		return err
 	}
 	loopdev = strings.TrimSpace(loopdev)
+	mounted := false
+	defer func() {
+		if err == nil {
+			return
+		}
+		if mounted {
+			_ = runCmd("sudo", "umount", mountPoint)
+		}
+		_ = runCmd("sudo", "losetup", "-d", loopdev)
+	}()
 
-	if err := runCmd("sudo", "mount", loopdev, mountPoint); err != nil {
+	if err = runCmd("sudo", "mount", loopdev, mountPoint); err != nil {
 		return err
 	}
-	if err := runCmd("sudo", "chown",
+	mounted = true
+	if err = runCmd("sudo", "chown",
 		fmt.Sprintf("%d:%d", a.Config.ContainerRuntime.UID, a.Config.ContainerRuntime.GID),
 		mountPoint); err != nil {
 		return err
 	}
-	if err := runCmd("sudo", "chmod", "755", mountPoint); err != nil {
+	if err = runCmd("sudo", "chmod", "755", mountPoint); err != nil {
 		return err
 	}
 
