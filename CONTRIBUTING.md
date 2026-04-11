@@ -29,20 +29,20 @@ This project is designed to provide a web-based Ubuntu shell environment for edu
 We use the following PR types.
 All pull requests must start with one of these prefixes:
 
-| Type         | Description                                     |
-|--------------|-------------------------------------------------|
-| `[CHORE]`    | Maintenance / config / build changes            |
-| `[REFACTOR]` | Code structure improvement (no behavior change) |
-| `[DOC]`      | Documentation update                            |
-| `[FEATURE]`  | Minor feature addition                          |
-| `[GENESIS]`  | Major update / architectural change             |
-| `[BUG]`      | Bug fix                                         |
-| `[DUP]`      | Duplicate or redundant PR                       |
+| Type          | Description                                     |
+|---------------|-------------------------------------------------|
+| `[CHORE]`     | Maintenance / config / build changes            |
+| `[REFACTOR]`  | Code structure improvement (no behavior change) |
+| `[DOCUMENT]`  | Documentation update                            |
+| `[FEATURE]`   | Minor feature addition                          |
+| `[GENESIS]`   | Major update / architectural change             |
+| `[BUG]`       | Bug fix                                         |
+| `[DUPLICATE]` | Duplicate or redundant PR                       |
 
 ### ✅ Example PR titles
 
 ```
-[DOC] update README usage section
+[DOCUMENT] update README usage section
 [BUG] fix login session issue
 [FEATURE] add logout endpoint
 [GENESIS] redesign container lifecycle system
@@ -117,7 +117,7 @@ fork → branch → commit → PR → review → merge
 ## ⚠️ Important Notes
 
 * Large changes (`[GENESIS]`) should be discussed in an issue first
-* Duplicate or conflicting PRs may be marked as `[DUP]`
+* Duplicate or conflicting PRs may be marked as `[DUPLICATE]`
 * Maintainers may request changes before merging
 
 ---

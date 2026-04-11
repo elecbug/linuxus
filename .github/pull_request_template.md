@@ -1,14 +1,14 @@
 ## 📌 PR Type
 
-<!-- Select one and remove others -->
+<!-- Select one -->
 
 - [ ] [CHORE] Maintenance / config / build changes
 - [ ] [REFACTOR] Code structure improvement (no behavior change)
-- [ ] [DOC] Documentation update
+- [ ] [DOCUMENT] Documentation update
 - [ ] [FEATURE] Minor feature
 - [ ] [GENESIS] Major update / large-scale change
 - [ ] [BUG] Bug fix
-- [ ] [DUP] Duplicate / redundant PR
+- [ ] [DUPLICATE] Duplicate / redundant PR
 
 ---
 
