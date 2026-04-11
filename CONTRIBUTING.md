@@ -33,7 +33,7 @@ All pull requests must start with one of these prefixes:
 |--------------|-------------------------------------------------|
 | `[CHORE]`    | Maintenance / config / build changes            |
 | `[REFACTOR]` | Code structure improvement (no behavior change) |
-| `[DOCS]`     | Documentation update                            |
+| `[DOC]`      | Documentation update                            |
 | `[FEATURE]`  | Minor feature addition                          |
 | `[GENESIS]`  | Major update / architectural change             |
 | `[BUG]`      | Bug fix                                         |
@@ -42,7 +42,7 @@ All pull requests must start with one of these prefixes:
 ### ✅ Example PR titles
 
 ```
-[DOCS] update README usage section
+[DOC] update README usage section
 [BUG] fix login session issue
 [FEATURE] add logout endpoint
 [GENESIS] redesign container lifecycle system
