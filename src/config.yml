@@ -1,0 +1,68 @@
+container_runtime:
+  uid: 1000
+  gid: 1000
+  user: user
+  hostname: linuxus
+  timezone: Asia/Seoul
+
+user_service:
+  source_dir: ./service
+  container_name_prefix: linuxus_user_
+  network_prefix: linuxus_user_net_
+  base_ip: "10.10.1.0"
+
+admin:
+  user_id: alpha
+
+user_limits:
+  cpu: 1.5
+  memory: 512m
+  pid: 128
+  ulimits:
+    nofile:
+      soft: 1024
+      hard: 2048
+  disk: 512  # MB
+  # network_bandwidth: 10mbit
+  # session_timeout: 3600
+
+admin_limits:
+  cpu: 1.5
+  memory: 512m
+  pid: 128
+  ulimits:
+    nofile:
+      soft: 1024
+      hard: 2048
+  disk: 512  # MB
+  # network_bandwidth: 10mbit
+  # session_timeout: 3600
+
+volumes:
+  host:
+    base: ./volumes
+    homes: ./volumes/homes
+    share: ./volumes/share
+    readonly: ./volumes/readonly
+  container:
+    share: /home/share
+    readonly: /home/readonly
+
+url_paths:
+  login: login
+  logout: logout
+  service: service
+  terminal: terminal
+
+auth_service:
+  external_port: 8080
+  timezone: Asia/Seoul
+  source_dir: ./auth
+  container_name: linuxus_auth
+  list_file: ./data/AUTH_LIST
+  list_mount_path: /data/AUTH_LIST
+  session_secret: change-this-secret-before-production
+  trusted_proxies: ""
+
+compose:
+  output_file: docker-compose.generated.yml
