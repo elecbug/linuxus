@@ -4,7 +4,7 @@
 
 - [ ] [CHORE] Maintenance / config / build changes
 - [ ] [REFACTOR] Code structure improvement (no behavior change)
-- [ ] [DOCS] Documentation update
+- [ ] [DOC] Documentation update
 - [ ] [FEATURE] Minor feature
 - [ ] [GENESIS] Major update / large-scale change
 - [ ] [BUG] Bug fix
