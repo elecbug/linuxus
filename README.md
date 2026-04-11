@@ -79,7 +79,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
    ```
 
    > ⚠️ The default admin account ID is `alpha`.
-   > You can change it by modifying `ADMIN_USER_ID` in `src/config.yml`.
+   > You can change it by modifying `admin.user_id` in `src/config.yml`.
 
    ```yml
    ...
