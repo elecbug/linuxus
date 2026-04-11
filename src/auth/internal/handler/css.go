@@ -50,6 +50,7 @@ func footerCSS(marginTop int) []*page.CSSContent {
 		page.NewCSSContent("footer",
 			page.NewAttributes(
 				"margin-top", fmt.Sprintf("%dpx", marginTop),
+				"margin-bottom", "20px",
 				"font-size", "0.9em",
 				"text-align", "center",
 				"color", FOOTER_COLOR,
@@ -163,6 +164,7 @@ func serviceToorBarCSS() []*page.CSSContent {
 		),
 		page.NewCSSContent("div.left",
 			page.NewAttributes(
+				"font-size", "1.2em",
 				"font-weight", "bold",
 			)...,
 		),

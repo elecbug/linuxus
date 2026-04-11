@@ -72,7 +72,10 @@ func getServicePage(app *App) string {
 			page.NewHTML(
 				"div",
 				page.NewAttributes("class", "left"),
-				"linuxus | {{.ID}}",
+				page.NewHTML("p",
+					page.NewAttributes(),
+					"Linuxus | {{.ID}}",
+				),
 			),
 			page.NewHTML(
 				"div",
