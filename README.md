@@ -18,6 +18,8 @@
 
 ## ✨ Overview
 
+![](./doc/fig/04-arch.png)
+
 Linuxus enables instructors to provide per-user Linux environments without requiring local setup.
 
 🐳 Container-based user isolation (Docker)  
