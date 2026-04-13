@@ -4,95 +4,71 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"gopkg.in/yaml.v3"
+	"strings"
 )
 
-func (a *App) GenerateCompose() error {
-	fmt.Println("[+] Generating compose file...")
+func (a *App) GenerateService() error {
+	fmt.Println("[+] Preparing runtime service plan...")
 
 	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
-
-	cf := ComposeFile{
-		Services: make(map[string]ComposeService),
-		Networks: make(map[string]ComposeNetwork),
-	}
-
-	authServiceName := a.Config.AuthService.Container.Name
-	cf.Services[authServiceName] = a.buildAuthService(adminSafe)
-
-	for i := range a.UserIDs {
-		serviceName := a.Config.UserService.Container.NamePrefix + a.SafeIDs[i]
-		cf.Services[serviceName] = a.buildUserService(a.UserIDs[i], a.SafeIDs[i])
-	}
-
-	adminServiceName := a.Config.UserService.Container.NamePrefix + a.Config.UserService.Container.Admin.UserID
-	cf.Services[adminServiceName] = a.buildAdminService(adminSafe)
-
-	seq := 0
-	for _, safeID := range a.SafeIDs {
-		networkName := a.Config.UserService.Container.NetworkPrefix + safeID
-		subnet, err := getIP(a.Config.UserService.Container.BaseIP, seq)
-		if err != nil {
-			return err
-		}
-		cf.Networks[networkName] = ComposeNetwork{
-			Driver: "bridge",
-			IPAM: &ComposeIPAM{
-				Config: []ComposeSubnet{{Subnet: subnet}},
-			},
-		}
-		seq++
-	}
-
-	adminNetworkName := a.Config.UserService.Container.NetworkPrefix + adminSafe
-	subnet, err := getIP(a.Config.UserService.Container.BaseIP, seq)
+	networks, err := a.buildRuntimeNetworks()
 	if err != nil {
 		return err
 	}
-	cf.Networks[adminNetworkName] = ComposeNetwork{
-		Driver: "bridge",
-		IPAM: &ComposeIPAM{
-			Config: []ComposeSubnet{{Subnet: subnet}},
-		},
-	}
 
-	data, err := yaml.Marshal(&cf)
-	if err != nil {
-		return fmt.Errorf("failed to marshal compose yaml: %w", err)
+	fmt.Printf("[=] Auth image: %s\n", a.authImageName())
+	fmt.Printf("[=] User image: %s\n", a.userImageName())
+	fmt.Printf("[=] Auth container: %s\n", a.buildAuthRuntimeSpec(adminSafe).Name)
+	for _, n := range networks {
+		fmt.Printf("[=] Network: %s (%s)\n", n.Name, n.Subnet)
 	}
-
-	if err := os.WriteFile(a.Config.Compose.OutputFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
-	}
-
 	return nil
 }
 
-func (a *App) ComposeUp() error {
-	fmt.Println("[+] Starting containers...")
-	return runCmd("sudo", "docker", "compose", "-f", a.Config.Compose.OutputFile, "up", "-d", "--build")
-}
+func (a *App) ServiceUp() error {
+	fmt.Println("[+] Starting runtime-managed containers...")
 
-func (a *App) ComposeDown() error {
-	fmt.Println("[+] Stopping containers...")
-	return runCmd("sudo", "docker", "compose", "-f", a.Config.Compose.OutputFile, "down", "--remove-orphans")
-}
-
-func (a *App) ComposeRestart() error {
-	fmt.Println("[+] Restarting containers...")
-	if err := runCmd("sudo", "docker", "compose", "-f", a.Config.Compose.OutputFile, "down", "--remove-orphans"); err != nil {
+	if err := a.buildRuntimeImages(); err != nil {
 		return err
 	}
-	return runCmd("sudo", "docker", "compose", "-f", a.Config.Compose.OutputFile, "up", "-d", "--build")
+	if err := a.ensureRuntimeNetworks(); err != nil {
+		return err
+	}
+	if err := a.ensureAuthContainer(); err != nil {
+		return err
+	}
+	if err := a.ensureUserContainers(); err != nil {
+		return err
+	}
+
+	fmt.Println("[+] Runtime services started.")
+	return nil
+}
+
+func (a *App) ServiceDown() error {
+	fmt.Println("[+] Stopping runtime-managed containers...")
+	if err := a.removeManagedContainers(); err != nil {
+		return err
+	}
+	if err := a.removeManagedNetworks(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *App) ServiceRestart() error {
+	fmt.Println("[+] Restarting runtime-managed containers...")
+	if err := a.ServiceDown(); err != nil {
+		return err
+	}
+	return a.ServiceUp()
 }
 
 func (a *App) VolumeClean() error {
 	fmt.Println("[+] Cleaning volumes...")
 
-	_ = runCmdAllowFail("sudo", "docker", "compose", "-f", a.Config.Compose.OutputFile, "down", "-v", "--remove-orphans")
+	_ = a.ServiceDown()
 
-	// Unmount home directories (each user home is a mount point under the homes root).
 	homeMounts, err := listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
 	if err != nil {
 		return err
@@ -102,8 +78,6 @@ func (a *App) VolumeClean() error {
 		_ = runCmdAllowFail("sudo", "umount", dir)
 	}
 
-	// Unmount share and readonly mount points directly, regardless of whether
-	// they reside under volumes.host.volumes.
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
 		if mounted, err := isMountPoint(mountPoint); err == nil && mounted {
 			fmt.Printf("[+] Unmounting: %s\n", mountPoint)
@@ -111,16 +85,11 @@ func (a *App) VolumeClean() error {
 		}
 	}
 
-	// Find loop devices for home disk images.
 	homeDevs, err := findLoopDevicesForImages(a.Config.Volumes.Host.Homes)
 	if err != nil {
 		return err
 	}
 
-	// Find loop devices for share and readonly disk images.  Each image is
-	// stored as <name>.img in the parent directory of the mount point, so scan
-	// filepath.Dir(Share) and filepath.Dir(Readonly) rather than the volumes
-	// root, ensuring images outside that root are also found.
 	seen := make(map[string]struct{})
 	var loopDevs []string
 	for _, dev := range homeDevs {
@@ -162,4 +131,198 @@ func (a *App) VolumeClean() error {
 
 	fmt.Println("[+] Volume clean completed.")
 	return nil
+}
+
+func (a *App) buildRuntimeImages() error {
+	fmt.Println("[+] Building runtime images...")
+	if err := runCmd("sudo", "docker", "build", "-t", a.authImageName(), a.Config.AuthService.SourceDir); err != nil {
+		return err
+	}
+	return runCmd(
+		"sudo", "docker", "build",
+		"--build-arg", "CONTAINER_RUNTIME_USER="+a.Config.UserService.Container.Runtime.User,
+		"-t", a.userImageName(),
+		a.Config.UserService.SourceDir,
+	)
+}
+
+func (a *App) ensureRuntimeNetworks() error {
+	networks, err := a.buildRuntimeNetworks()
+	if err != nil {
+		return err
+	}
+	for _, network := range networks {
+		if err := a.ensureNetwork(network); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
+	exists, err := dockerNetworkExists(spec.Name)
+	if err != nil {
+		return err
+	}
+	if exists {
+		fmt.Printf("[=] Network already exists: %s\n", spec.Name)
+		return nil
+	}
+	fmt.Printf("[+] Creating network: %s (%s)\n", spec.Name, spec.Subnet)
+	return runCmd("sudo", "docker", "network", "create", "--driver", "bridge", "--subnet", spec.Subnet, spec.Name)
+}
+
+func (a *App) ensureAuthContainer() error {
+	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
+	return a.ensureContainer(a.buildAuthRuntimeSpec(adminSafe))
+}
+
+func (a *App) ensureUserContainers() error {
+	for i := range a.UserIDs {
+		if err := a.ensureContainer(a.buildUserRuntimeSpec(a.UserIDs[i], a.SafeIDs[i])); err != nil {
+			return err
+		}
+	}
+	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
+	return a.ensureContainer(a.buildAdminRuntimeSpec(adminSafe))
+}
+
+func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
+	exists, err := dockerContainerExists(spec.Name)
+	if err != nil {
+		return err
+	}
+	if exists {
+		fmt.Printf("[+] Recreating container: %s\n", spec.Name)
+		if err := runCmdAllowFail("sudo", "docker", "rm", "-f", spec.Name); err != nil {
+			return fmt.Errorf("failed to remove existing container %s: %w", spec.Name, err)
+		}
+	}
+
+	args := []string{"docker", "create", "--name", spec.Name}
+	if spec.User != "" {
+		args = append(args, "--user", spec.User)
+	}
+	if spec.Hostname != "" {
+		args = append(args, "--hostname", spec.Hostname)
+	}
+	if spec.WorkingDir != "" {
+		args = append(args, "--workdir", spec.WorkingDir)
+	}
+	if spec.ReadOnly {
+		args = append(args, "--read-only")
+	}
+	if spec.Restart != "" {
+		args = append(args, "--restart", spec.Restart)
+	}
+	for _, tmpfs := range spec.Tmpfs {
+		args = append(args, "--tmpfs", tmpfs)
+	}
+	for _, env := range spec.Environment {
+		args = append(args, "-e", env)
+	}
+	for _, volume := range spec.Volumes {
+		args = append(args, "-v", volume)
+	}
+	for _, port := range spec.Ports {
+		args = append(args, "-p", port)
+	}
+	for _, opt := range spec.SecurityOpt {
+		args = append(args, "--security-opt", opt)
+	}
+	for _, cap := range spec.CapDrop {
+		args = append(args, "--cap-drop", cap)
+	}
+	if spec.Limits.Memory != "" {
+		args = append(args, "--memory", spec.Limits.Memory)
+	}
+	if spec.Limits.CPUs != "" {
+		args = append(args, "--cpus", spec.Limits.CPUs)
+	}
+	if spec.Limits.Pids > 0 {
+		args = append(args, "--pids-limit", fmt.Sprintf("%d", spec.Limits.Pids))
+	}
+	if spec.Limits.NofileSoft > 0 || spec.Limits.NofileHard > 0 {
+		args = append(args, "--ulimit", fmt.Sprintf("nofile=%d:%d", spec.Limits.NofileSoft, spec.Limits.NofileHard))
+	}
+	if len(spec.Networks) > 0 {
+		args = append(args, "--network", spec.Networks[0])
+	}
+	args = append(args, spec.Image)
+
+	if err := runCmd("sudo", args...); err != nil {
+		return err
+	}
+	for _, network := range spec.Networks[1:] {
+		if err := runCmd("sudo", "docker", "network", "connect", network, spec.Name); err != nil {
+			return fmt.Errorf("failed to connect %s to %s: %w", spec.Name, network, err)
+		}
+	}
+	return runCmd("sudo", "docker", "start", spec.Name)
+}
+
+func (a *App) removeManagedContainers() error {
+	names := a.managedContainerNames()
+	for _, name := range names {
+		exists, err := dockerContainerExists(name)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			continue
+		}
+		fmt.Printf("[+] Removing container: %s\n", name)
+		if err := runCmd("sudo", "docker", "rm", "-f", name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *App) removeManagedNetworks() error {
+	networks, err := a.buildRuntimeNetworks()
+	if err != nil {
+		return err
+	}
+	for i := len(networks) - 1; i >= 0; i-- {
+		name := networks[i].Name
+		exists, err := dockerNetworkExists(name)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			continue
+		}
+		fmt.Printf("[+] Removing network: %s\n", name)
+		if err := runCmd("sudo", "docker", "network", "rm", name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *App) managedContainerNames() []string {
+	names := make([]string, 0, len(a.SafeIDs)+2)
+	names = append(names, a.Config.AuthService.Container.Name)
+	for _, safeID := range a.SafeIDs {
+		names = append(names, a.Config.UserService.Container.NamePrefix+safeID)
+	}
+	names = append(names, a.Config.UserService.Container.NamePrefix+a.Config.UserService.Container.Admin.UserID)
+	return names
+}
+
+func dockerContainerExists(name string) (bool, error) {
+	out, err := runCmdOutput("sudo", "docker", "ps", "-aq", "--filter", "name=^/"+name+"$")
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(out) != "", nil
+}
+
+func dockerNetworkExists(name string) (bool, error) {
+	out, err := runCmdOutput("sudo", "docker", "network", "ls", "-q", "--filter", "name=^"+name+"$")
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(out) != "", nil
 }

@@ -29,9 +29,6 @@ func (a *App) ValidateConfig() error {
 	if a.Config.UserService.Container.Admin.UserID == "" {
 		return errors.New("admin.user_id must not be empty")
 	}
-	if a.Config.Compose.OutputFile == "" {
-		return errors.New("compose.output_file must not be empty")
-	}
 	if a.Config.Volumes.Host.Volumes == "" {
 		return errors.New("volumes.host.volumes must not be empty")
 	}
@@ -40,6 +37,21 @@ func (a *App) ValidateConfig() error {
 	}
 	if a.Config.Volumes.DiskLimit <= 0 {
 		return errors.New("volumes.disk_limit must be a positive integer")
+	}
+	if a.Config.UserService.SourceDir == "" {
+		return errors.New("user_service.source_dir must not be empty")
+	}
+	if a.Config.AuthService.SourceDir == "" {
+		return errors.New("auth_service.source_dir must not be empty")
+	}
+	if a.Config.UserService.Container.NamePrefix == "" {
+		return errors.New("user_service.container.name_prefix must not be empty")
+	}
+	if a.Config.UserService.Container.NetworkPrefix == "" {
+		return errors.New("user_service.container.network_prefix must not be empty")
+	}
+	if a.Config.UserService.Container.BaseIP == "" {
+		return errors.New("user_service.container.base_ip must not be empty")
 	}
 	return nil
 }
@@ -54,8 +66,6 @@ func (a *App) normalizeConfigPaths() {
 	a.Config.Volumes.Host.Share = a.absFromSource(a.Config.Volumes.Host.Share)
 	a.Config.Volumes.Host.Readonly = a.absFromSource(a.Config.Volumes.Host.Readonly)
 	a.Config.Volumes.Host.Volumes = a.absFromSource(a.Config.Volumes.Host.Volumes)
-
-	a.Config.Compose.OutputFile = a.absFromSource(a.Config.Compose.OutputFile)
 }
 
 func (a *App) absFromSource(path string) string {

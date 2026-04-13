@@ -2,18 +2,16 @@ package app
 
 import "fmt"
 
-func (a *App) buildAuthService(adminSafe string) ComposeService {
+func (a *App) buildAuthRuntimeSpec(adminSafe string) RuntimeContainerSpec {
 	networks := make([]string, 0, len(a.SafeIDs)+1)
 	for _, safeID := range a.SafeIDs {
 		networks = append(networks, a.Config.UserService.Container.NetworkPrefix+safeID)
 	}
 	networks = append(networks, a.Config.UserService.Container.NetworkPrefix+adminSafe)
 
-	return ComposeService{
-		Build: &ComposeBuild{
-			Context: a.Config.AuthService.SourceDir,
-		},
-		Container: a.Config.AuthService.Container.Name,
+	return RuntimeContainerSpec{
+		Image: a.authImageName(),
+		Name:  a.Config.AuthService.Container.Name,
 		Environment: []string{
 			"TZ=" + a.Config.AuthService.Container.Timezone,
 			"AUTH_LIST=" + a.Config.AuthService.AuthListFile.ContainerPath,
@@ -36,16 +34,11 @@ func (a *App) buildAuthService(adminSafe string) ComposeService {
 	}
 }
 
-func (a *App) buildUserService(userID, safeID string) ComposeService {
-	return ComposeService{
-		User: fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
-		Build: &ComposeBuild{
-			Context: a.Config.UserService.SourceDir,
-			Args: []string{
-				"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Container.Runtime.User,
-			},
-		},
-		Container:  a.Config.UserService.Container.NamePrefix + safeID,
+func (a *App) buildUserRuntimeSpec(userID, safeID string) RuntimeContainerSpec {
+	return RuntimeContainerSpec{
+		Image:      a.userImageName(),
+		Name:       a.Config.UserService.Container.NamePrefix + safeID,
+		User:       fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
 		Hostname:   a.Config.UserService.Container.Runtime.Hostname,
 		WorkingDir: "/home/" + a.Config.UserService.Container.Runtime.User,
 		ReadOnly:   true,
@@ -63,21 +56,19 @@ func (a *App) buildUserService(userID, safeID string) ComposeService {
 			"IS_ADMIN=false",
 		},
 		Volumes: []string{
-			fmt.Sprintf("%s/%s:/home/%s:rw", a.Config.Volumes.Host.Homes, userID, a.Config.UserService.Container.Runtime.User),
+			fmt.Sprintf("%s:/home/%s:rw", a.homeDirForUser(userID), a.Config.UserService.Container.Runtime.User),
 			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Share, a.Config.Volumes.Container.Share),
 			fmt.Sprintf("%s:%s:ro", a.Config.Volumes.Host.Readonly, a.Config.Volumes.Container.Readonly),
 		},
 		Restart:     "unless-stopped",
 		SecurityOpt: []string{"no-new-privileges:true"},
 		CapDrop:     []string{"ALL"},
-		MemLimit:    a.Config.UserService.Container.User.Limits.Memory,
-		CPUs:        fmt.Sprintf("%v", a.Config.UserService.Container.User.Limits.CPU),
-		PidsLimit:   a.Config.UserService.Container.User.Limits.PID,
-		Ulimits: map[string]NofileLimit{
-			"nofile": {
-				Soft: a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Soft,
-				Hard: a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Hard,
-			},
+		Limits: ContainerLimits{
+			Memory:     a.Config.UserService.Container.User.Limits.Memory,
+			CPUs:       fmt.Sprintf("%v", a.Config.UserService.Container.User.Limits.CPU),
+			Pids:       a.Config.UserService.Container.User.Limits.PID,
+			NofileSoft: a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Soft,
+			NofileHard: a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Hard,
 		},
 		Networks: []string{
 			a.Config.UserService.Container.NetworkPrefix + safeID,
@@ -85,16 +76,11 @@ func (a *App) buildUserService(userID, safeID string) ComposeService {
 	}
 }
 
-func (a *App) buildAdminService(adminSafe string) ComposeService {
-	return ComposeService{
-		User: fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
-		Build: &ComposeBuild{
-			Context: a.Config.UserService.SourceDir,
-			Args: []string{
-				"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Container.Runtime.User,
-			},
-		},
-		Container:  a.Config.UserService.Container.NamePrefix + a.Config.UserService.Container.Admin.UserID,
+func (a *App) buildAdminRuntimeSpec(adminSafe string) RuntimeContainerSpec {
+	return RuntimeContainerSpec{
+		Image:      a.userImageName(),
+		Name:       a.Config.UserService.Container.NamePrefix + a.Config.UserService.Container.Admin.UserID,
+		User:       fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
 		Hostname:   a.Config.UserService.Container.Runtime.Hostname,
 		WorkingDir: "/home/" + a.Config.UserService.Container.Runtime.User,
 		ReadOnly:   true,
@@ -112,24 +98,51 @@ func (a *App) buildAdminService(adminSafe string) ComposeService {
 			"IS_ADMIN=true",
 		},
 		Volumes: []string{
-			fmt.Sprintf("%s/%s:/home/%s:rw", a.Config.Volumes.Host.Homes, a.Config.UserService.Container.Admin.UserID, a.Config.UserService.Container.Runtime.User),
+			fmt.Sprintf("%s:/home/%s:rw", a.homeDirForUser(a.Config.UserService.Container.Admin.UserID), a.Config.UserService.Container.Runtime.User),
 			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Share, a.Config.Volumes.Container.Share),
 			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Readonly, a.Config.Volumes.Container.Readonly),
 		},
 		Restart:     "unless-stopped",
 		SecurityOpt: []string{"no-new-privileges:true"},
 		CapDrop:     []string{"ALL"},
-		MemLimit:    a.Config.UserService.Container.Admin.Limits.Memory,
-		CPUs:        fmt.Sprintf("%v", a.Config.UserService.Container.Admin.Limits.CPU),
-		PidsLimit:   a.Config.UserService.Container.Admin.Limits.PID,
-		Ulimits: map[string]NofileLimit{
-			"nofile": {
-				Soft: a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Soft,
-				Hard: a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Hard,
-			},
+		Limits: ContainerLimits{
+			Memory:     a.Config.UserService.Container.Admin.Limits.Memory,
+			CPUs:       fmt.Sprintf("%v", a.Config.UserService.Container.Admin.Limits.CPU),
+			Pids:       a.Config.UserService.Container.Admin.Limits.PID,
+			NofileSoft: a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Soft,
+			NofileHard: a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Hard,
 		},
 		Networks: []string{
 			a.Config.UserService.Container.NetworkPrefix + adminSafe,
 		},
 	}
+}
+
+func (a *App) buildRuntimeNetworks() ([]RuntimeNetworkSpec, error) {
+	networks := make([]RuntimeNetworkSpec, 0, len(a.SafeIDs)+1)
+	seq := 0
+
+	for _, safeID := range a.SafeIDs {
+		subnet, err := getIP(a.Config.UserService.Container.BaseIP, seq)
+		if err != nil {
+			return nil, err
+		}
+		networks = append(networks, RuntimeNetworkSpec{
+			Name:   a.Config.UserService.Container.NetworkPrefix + safeID,
+			Subnet: subnet,
+		})
+		seq++
+	}
+
+	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
+	subnet, err := getIP(a.Config.UserService.Container.BaseIP, seq)
+	if err != nil {
+		return nil, err
+	}
+	networks = append(networks, RuntimeNetworkSpec{
+		Name:   a.Config.UserService.Container.NetworkPrefix + adminSafe,
+		Subnet: subnet,
+	})
+
+	return networks, nil
 }
