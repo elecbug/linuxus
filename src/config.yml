@@ -64,6 +64,3 @@ volumes:
     share: /home/share
     readonly: /home/readonly
   disk_limit: 1024  # MB
-
-compose:
-  output_file: docker-compose.generated.yml
