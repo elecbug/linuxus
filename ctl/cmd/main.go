@@ -64,6 +64,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
+	defer cli.Close()
 
 	app := &app.App{
 		DockerClient: cli,
