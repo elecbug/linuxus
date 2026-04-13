@@ -112,6 +112,14 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 		size = a.Config.UserService.Container.Admin.Limits.Disk
 	}
 
+	if size <= 0 {
+		userMode := "user"
+		if isAdmin {
+			userMode = "admin"
+		}
+		return fmt.Errorf("disk limit for %s must be a positive integer, got %d", userMode, size)
+	}
+
 	img := filepath.Join(a.Config.Volumes.Host.Homes, userID+".img")
 	mountPoint := filepath.Join(a.Config.Volumes.Host.Homes, userID)
 
