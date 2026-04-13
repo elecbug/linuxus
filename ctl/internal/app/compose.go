@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -129,30 +128,6 @@ func (a *App) VolumeClean() error {
 	if err := os.RemoveAll(a.Config.Volumes.Host.Volumes); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove volumes dir: %w", err)
 	}
-	if !strings.HasSuffix(a.Config.Volumes.Host.Volumes, "/") {
-		if err := os.Remove(a.Config.Volumes.Host.Volumes + "/"); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("failed to remove volumes dir: %w", err)
-		}
-	}
-
-	// if err := os.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
-	// 	return err
-	// }
-	// if err := os.MkdirAll(a.Config.Volumes.Host.Share, 0755); err != nil {
-	// 	return err
-	// }
-	// if err := os.MkdirAll(a.Config.Volumes.Host.Readonly, 0755); err != nil {
-	// 	return err
-	// }
-
-	// if err := runCmd(
-	// 	"sudo", "chown",
-	// 	fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
-	// 	a.Config.Volumes.Host.Share,
-	// 	a.Config.Volumes.Host.Readonly,
-	// ); err != nil {
-	// 	return err
-	// }
 
 	fmt.Println("[+] Volume clean completed.")
 	return nil

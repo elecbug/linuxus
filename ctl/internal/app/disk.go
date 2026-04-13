@@ -33,6 +33,9 @@ func (a *App) PrepareUserDisks() error {
 
 func (a *App) createSharedDisk(path string) error {
 	size := a.Config.Volumes.DiskLimit
+	if size <= 0 {
+		return fmt.Errorf("volumes.disk_limit must be a positive integer, got %d", size)
+	}
 
 	parentDir := filepath.Dir(path)
 	name := filepath.Base(path)
@@ -51,7 +54,10 @@ func (a *App) createSharedDisk(path string) error {
 		return nil
 	}
 
-	if _, err := os.Stat(img); os.IsNotExist(err) {
+	if _, err := os.Stat(img); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to stat image file %s: %w", img, err)
+		}
 		fmt.Printf("[+] Creating shared disk for %s (%dMB)\n", mountPoint, size)
 		if err := runCmd("sudo", "dd", "if=/dev/zero", "of="+img, "bs=1M", "count="+strconv.Itoa(size)); err != nil {
 			return err

@@ -32,8 +32,14 @@ func (a *App) ValidateConfig() error {
 	if a.Config.Compose.OutputFile == "" {
 		return errors.New("compose.output_file must not be empty")
 	}
+	if a.Config.Volumes.Host.Volumes == "" {
+		return errors.New("volumes.host.volumes must not be empty")
+	}
 	if a.Config.Volumes.Host.Homes == "" || a.Config.Volumes.Host.Share == "" || a.Config.Volumes.Host.Readonly == "" {
 		return errors.New("volume host paths must not be empty")
+	}
+	if a.Config.Volumes.DiskLimit <= 0 {
+		return errors.New("volumes.disk_limit must be a positive integer")
 	}
 	return nil
 }
@@ -47,6 +53,7 @@ func (a *App) normalizeConfigPaths() {
 	a.Config.Volumes.Host.Homes = a.absFromSource(a.Config.Volumes.Host.Homes)
 	a.Config.Volumes.Host.Share = a.absFromSource(a.Config.Volumes.Host.Share)
 	a.Config.Volumes.Host.Readonly = a.absFromSource(a.Config.Volumes.Host.Readonly)
+	a.Config.Volumes.Host.Volumes = a.absFromSource(a.Config.Volumes.Host.Volumes)
 
 	a.Config.Compose.OutputFile = a.absFromSource(a.Config.Compose.OutputFile)
 }
