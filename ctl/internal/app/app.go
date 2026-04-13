@@ -18,7 +18,6 @@ type App struct {
 }
 
 type ComposeFile struct {
-	Version  string                    `yaml:"version"`
 	Services map[string]ComposeService `yaml:"services"`
 	Networks map[string]ComposeNetwork `yaml:"networks"`
 }

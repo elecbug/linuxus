@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -13,7 +14,6 @@ func (a *App) GenerateCompose() error {
 	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
 
 	cf := ComposeFile{
-		Version:  "3.8",
 		Services: make(map[string]ComposeService),
 		Networks: make(map[string]ComposeNetwork),
 	}
@@ -92,19 +92,54 @@ func (a *App) VolumeClean() error {
 
 	_ = runCmdAllowFail("sudo", "docker", "compose", "-f", a.Config.Compose.OutputFile, "down", "-v", "--remove-orphans")
 
-	mountDirs, err := listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
+	// Unmount home directories (each user home is a mount point under the homes root).
+	homeMounts, err := listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
 	if err != nil {
 		return err
 	}
-
-	for _, dir := range mountDirs {
+	for _, dir := range homeMounts {
 		fmt.Printf("[+] Unmounting: %s\n", dir)
 		_ = runCmdAllowFail("sudo", "umount", dir)
 	}
 
-	loopDevs, err := findLoopDevicesForImages(a.Config.Volumes.Host.Homes)
+	// Unmount share and readonly mount points directly, regardless of whether
+	// they reside under volumes.host.volumes.
+	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
+		if mounted, err := isMountPoint(mountPoint); err == nil && mounted {
+			fmt.Printf("[+] Unmounting: %s\n", mountPoint)
+			_ = runCmdAllowFail("sudo", "umount", mountPoint)
+		}
+	}
+
+	// Find loop devices for home disk images.
+	homeDevs, err := findLoopDevicesForImages(a.Config.Volumes.Host.Homes)
 	if err != nil {
 		return err
+	}
+
+	// Find loop devices for share and readonly disk images.  Each image is
+	// stored as <name>.img in the parent directory of the mount point, so scan
+	// filepath.Dir(Share) and filepath.Dir(Readonly) rather than the volumes
+	// root, ensuring images outside that root are also found.
+	seen := make(map[string]struct{})
+	var loopDevs []string
+	for _, dev := range homeDevs {
+		if _, exists := seen[dev]; !exists {
+			seen[dev] = struct{}{}
+			loopDevs = append(loopDevs, dev)
+		}
+	}
+	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
+		devs, err := findLoopDevicesForImages(filepath.Dir(mountPoint))
+		if err != nil {
+			return err
+		}
+		for _, dev := range devs {
+			if _, exists := seen[dev]; !exists {
+				seen[dev] = struct{}{}
+				loopDevs = append(loopDevs, dev)
+			}
+		}
 	}
 
 	for _, dev := range loopDevs {
@@ -112,33 +147,17 @@ func (a *App) VolumeClean() error {
 		_ = runCmdAllowFail("sudo", "losetup", "-d", dev)
 	}
 
-	if err := os.RemoveAll(a.Config.Volumes.Host.Homes); err != nil {
+	if err := os.RemoveAll(a.Config.Volumes.Host.Homes); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove homes dir: %w", err)
 	}
-	if err := os.RemoveAll(a.Config.Volumes.Host.Share); err != nil {
+	if err := os.RemoveAll(a.Config.Volumes.Host.Share); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove share dir: %w", err)
 	}
-	if err := os.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil {
+	if err := os.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove readonly dir: %w", err)
 	}
-
-	if err := os.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(a.Config.Volumes.Host.Share, 0755); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(a.Config.Volumes.Host.Readonly, 0755); err != nil {
-		return err
-	}
-
-	if err := runCmd(
-		"sudo", "chown",
-		fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
-		a.Config.Volumes.Host.Share,
-		a.Config.Volumes.Host.Readonly,
-	); err != nil {
-		return err
+	if err := os.RemoveAll(a.Config.Volumes.Host.Volumes); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove volumes dir: %w", err)
 	}
 
 	fmt.Println("[+] Volume clean completed.")
