@@ -123,9 +123,6 @@ func run() error {
 			}
 
 		case VOLUME_CLEAN:
-			if err := app.LoadUsers(); err != nil {
-				return err
-			}
 			if err := app.VolumeClean(); err != nil {
 				return err
 			}
