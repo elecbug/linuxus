@@ -1,10 +1,15 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
 )
 
 func (a *App) GenerateService() error {
@@ -133,6 +138,20 @@ func (a *App) VolumeClean() error {
 	return nil
 }
 
+func (a *App) dockerClient() (*client.Client, error) {
+	if a.DockerClient != nil {
+		return a.DockerClient, nil
+	}
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Docker client: %w", err)
+	}
+	a.DockerClient = cli
+
+	return cli, nil
+}
+
 func (a *App) buildRuntimeImages() error {
 	fmt.Println("[+] Building runtime images...")
 	if err := runCmd("sudo", "docker", "build", "-t", a.authImageName(), a.Config.AuthService.SourceDir); err != nil {
@@ -160,7 +179,7 @@ func (a *App) ensureRuntimeNetworks() error {
 }
 
 func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
-	exists, err := dockerNetworkExists(spec.Name)
+	exists, err := a.dockerNetworkExists(spec.Name)
 	if err != nil {
 		return err
 	}
@@ -168,8 +187,25 @@ func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
 		fmt.Printf("[=] Network already exists: %s\n", spec.Name)
 		return nil
 	}
+
+	cli, err := a.dockerClient()
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("[+] Creating network: %s (%s)\n", spec.Name, spec.Subnet)
-	return runCmd("sudo", "docker", "network", "create", "--driver", "bridge", "--subnet", spec.Subnet, spec.Name)
+
+	_, err = cli.NetworkCreate(context.Background(), spec.Name, network.CreateOptions{
+		Driver: "bridge",
+		IPAM: &network.IPAM{
+			Config: []network.IPAMConfig{
+				{
+					Subnet: spec.Subnet,
+				},
+			},
+		},
+	})
+	return err
 }
 
 func (a *App) ensureAuthContainer() error {
@@ -188,7 +224,7 @@ func (a *App) ensureUserContainers() error {
 }
 
 func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
-	exists, err := dockerContainerExists(spec.Name)
+	exists, err := a.dockerContainerExists(spec.Name)
 	if err != nil {
 		return err
 	}
@@ -264,16 +300,23 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 func (a *App) removeManagedContainers() error {
 	names := a.managedContainerNames()
 	for _, name := range names {
-		exists, err := dockerContainerExists(name)
+		exists, err := a.dockerContainerExists(name)
 		if err != nil {
 			return err
 		}
 		if !exists {
 			continue
 		}
-		fmt.Printf("[+] Removing container: %s\n", name)
-		if err := runCmd("sudo", "docker", "rm", "-f", name); err != nil {
+
+		cli, err := a.dockerClient()
+		if err != nil {
 			return err
+		}
+
+		fmt.Printf("[+] Removing container: %s\n", name)
+
+		if err := cli.ContainerRemove(context.Background(), name, container.RemoveOptions{Force: true}); err != nil {
+			return fmt.Errorf("failed to remove container %s: %w", name, err)
 		}
 	}
 	return nil
@@ -286,16 +329,23 @@ func (a *App) removeManagedNetworks() error {
 	}
 	for i := len(networks) - 1; i >= 0; i-- {
 		name := networks[i].Name
-		exists, err := dockerNetworkExists(name)
+		exists, err := a.dockerNetworkExists(name)
 		if err != nil {
 			return err
 		}
 		if !exists {
 			continue
 		}
-		fmt.Printf("[+] Removing network: %s\n", name)
-		if err := runCmd("sudo", "docker", "network", "rm", name); err != nil {
+
+		cli, err := a.dockerClient()
+		if err != nil {
 			return err
+		}
+
+		fmt.Printf("[+] Removing network: %s\n", name)
+
+		if err := cli.NetworkRemove(context.Background(), name); err != nil {
+			return fmt.Errorf("failed to remove network %s: %w", name, err)
 		}
 	}
 	return nil
@@ -311,20 +361,35 @@ func (a *App) managedContainerNames() []string {
 	return names
 }
 
-func dockerContainerExists(name string) (bool, error) {
-	out, err := runCmdOutput("sudo", "docker", "ps", "-aq", "--filter", "name=^/"+name+"$")
+func (a *App) dockerContainerExists(name string) (bool, error) {
+	cli, err := a.dockerClient()
 	if err != nil {
 		return false, err
 	}
-	return strings.TrimSpace(out) != "", nil
+
+	summary, err := cli.ContainerList(context.Background(), container.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "^/" + name + "$"}),
+	})
+	if err != nil {
+		return false, err
+	}
+	return len(summary) > 0, nil
 }
 
-func dockerNetworkExists(name string) (bool, error) {
-	out, err := runCmdOutput("sudo", "docker", "network", "ls", "-q", "--filter", "name=^"+name+"$")
+func (a *App) dockerNetworkExists(name string) (bool, error) {
+	cli, err := a.dockerClient()
 	if err != nil {
 		return false, err
 	}
-	return strings.TrimSpace(out) != "", nil
+
+	networks, err := cli.NetworkList(context.Background(), network.ListOptions{
+		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "^" + name + "$"}),
+	})
+	if err != nil {
+		return false, err
+	}
+	return len(networks) > 0, nil
 }
 
 func (a *App) buildAuthRuntimeSpec(adminSafe string) RuntimeContainerSpec {

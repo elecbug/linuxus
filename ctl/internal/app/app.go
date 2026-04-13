@@ -3,10 +3,13 @@ package app
 import (
 	"path/filepath"
 
+	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/ctl/internal/config"
 )
 
 type App struct {
+	DockerClient *client.Client
+
 	CurrentDir string
 	ExecPath   string
 	RepoDir    string
