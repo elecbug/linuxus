@@ -1,15 +1,16 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 )
 
 func (a *App) GenerateService() error {
@@ -138,20 +139,6 @@ func (a *App) VolumeClean() error {
 	return nil
 }
 
-func (a *App) dockerClient() (*client.Client, error) {
-	if a.DockerClient != nil {
-		return a.DockerClient, nil
-	}
-
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Docker client: %w", err)
-	}
-	a.DockerClient = cli
-
-	return cli, nil
-}
-
 func (a *App) buildRuntimeImages() error {
 	fmt.Println("[+] Building runtime images...")
 	if err := runCmd("sudo", "docker", "build", "-t", a.authImageName(), a.Config.AuthService.SourceDir); err != nil {
@@ -188,14 +175,14 @@ func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
 		return nil
 	}
 
-	cli, err := a.dockerClient()
-	if err != nil {
-		return err
+	cli := a.DockerClient
+	if cli == nil {
+		return fmt.Errorf("Docker client is not initialized")
 	}
 
 	fmt.Printf("[+] Creating network: %s (%s)\n", spec.Name, spec.Subnet)
 
-	_, err = cli.NetworkCreate(context.Background(), spec.Name, network.CreateOptions{
+	_, err = cli.NetworkCreate(a.Context, spec.Name, network.CreateOptions{
 		Driver: "bridge",
 		IPAM: &network.IPAM{
 			Config: []network.IPAMConfig{
@@ -224,77 +211,122 @@ func (a *App) ensureUserContainers() error {
 }
 
 func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
+	cli := a.DockerClient
+	if cli == nil {
+		return fmt.Errorf("Docker client is not initialized")
+	}
+
 	exists, err := a.dockerContainerExists(spec.Name)
 	if err != nil {
 		return err
 	}
 	if exists {
 		fmt.Printf("[+] Recreating container: %s\n", spec.Name)
-		if err := runCmdAllowFail("sudo", "docker", "rm", "-f", spec.Name); err != nil {
+		if err := cli.ContainerRemove(a.Context, spec.Name, container.RemoveOptions{
+			Force: true,
+		}); err != nil {
 			return fmt.Errorf("failed to remove existing container %s: %w", spec.Name, err)
 		}
 	}
 
-	args := []string{"docker", "create", "--name", spec.Name}
-	if spec.User != "" {
-		args = append(args, "--user", spec.User)
-	}
-	if spec.Hostname != "" {
-		args = append(args, "--hostname", spec.Hostname)
-	}
-	if spec.WorkingDir != "" {
-		args = append(args, "--workdir", spec.WorkingDir)
-	}
-	if spec.ReadOnly {
-		args = append(args, "--read-only")
-	}
-	if spec.Restart != "" {
-		args = append(args, "--restart", spec.Restart)
-	}
-	for _, tmpfs := range spec.Tmpfs {
-		args = append(args, "--tmpfs", tmpfs)
-	}
-	for _, env := range spec.Environment {
-		args = append(args, "-e", env)
-	}
-	for _, volume := range spec.Volumes {
-		args = append(args, "-v", volume)
-	}
-	for _, port := range spec.Ports {
-		args = append(args, "-p", port)
-	}
-	for _, opt := range spec.SecurityOpt {
-		args = append(args, "--security-opt", opt)
-	}
-	for _, cap := range spec.CapDrop {
-		args = append(args, "--cap-drop", cap)
-	}
-	if spec.Limits.Memory != "" {
-		args = append(args, "--memory", spec.Limits.Memory)
-	}
-	if spec.Limits.CPUs != "" {
-		args = append(args, "--cpus", spec.Limits.CPUs)
-	}
-	if spec.Limits.Pids > 0 {
-		args = append(args, "--pids-limit", fmt.Sprintf("%d", spec.Limits.Pids))
-	}
-	if spec.Limits.NofileSoft > 0 || spec.Limits.NofileHard > 0 {
-		args = append(args, "--ulimit", fmt.Sprintf("nofile=%d:%d", spec.Limits.NofileSoft, spec.Limits.NofileHard))
-	}
-	if len(spec.Networks) > 0 {
-		args = append(args, "--network", spec.Networks[0])
-	}
-	args = append(args, spec.Image)
+	var (
+		exposedPorts nat.PortSet
+		portBindings nat.PortMap
+	)
 
-	if err := runCmd("sudo", args...); err != nil {
-		return err
-	}
-	for _, network := range spec.Networks[1:] {
-		if err := runCmd("sudo", "docker", "network", "connect", network, spec.Name); err != nil {
-			return fmt.Errorf("failed to connect %s to %s: %w", spec.Name, network, err)
+	if len(spec.Ports) > 0 {
+		exposedPorts = nat.PortSet{}
+		portBindings = nat.PortMap{}
+
+		for _, p := range spec.Ports {
+			containerPort, hostBinding, err := parsePortBinding(p)
+			if err != nil {
+				return fmt.Errorf("invalid port binding %q: %w", p, err)
+			}
+			exposedPorts[containerPort] = struct{}{}
+			portBindings[containerPort] = append(portBindings[containerPort], hostBinding)
 		}
 	}
-	return runCmd("sudo", "docker", "start", spec.Name)
+
+	cfg := &container.Config{
+		Image:        spec.Image,
+		Hostname:     spec.Hostname,
+		User:         spec.User,
+		WorkingDir:   spec.WorkingDir,
+		Env:          spec.Environment,
+		ExposedPorts: exposedPorts,
+	}
+
+	hostCfg := &container.HostConfig{
+		Binds:          spec.Volumes,
+		Tmpfs:          sliceToTmpfsMap(spec.Tmpfs),
+		PortBindings:   portBindings,
+		ReadonlyRootfs: spec.ReadOnly,
+		SecurityOpt:    spec.SecurityOpt,
+		CapDrop:        spec.CapDrop,
+		RestartPolicy: container.RestartPolicy{
+			Name: container.RestartPolicyMode(spec.Restart),
+		},
+	}
+
+	if spec.Limits.Memory != "" {
+		memBytes, err := parseMemoryBytes(spec.Limits.Memory)
+		if err != nil {
+			return fmt.Errorf("invalid memory limit %q: %w", spec.Limits.Memory, err)
+		}
+		hostCfg.Memory = memBytes
+	}
+	if spec.Limits.CPUs != "" {
+		nanoCPUs, err := parseNanoCPUs(spec.Limits.CPUs)
+		if err != nil {
+			return fmt.Errorf("invalid cpu limit %q: %w", spec.Limits.CPUs, err)
+		}
+		hostCfg.NanoCPUs = nanoCPUs
+	}
+	if spec.Limits.Pids > 0 {
+		pidsLimit := int64(spec.Limits.Pids)
+		hostCfg.PidsLimit = &pidsLimit
+	}
+	if spec.Limits.NofileSoft > 0 || spec.Limits.NofileHard > 0 {
+		hostCfg.Ulimits = append(hostCfg.Ulimits, &container.Ulimit{
+			Name: "nofile",
+			Soft: int64(spec.Limits.NofileSoft),
+			Hard: int64(spec.Limits.NofileHard),
+		})
+	}
+
+	var networkingCfg *network.NetworkingConfig
+	if len(spec.Networks) > 0 {
+		networkingCfg = &network.NetworkingConfig{
+			EndpointsConfig: map[string]*network.EndpointSettings{
+				spec.Networks[0]: {},
+			},
+		}
+	}
+
+	resp, err := cli.ContainerCreate(
+		a.Context,
+		cfg,
+		hostCfg,
+		networkingCfg,
+		nil,
+		spec.Name,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create container %s: %w", spec.Name, err)
+	}
+
+	for _, netName := range spec.Networks[1:] {
+		if err := cli.NetworkConnect(a.Context, netName, resp.ID, &network.EndpointSettings{}); err != nil {
+			return fmt.Errorf("failed to connect %s to %s: %w", spec.Name, netName, err)
+		}
+	}
+
+	if err := cli.ContainerStart(a.Context, resp.ID, container.StartOptions{}); err != nil {
+		return fmt.Errorf("failed to start container %s: %w", spec.Name, err)
+	}
+
+	return nil
 }
 
 func (a *App) removeManagedContainers() error {
@@ -308,14 +340,14 @@ func (a *App) removeManagedContainers() error {
 			continue
 		}
 
-		cli, err := a.dockerClient()
-		if err != nil {
-			return err
+		cli := a.DockerClient
+		if cli == nil {
+			return fmt.Errorf("Docker client is not initialized")
 		}
 
 		fmt.Printf("[+] Removing container: %s\n", name)
 
-		if err := cli.ContainerRemove(context.Background(), name, container.RemoveOptions{Force: true}); err != nil {
+		if err := cli.ContainerRemove(a.Context, name, container.RemoveOptions{Force: true}); err != nil {
 			return fmt.Errorf("failed to remove container %s: %w", name, err)
 		}
 	}
@@ -337,14 +369,14 @@ func (a *App) removeManagedNetworks() error {
 			continue
 		}
 
-		cli, err := a.dockerClient()
-		if err != nil {
-			return err
+		cli := a.DockerClient
+		if cli == nil {
+			return fmt.Errorf("Docker client is not initialized")
 		}
 
 		fmt.Printf("[+] Removing network: %s\n", name)
 
-		if err := cli.NetworkRemove(context.Background(), name); err != nil {
+		if err := cli.NetworkRemove(a.Context, name); err != nil {
 			return fmt.Errorf("failed to remove network %s: %w", name, err)
 		}
 	}
@@ -362,12 +394,12 @@ func (a *App) managedContainerNames() []string {
 }
 
 func (a *App) dockerContainerExists(name string) (bool, error) {
-	cli, err := a.dockerClient()
-	if err != nil {
-		return false, err
+	cli := a.DockerClient
+	if cli == nil {
+		return false, fmt.Errorf("Docker client is not initialized")
 	}
 
-	summary, err := cli.ContainerList(context.Background(), container.ListOptions{
+	summary, err := cli.ContainerList(a.Context, container.ListOptions{
 		All:     true,
 		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "^/" + name + "$"}),
 	})
@@ -378,12 +410,12 @@ func (a *App) dockerContainerExists(name string) (bool, error) {
 }
 
 func (a *App) dockerNetworkExists(name string) (bool, error) {
-	cli, err := a.dockerClient()
-	if err != nil {
-		return false, err
+	cli := a.DockerClient
+	if cli == nil {
+		return false, fmt.Errorf("Docker client is not initialized")
 	}
 
-	networks, err := cli.NetworkList(context.Background(), network.ListOptions{
+	networks, err := cli.NetworkList(a.Context, network.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "^" + name + "$"}),
 	})
 	if err != nil {
@@ -535,4 +567,95 @@ func (a *App) buildRuntimeNetworks() ([]RuntimeNetworkSpec, error) {
 	})
 
 	return networks, nil
+}
+
+func parsePortBinding(s string) (nat.Port, nat.PortBinding, error) {
+	parts := strings.Split(s, ":")
+	if len(parts) != 2 {
+		return "", nat.PortBinding{}, fmt.Errorf("expected HOST:CONTAINER, got %q", s)
+	}
+
+	hostPort := strings.TrimSpace(parts[0])
+	containerPart := strings.TrimSpace(parts[1])
+
+	containerPort, err := nat.NewPort("tcp", containerPart)
+	if err != nil {
+		return "", nat.PortBinding{}, err
+	}
+
+	return containerPort, nat.PortBinding{
+		HostIP:   "",
+		HostPort: hostPort,
+	}, nil
+}
+
+func sliceToTmpfsMap(items []string) map[string]string {
+	if len(items) == 0 {
+		return nil
+	}
+
+	out := make(map[string]string, len(items))
+	for _, item := range items {
+		parts := strings.SplitN(item, ":", 2)
+		mountPoint := strings.TrimSpace(parts[0])
+		if mountPoint == "" {
+			continue
+		}
+
+		opts := ""
+		if len(parts) == 2 {
+			opts = strings.TrimSpace(parts[1])
+		}
+		out[mountPoint] = opts
+	}
+	return out
+}
+
+func parseNanoCPUs(v string) (int64, error) {
+	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+	if err != nil {
+		return 0, err
+	}
+	if f < 0 {
+		return 0, fmt.Errorf("must be non-negative")
+	}
+	return int64(f * 1_000_000_000), nil
+}
+
+func parseMemoryBytes(v string) (int64, error) {
+	s := strings.TrimSpace(strings.ToLower(v))
+	mult := int64(1)
+
+	switch {
+	case strings.HasSuffix(s, "g"):
+		mult = 1024 * 1024 * 1024
+		s = strings.TrimSuffix(s, "g")
+	case strings.HasSuffix(s, "gb"):
+		mult = 1024 * 1024 * 1024
+		s = strings.TrimSuffix(s, "gb")
+	case strings.HasSuffix(s, "m"):
+		mult = 1024 * 1024
+		s = strings.TrimSuffix(s, "m")
+	case strings.HasSuffix(s, "mb"):
+		mult = 1024 * 1024
+		s = strings.TrimSuffix(s, "mb")
+	case strings.HasSuffix(s, "k"):
+		mult = 1024
+		s = strings.TrimSuffix(s, "k")
+	case strings.HasSuffix(s, "kb"):
+		mult = 1024
+		s = strings.TrimSuffix(s, "kb")
+	case strings.HasSuffix(s, "b"):
+		mult = 1
+		s = strings.TrimSuffix(s, "b")
+	}
+
+	n, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	if n < 0 {
+		return 0, fmt.Errorf("must be non-negative")
+	}
+	return n * mult, nil
 }

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/ctl/internal/app"
 )
 
@@ -58,13 +60,20 @@ func run() error {
 		return nil
 	}
 
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create Docker client: %w", err)
+	}
+
 	app := &app.App{
-		CurrentDir: currentDir,
-		ExecPath:   execPath,
-		RepoDir:    repoDir,
-		SourceDir:  sourceDir,
-		ConfigFile: configFile,
-		Seen:       make(map[string]struct{}),
+		DockerClient: cli,
+		Context:      context.Background(),
+		CurrentDir:   currentDir,
+		ExecPath:     execPath,
+		RepoDir:      repoDir,
+		SourceDir:    sourceDir,
+		ConfigFile:   configFile,
+		Seen:         make(map[string]struct{}),
 	}
 
 	if err := os.Chdir(app.SourceDir); err != nil {

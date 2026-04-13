@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"path/filepath"
 
 	"github.com/docker/docker/client"
@@ -9,6 +10,7 @@ import (
 
 type App struct {
 	DockerClient *client.Client
+	Context      context.Context
 
 	CurrentDir string
 	ExecPath   string
