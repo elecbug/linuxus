@@ -96,6 +96,12 @@ func run() error {
 			}
 			app.PrintSummary()
 		case UP:
+			if err := app.LoadUsers(); err != nil {
+				return err
+			}
+			if err := app.PrepareUserDisks(); err != nil {
+				return err
+			}
 			if err := app.ComposeUp(); err != nil {
 				return err
 			}

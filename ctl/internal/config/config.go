@@ -56,6 +56,7 @@ type Config struct {
 
 	Volumes struct {
 		Host struct {
+			Volumes  string `yaml:"volumes"`
 			Homes    string `yaml:"homes"`
 			Share    string `yaml:"share"`
 			Readonly string `yaml:"readonly"`
@@ -64,6 +65,7 @@ type Config struct {
 			Share    string `yaml:"share"`
 			Readonly string `yaml:"readonly"`
 		} `yaml:"container"`
+		DiskLimit int `yaml:"disk_limit"` // MB
 	} `yaml:"volumes"`
 
 	Compose struct {

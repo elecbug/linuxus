@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -13,7 +14,6 @@ func (a *App) GenerateCompose() error {
 	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
 
 	cf := ComposeFile{
-		Version:  "3.8",
 		Services: make(map[string]ComposeService),
 		Networks: make(map[string]ComposeNetwork),
 	}
@@ -92,7 +92,7 @@ func (a *App) VolumeClean() error {
 
 	_ = runCmdAllowFail("sudo", "docker", "compose", "-f", a.Config.Compose.OutputFile, "down", "-v", "--remove-orphans")
 
-	mountDirs, err := listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
+	mountDirs, err := listMountedDirsDeepestFirst(a.Config.Volumes.Host.Volumes)
 	if err != nil {
 		return err
 	}
@@ -106,40 +106,53 @@ func (a *App) VolumeClean() error {
 	if err != nil {
 		return err
 	}
+	shareDevs, err := findLoopDevicesForImages(a.Config.Volumes.Host.Volumes)
+	if err != nil {
+		return err
+	}
+	loopDevs = append(loopDevs, shareDevs...)
 
 	for _, dev := range loopDevs {
 		fmt.Printf("[+] Detaching loop device: %s\n", dev)
 		_ = runCmdAllowFail("sudo", "losetup", "-d", dev)
 	}
 
-	if err := os.RemoveAll(a.Config.Volumes.Host.Homes); err != nil {
+	if err := os.RemoveAll(a.Config.Volumes.Host.Homes); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove homes dir: %w", err)
 	}
-	if err := os.RemoveAll(a.Config.Volumes.Host.Share); err != nil {
+	if err := os.RemoveAll(a.Config.Volumes.Host.Share); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove share dir: %w", err)
 	}
-	if err := os.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil {
+	if err := os.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove readonly dir: %w", err)
 	}
-
-	if err := os.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
-		return err
+	if err := os.RemoveAll(a.Config.Volumes.Host.Volumes); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove volumes dir: %w", err)
 	}
-	if err := os.MkdirAll(a.Config.Volumes.Host.Share, 0755); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(a.Config.Volumes.Host.Readonly, 0755); err != nil {
-		return err
+	if !strings.HasSuffix(a.Config.Volumes.Host.Volumes, "/") {
+		if err := os.Remove(a.Config.Volumes.Host.Volumes + "/"); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to remove volumes dir: %w", err)
+		}
 	}
 
-	if err := runCmd(
-		"sudo", "chown",
-		fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
-		a.Config.Volumes.Host.Share,
-		a.Config.Volumes.Host.Readonly,
-	); err != nil {
-		return err
-	}
+	// if err := os.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
+	// 	return err
+	// }
+	// if err := os.MkdirAll(a.Config.Volumes.Host.Share, 0755); err != nil {
+	// 	return err
+	// }
+	// if err := os.MkdirAll(a.Config.Volumes.Host.Readonly, 0755); err != nil {
+	// 	return err
+	// }
+
+	// if err := runCmd(
+	// 	"sudo", "chown",
+	// 	fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
+	// 	a.Config.Volumes.Host.Share,
+	// 	a.Config.Volumes.Host.Readonly,
+	// ); err != nil {
+	// 	return err
+	// }
 
 	fmt.Println("[+] Volume clean completed.")
 	return nil
