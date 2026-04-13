@@ -67,10 +67,6 @@ type Config struct {
 		} `yaml:"container"`
 		DiskLimit int `yaml:"disk_limit"` // MB
 	} `yaml:"volumes"`
-
-	Compose struct {
-		OutputFile string `yaml:"output_file"`
-	} `yaml:"compose"`
 }
 
 type Limits struct {

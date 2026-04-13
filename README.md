@@ -111,20 +111,19 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
    The following options control container behavior:
 
-   | Option                 | Description                 |
-   |------------------------|-----------------------------|
-   | `--help`, `-h`         | Show help                   |
-   | `--generate`, `-g`     | Generate compose file       |
-   | `--up`, `-u`           | Start all user containers   |
-   | `--down`, `-d`         | Stop all user containers    |
-   | `--restart`, `-r`      | Restart all user containers |
-   | `--volume-clean`, `-v` | Reset all user directories  |
+   | Option                 | Description                                 |
+   |------------------------|---------------------------------------------|
+   | `--help`, `-h`         | Show this help message                      |
+   | `--up`, `-u`           | Build images and start all runtime services |
+   | `--down`, `-d`         | Stop and remove all runtime services        |
+   | `--restart`, `-r`      | Restart all runtime services                |
+   | `--volume-clean`, `-v` | Reset all user directories                  |
 
    **Example**
 
    ```bash
-   # Generate + run
-   ./linuxusctl -g -u
+   # Build and run
+   ./linuxusctl -u
 
    # Restart everything
    ./linuxusctl -r

@@ -1,19 +1,20 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/ctl/internal/app"
 )
 
 type Option int
 
 const (
-	GENERATE Option = iota
-	UP
+	UP Option = iota
 	DOWN
 	RESTART
 	VOLUME_CLEAN
@@ -59,13 +60,21 @@ func run() error {
 		return nil
 	}
 
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create Docker client: %w", err)
+	}
+	defer cli.Close()
+
 	app := &app.App{
-		CurrentDir: currentDir,
-		ExecPath:   execPath,
-		RepoDir:    repoDir,
-		SourceDir:  sourceDir,
-		ConfigFile: configFile,
-		Seen:       make(map[string]struct{}),
+		DockerClient: cli,
+		Context:      context.Background(),
+		CurrentDir:   currentDir,
+		ExecPath:     execPath,
+		RepoDir:      repoDir,
+		SourceDir:    sourceDir,
+		ConfigFile:   configFile,
+		Seen:         make(map[string]struct{}),
 	}
 
 	if err := os.Chdir(app.SourceDir); err != nil {
@@ -84,17 +93,6 @@ func run() error {
 
 	for _, v := range opts.Opts {
 		switch v {
-		case GENERATE:
-			if err := app.LoadUsers(); err != nil {
-				return err
-			}
-			if err := app.PrepareUserDisks(); err != nil {
-				return err
-			}
-			if err := app.GenerateCompose(); err != nil {
-				return err
-			}
-			app.PrintSummary()
 		case UP:
 			if err := app.LoadUsers(); err != nil {
 				return err
@@ -102,17 +100,29 @@ func run() error {
 			if err := app.PrepareUserDisks(); err != nil {
 				return err
 			}
-			if err := app.ComposeUp(); err != nil {
+			if err := app.ServiceUp(); err != nil {
 				return err
 			}
+
 		case DOWN:
-			if err := app.ComposeDown(); err != nil {
+			if err := app.LoadUsers(); err != nil {
 				return err
 			}
+			if err := app.ServiceDown(); err != nil {
+				return err
+			}
+
 		case RESTART:
-			if err := app.ComposeRestart(); err != nil {
+			if err := app.LoadUsers(); err != nil {
 				return err
 			}
+			if err := app.PrepareUserDisks(); err != nil {
+				return err
+			}
+			if err := app.ServiceRestart(); err != nil {
+				return err
+			}
+
 		case VOLUME_CLEAN:
 			if err := app.VolumeClean(); err != nil {
 				return err
@@ -133,8 +143,6 @@ func parseArgs(args []string) (Options, error) {
 
 	for _, arg := range args {
 		switch arg {
-		case "-g", "--generate":
-			opts.Opts = append(opts.Opts, GENERATE)
 		case "-u", "--up":
 			opts.Opts = append(opts.Opts, UP)
 		case "-d", "--down":
@@ -158,17 +166,16 @@ func usageText(bin string) string {
   %s [OPTION]...
 
 Options:
-  -g, --generate      Generate compose file
-  -u, --up            Start all user containers
-  -d, --down          Stop all user containers
-  -r, --restart       Restart all user containers
-  -v, --volume-clean  Reset all user directories
   -h, --help          Show this help message
+  -u, --up            Build images and start all runtime services
+  -d, --down          Stop and remove all runtime services
+  -r, --restart       Restart all runtime services
+  -v, --volume-clean  Reset all user directories
 
 Examples:
-  %s -g
-  %s -g -u
-  %s --generate --up`, bin, bin, bin, bin)
+  %s -u
+  %s -d
+  %s -r`, bin, bin, bin, bin)
 }
 
 func printUsage(bin string) {

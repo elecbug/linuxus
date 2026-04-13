@@ -52,3 +52,7 @@ func getIP(baseIP string, index int) (string, error) {
 
 	return fmt.Sprintf("%d.%d.%d.%d/28", octets[0], octets[1], newO3, newO4), nil
 }
+
+func strPtr(s string) *string {
+	return &s
+}

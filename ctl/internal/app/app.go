@@ -1,10 +1,17 @@
 package app
 
 import (
+	"context"
+	"path/filepath"
+
+	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/ctl/internal/config"
 )
 
 type App struct {
+	DockerClient *client.Client
+	Context      context.Context
+
 	CurrentDir string
 	ExecPath   string
 	RepoDir    string
@@ -17,51 +24,45 @@ type App struct {
 	Seen    map[string]struct{}
 }
 
-type ComposeFile struct {
-	Services map[string]ComposeService `yaml:"services"`
-	Networks map[string]ComposeNetwork `yaml:"networks"`
+type ContainerLimits struct {
+	Memory     string
+	CPUs       string
+	Pids       int
+	NofileSoft int
+	NofileHard int
 }
 
-type ComposeService struct {
-	User        string                 `yaml:"user,omitempty"`
-	Build       *ComposeBuild          `yaml:"build,omitempty"`
-	Container   string                 `yaml:"container_name,omitempty"`
-	Hostname    string                 `yaml:"hostname,omitempty"`
-	WorkingDir  string                 `yaml:"working_dir,omitempty"`
-	ReadOnly    bool                   `yaml:"read_only,omitempty"`
-	Tmpfs       []string               `yaml:"tmpfs,omitempty"`
-	Environment []string               `yaml:"environment,omitempty"`
-	Volumes     []string               `yaml:"volumes,omitempty"`
-	Ports       []string               `yaml:"ports,omitempty"`
-	Restart     string                 `yaml:"restart,omitempty"`
-	SecurityOpt []string               `yaml:"security_opt,omitempty"`
-	CapDrop     []string               `yaml:"cap_drop,omitempty"`
-	MemLimit    string                 `yaml:"mem_limit,omitempty"`
-	CPUs        string                 `yaml:"cpus,omitempty"`
-	PidsLimit   int                    `yaml:"pids_limit,omitempty"`
-	Ulimits     map[string]NofileLimit `yaml:"ulimits,omitempty"`
-	Networks    []string               `yaml:"networks,omitempty"`
+type RuntimeContainerSpec struct {
+	Image       string
+	Name        string
+	Hostname    string
+	WorkingDir  string
+	User        string
+	ReadOnly    bool
+	Tmpfs       []string
+	Environment []string
+	Volumes     []string
+	Ports       []string
+	Restart     string
+	SecurityOpt []string
+	CapDrop     []string
+	Limits      ContainerLimits
+	Networks    []string
 }
 
-type ComposeBuild struct {
-	Context string   `yaml:"context"`
-	Args    []string `yaml:"args,omitempty"`
+type RuntimeNetworkSpec struct {
+	Name   string
+	Subnet string
 }
 
-type NofileLimit struct {
-	Soft int `yaml:"soft"`
-	Hard int `yaml:"hard"`
+func (a *App) authImageName() string {
+	return a.Config.AuthService.Container.Name + ":runtime"
 }
 
-type ComposeNetwork struct {
-	Driver string       `yaml:"driver"`
-	IPAM   *ComposeIPAM `yaml:"ipam,omitempty"`
+func (a *App) userImageName() string {
+	return a.Config.UserService.Container.NamePrefix + "base:runtime"
 }
 
-type ComposeIPAM struct {
-	Config []ComposeSubnet `yaml:"config"`
-}
-
-type ComposeSubnet struct {
-	Subnet string `yaml:"subnet"`
+func (a *App) homeDirForUser(userID string) string {
+	return filepath.Join(a.Config.Volumes.Host.Homes, userID)
 }
