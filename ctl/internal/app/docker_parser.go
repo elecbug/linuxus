@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -15,6 +16,7 @@ type containerInfo struct {
 	Status string
 	Image  string
 	Ports  string
+	UserID string
 }
 
 func parseNanoCPUs(v string) (int64, error) {
@@ -92,6 +94,7 @@ func parseContainerInfos(infos []containerInfo) []string {
 	maxStatus := 0
 	maxImage := 0
 	maxPorts := 0
+	maxUserID := 0
 
 	for _, info := range infos {
 		if len(info.Name) > maxName {
@@ -109,19 +112,26 @@ func parseContainerInfos(infos []containerInfo) []string {
 		if len(info.Ports) > maxPorts {
 			maxPorts = len(info.Ports)
 		}
+		if len(info.UserID) > maxUserID {
+			maxUserID = len(info.UserID)
+		}
 	}
 
 	out := make([]string, len(infos))
 	for i, info := range infos {
-		out[i] = fmt.Sprintf("%-*s | %-*s | %-*s | %-*s | %s",
+		out[i] = fmt.Sprintf("%-*s | %-*s | %-*s | %-*s | %-*s | %s",
 			maxName, info.Name,
+			maxUserID, info.UserID,
 			maxState, info.State,
 			maxStatus, info.Status,
 			maxImage, info.Image,
 			info.Ports,
 		)
 		if i == 0 {
-			out[i] += "\n" + strings.Repeat("-", maxName) + "-|-" + strings.Repeat("-", maxState) + "-|-" + strings.Repeat("-", maxStatus) + "-|-" + strings.Repeat("-", maxImage) + "-|-" + strings.Repeat("-", maxPorts)
+			out[i] += "\n" + strings.Repeat("-", maxName) + "-|-" +
+				strings.Repeat("-", maxUserID) + "-|-" + strings.Repeat("-", maxState) + "-|-" +
+				strings.Repeat("-", maxStatus) + "-|-" + strings.Repeat("-", maxImage) + "-|-" +
+				strings.Repeat("-", maxPorts)
 		}
 	}
 
@@ -319,4 +329,8 @@ func (a *App) buildAdminRuntimeSpec(adminSafe string) RuntimeContainerSpec {
 			a.Config.UserService.Container.NetworkPrefix + adminSafe,
 		},
 	}
+}
+
+func (a *App) homeDirForUser(userID string) string {
+	return filepath.Join(a.Config.Volumes.Host.Homes, userID)
 }

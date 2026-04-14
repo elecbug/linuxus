@@ -178,6 +178,8 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
 This project is licensed under the [MIT License](./LICENSE).
 
+It also uses several third-party libraries under permissive licenses such as Apache-2.0, BSD, and MIT.
+
 ---
 
 ## 🌱 Open Source & Contributions

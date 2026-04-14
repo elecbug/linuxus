@@ -30,14 +30,14 @@ func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
 		return nil
 	}
 
-	cli := a.DockerClient
+	cli := a.dockerClient
 	if cli == nil {
 		return fmt.Errorf("Docker client is not initialized")
 	}
 
 	fmt.Printf("[+] Creating network: %s (%s)\n", spec.Name, spec.Subnet)
 
-	_, err = cli.NetworkCreate(a.Context, spec.Name, network.CreateOptions{
+	_, err = cli.NetworkCreate(a.context, spec.Name, network.CreateOptions{
 		Driver: "bridge",
 		IPAM: &network.IPAM{
 			Config: []network.IPAMConfig{
@@ -65,14 +65,14 @@ func (a *App) removeManagedNetworks() error {
 			continue
 		}
 
-		cli := a.DockerClient
+		cli := a.dockerClient
 		if cli == nil {
 			return fmt.Errorf("Docker client is not initialized")
 		}
 
 		fmt.Printf("[+] Removing network: %s\n", name)
 
-		if err := cli.NetworkRemove(a.Context, name); err != nil {
+		if err := cli.NetworkRemove(a.context, name); err != nil {
 			return fmt.Errorf("failed to remove network %s: %w", name, err)
 		}
 	}
@@ -80,12 +80,12 @@ func (a *App) removeManagedNetworks() error {
 }
 
 func (a *App) existDockerNetwork(name string) (bool, error) {
-	cli := a.DockerClient
+	cli := a.dockerClient
 	if cli == nil {
 		return false, fmt.Errorf("Docker client is not initialized")
 	}
 
-	networks, err := cli.NetworkList(a.Context, network.ListOptions{
+	networks, err := cli.NetworkList(a.context, network.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "^" + name + "$"}),
 	})
 	if err != nil {

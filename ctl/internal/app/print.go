@@ -8,7 +8,7 @@ func (a *App) PrintSummary() {
 	fmt.Println("Runtime service plan prepared.")
 	fmt.Println()
 	fmt.Println("Config file:")
-	fmt.Printf("  %s\n\n", a.ConfigFile)
+	fmt.Printf("  %s\n\n", a.configFile)
 
 	fmt.Println("Login URL:")
 	fmt.Printf("  http://localhost:%d/%s\n\n", a.Config.AuthService.Container.ExternalPort, a.Config.AuthService.URLPath.Login)
@@ -31,5 +31,5 @@ func (a *App) PrintSummary() {
 	)
 
 	fmt.Println("Run:")
-	fmt.Printf("  %s -u\n", a.ExecPath)
+	fmt.Printf("  %s -u\n", a.execPath)
 }

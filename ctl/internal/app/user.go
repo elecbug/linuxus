@@ -18,7 +18,7 @@ func (a *App) LoadUsers() error {
 
 	a.UserIDs = nil
 	a.SafeIDs = nil
-	a.Seen = make(map[string]struct{})
+	a.seen = make(map[string]struct{})
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -34,13 +34,13 @@ func (a *App) LoadUsers() error {
 		if userID == a.Config.UserService.Container.Admin.UserID {
 			continue
 		}
-		if _, exists := a.Seen[userID]; exists {
+		if _, exists := a.seen[userID]; exists {
 			fmt.Fprintf(os.Stderr, "Warning: duplicate user ID skipped: %s\n", userID)
 			continue
 		}
 
 		safeID := sanitizeName(userID)
-		a.Seen[userID] = struct{}{}
+		a.seen[userID] = struct{}{}
 		a.UserIDs = append(a.UserIDs, userID)
 		a.SafeIDs = append(a.SafeIDs, safeID)
 	}

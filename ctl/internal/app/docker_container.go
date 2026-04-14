@@ -24,7 +24,7 @@ func (a *App) ensureUserContainers() error {
 }
 
 func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
-	cli := a.DockerClient
+	cli := a.dockerClient
 	if cli == nil {
 		return fmt.Errorf("Docker client is not initialized")
 	}
@@ -35,7 +35,7 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 	}
 	if exists {
 		fmt.Printf("[+] Recreating container: %s\n", spec.Name)
-		if err := cli.ContainerRemove(a.Context, spec.Name, container.RemoveOptions{
+		if err := cli.ContainerRemove(a.context, spec.Name, container.RemoveOptions{
 			Force: true,
 		}); err != nil {
 			return fmt.Errorf("failed to remove existing container %s: %w", spec.Name, err)
@@ -118,7 +118,7 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 	}
 
 	resp, err := cli.ContainerCreate(
-		a.Context,
+		a.context,
 		cfg,
 		hostCfg,
 		networkingCfg,
@@ -130,12 +130,12 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 	}
 
 	for _, netName := range spec.Networks[1:] {
-		if err := cli.NetworkConnect(a.Context, netName, resp.ID, &network.EndpointSettings{}); err != nil {
+		if err := cli.NetworkConnect(a.context, netName, resp.ID, &network.EndpointSettings{}); err != nil {
 			return fmt.Errorf("failed to connect %s to %s: %w", spec.Name, netName, err)
 		}
 	}
 
-	if err := cli.ContainerStart(a.Context, resp.ID, container.StartOptions{}); err != nil {
+	if err := cli.ContainerStart(a.context, resp.ID, container.StartOptions{}); err != nil {
 		return fmt.Errorf("failed to start container %s: %w", spec.Name, err)
 	}
 
@@ -153,14 +153,14 @@ func (a *App) removeManagedContainers() error {
 			continue
 		}
 
-		cli := a.DockerClient
+		cli := a.dockerClient
 		if cli == nil {
 			return fmt.Errorf("Docker client is not initialized")
 		}
 
 		fmt.Printf("[+] Removing container: %s\n", name)
 
-		if err := cli.ContainerRemove(a.Context, name, container.RemoveOptions{Force: true}); err != nil {
+		if err := cli.ContainerRemove(a.context, name, container.RemoveOptions{Force: true}); err != nil {
 			return fmt.Errorf("failed to remove container %s: %w", name, err)
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/containerd/errdefs"
 )
@@ -123,18 +124,26 @@ func (a *App) ServicePS() error {
 
 	results := make([]containerInfo, 0, len(names)+1)
 	results = append(results, containerInfo{
-		Name:   "NAME",
-		State:  "STATE",
+		Name:   "CONTAINER NAME",
+		State:  "STATUS",
 		Status: "STATUS",
 		Image:  "IMAGE",
 		Ports:  "PORTS",
+		UserID: "USER ID",
 	})
 
 	for _, name := range names {
-		info, err := a.DockerClient.ContainerInspect(a.Context, name)
+		info, err := a.dockerClient.ContainerInspect(a.context, name)
 		if err != nil {
 			if errdefs.IsNotFound(err) {
-				fmt.Printf("%-24s %-12s %-20s %-25s %s\n", name, "missing", "not created", "-", "-")
+				results = append(results, containerInfo{
+					Name:   name,
+					State:  "not found",
+					Status: "not found",
+					Image:  "-",
+					Ports:  "-",
+					UserID: "-",
+				})
 				continue
 			}
 			return fmt.Errorf("failed to inspect container %s: %w", name, err)
@@ -156,6 +165,7 @@ func (a *App) ServicePS() error {
 			Status: status,
 			Image:  image,
 			Ports:  ports,
+			UserID: a.getUserID(name),
 		})
 	}
 
@@ -166,4 +176,13 @@ func (a *App) ServicePS() error {
 	}
 
 	return nil
+}
+
+func (a *App) getUserID(name string) string {
+	if strings.HasPrefix(name, a.Config.UserService.Container.NamePrefix) {
+		return name[len(a.Config.UserService.Container.NamePrefix):]
+	} else if name == a.Config.AuthService.Container.Name {
+		return "AUTH SERVICE"
+	}
+	return "-"
 }

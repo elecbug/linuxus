@@ -16,7 +16,7 @@ import (
 func (a *App) buildRuntimeImages() error {
 	fmt.Println("[+] Building runtime images...")
 
-	if a.DockerClient == nil {
+	if a.dockerClient == nil {
 		return fmt.Errorf("Docker client is not initialized")
 	}
 
@@ -39,7 +39,7 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 		return err
 	}
 
-	resp, err := a.DockerClient.ImageBuild(a.Context, buildCtx, build.ImageBuildOptions{
+	resp, err := a.dockerClient.ImageBuild(a.context, buildCtx, build.ImageBuildOptions{
 		Tags:       []string{tag},
 		Dockerfile: "Dockerfile",
 		Remove:     true,
@@ -117,4 +117,12 @@ func tarBuildContext(dir string) (io.Reader, error) {
 	}
 
 	return buf, nil
+}
+
+func (a *App) authImageName() string {
+	return a.Config.AuthService.Container.Name + ":runtime"
+}
+
+func (a *App) userImageName() string {
+	return a.Config.UserService.Container.NamePrefix + "base:runtime"
 }

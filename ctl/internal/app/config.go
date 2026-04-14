@@ -10,9 +10,9 @@ import (
 )
 
 func (a *App) LoadConfig() error {
-	data, err := os.ReadFile(a.ConfigFile)
+	data, err := os.ReadFile(a.configFile)
 	if err != nil {
-		return fmt.Errorf("config file not found: %s", a.ConfigFile)
+		return fmt.Errorf("config file not found: %s", a.configFile)
 	}
 	if err := yaml.Unmarshal(data, &a.Config); err != nil {
 		return fmt.Errorf("failed to parse yaml config: %w", err)
@@ -75,5 +75,5 @@ func (a *App) absFromSource(path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
-	return filepath.Clean(filepath.Join(a.SourceDir, path))
+	return filepath.Clean(filepath.Join(a.sourceDir, path))
 }
