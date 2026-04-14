@@ -113,11 +113,12 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
    | Option                 | Description                                 |
    |------------------------|---------------------------------------------|
-   | `--help`, `-h`         | Show this help message                      |
-   | `--up`, `-u`           | Build images and start all runtime services |
-   | `--down`, `-d`         | Stop and remove all runtime services        |
-   | `--restart`, `-r`      | Restart all runtime services                |
-   | `--volume-clean`, `-v` | Reset all user directories                  |
+   | `help`, `-h`           | Show this help message                      |
+   | `up`, `-u`             | Build images and start all runtime services |
+   | `down`, `-d`           | Stop and remove all runtime services        |
+   | `restart`, `-r`        | Restart all runtime services                |
+   | `volume-clean`, `-v`   | Reset all user directories                  |
+   | `ps`, `-p`             | Show the status of all runtime services     |
 
    **Example**
 

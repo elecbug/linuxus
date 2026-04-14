@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/containerd/errdefs"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -143,6 +145,101 @@ func (a *App) VolumeClean() error {
 
 	fmt.Println("[+] Volume clean completed.")
 	return nil
+}
+func (a *App) ServicePS() error {
+	fmt.Println("[+] Runtime service status:")
+
+	names := make([]string, 0, len(a.UserIDs)+2)
+	names = append(names, a.Config.AuthService.Container.Name)
+
+	for _, id := range a.UserIDs {
+		names = append(names, a.Config.UserService.Container.NamePrefix+id)
+	}
+
+	adminID := sanitizeName(a.Config.UserService.Container.Admin.UserID)
+	names = append(names, a.Config.UserService.Container.NamePrefix+adminID)
+
+	fmt.Printf("%-24s %-12s %-20s %-25s %s\n", "NAME", "STATE", "STATUS", "IMAGE", "PORTS")
+
+	for _, name := range names {
+		info, err := a.DockerClient.ContainerInspect(a.Context, name)
+		if err != nil {
+			if errdefs.IsNotFound(err) {
+				fmt.Printf("%-24s %-12s %-20s %-25s %s\n", name, "missing", "not created", "-", "-")
+				continue
+			}
+			return fmt.Errorf("failed to inspect container %s: %w", name, err)
+		}
+
+		state := "-"
+		status := "-"
+		if info.State != nil {
+			state = info.State.Status
+			status = containerStatusText(info)
+		}
+
+		image := info.Config.Image
+		ports := portSummary(info)
+
+		fmt.Printf("%-24s %-12s %-20s %-25s %s\n", name, state, status, image, ports)
+	}
+
+	return nil
+}
+
+func containerStatusText(info types.ContainerJSON) string {
+	if info.State == nil {
+		return "-"
+	}
+
+	status := info.State.Status
+
+	if status == "exited" {
+		return fmt.Sprintf("exited(%d)", info.State.ExitCode)
+	}
+
+	if info.State.OOMKilled {
+		return "oom-killed"
+	}
+
+	return status
+}
+
+func portSummary(info types.ContainerJSON) string {
+	if info.NetworkSettings == nil || len(info.NetworkSettings.Ports) == 0 {
+		return "-"
+	}
+
+	first := true
+	out := ""
+
+	for containerPort, bindings := range info.NetworkSettings.Ports {
+		if len(bindings) == 0 {
+			if !first {
+				out += ", "
+			}
+			out += string(containerPort)
+			first = false
+			continue
+		}
+
+		for _, b := range bindings {
+			if !first {
+				out += ", "
+			}
+			if b.HostIP != "" {
+				out += fmt.Sprintf("%s:%s->%s", b.HostIP, b.HostPort, containerPort)
+			} else {
+				out += fmt.Sprintf("%s->%s", b.HostPort, containerPort)
+			}
+			first = false
+		}
+	}
+
+	if out == "" {
+		return "-"
+	}
+	return out
 }
 
 func (a *App) buildRuntimeImages() error {
