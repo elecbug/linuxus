@@ -128,6 +128,7 @@ func run() error {
 			if err := app.VolumeClean(); err != nil {
 				return err
 			}
+
 		case PS:
 			if err := app.LoadUsers(); err != nil {
 				return err
