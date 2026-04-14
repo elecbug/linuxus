@@ -2,26 +2,27 @@ package app
 
 import (
 	"context"
-	"path/filepath"
+	"fmt"
+	"os"
 
 	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/ctl/internal/config"
 )
 
 type App struct {
-	DockerClient *client.Client
-	Context      context.Context
+	dockerClient *client.Client
+	context      context.Context
 
-	CurrentDir string
-	ExecPath   string
-	RepoDir    string
-	SourceDir  string
-	ConfigFile string
+	currentDir string
+	execPath   string
+	repoDir    string
+	sourceDir  string
+	configFile string
 
 	Config  config.Config
 	UserIDs []string
 	SafeIDs []string
-	Seen    map[string]struct{}
+	seen    map[string]struct{}
 }
 
 type ContainerLimits struct {
@@ -55,14 +56,31 @@ type RuntimeNetworkSpec struct {
 	Subnet string
 }
 
-func (a *App) authImageName() string {
-	return a.Config.AuthService.Container.Name + ":runtime"
-}
+func CreateApp(currentDir, execDir, repoDir, sourceDir, configFile string) (*App, error) {
 
-func (a *App) userImageName() string {
-	return a.Config.UserService.Container.NamePrefix + "base:runtime"
-}
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Docker client: %w", err)
+	}
+	defer cli.Close()
 
-func (a *App) homeDirForUser(userID string) string {
-	return filepath.Join(a.Config.Volumes.Host.Homes, userID)
+	app := &App{
+		dockerClient: cli,
+		context:      context.Background(),
+		currentDir:   currentDir,
+		execPath:     execDir,
+		repoDir:      repoDir,
+		sourceDir:    sourceDir,
+		configFile:   configFile,
+		seen:         make(map[string]struct{}),
+	}
+
+	if err := os.Chdir(app.sourceDir); err != nil {
+		return nil, fmt.Errorf("failed to change directory to source dir: %w", err)
+	}
+	defer func() {
+		_ = os.Chdir(app.currentDir)
+	}()
+
+	return app, nil
 }

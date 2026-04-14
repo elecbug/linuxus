@@ -18,12 +18,12 @@ func (a *App) managedContainerNames() []string {
 }
 
 func (a *App) existdockerContainer(name string) (bool, error) {
-	cli := a.DockerClient
+	cli := a.dockerClient
 	if cli == nil {
 		return false, fmt.Errorf("Docker client is not initialized")
 	}
 
-	summary, err := cli.ContainerList(a.Context, container.ListOptions{
+	summary, err := cli.ContainerList(a.context, container.ListOptions{
 		All:     true,
 		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "^/" + name + "$"}),
 	})
