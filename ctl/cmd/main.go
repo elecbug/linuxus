@@ -18,6 +18,7 @@ const (
 	DOWN
 	RESTART
 	VOLUME_CLEAN
+	PS
 )
 
 type Options struct {
@@ -127,6 +128,14 @@ func run() error {
 			if err := app.VolumeClean(); err != nil {
 				return err
 			}
+
+		case PS:
+			if err := app.LoadUsers(); err != nil {
+				return err
+			}
+			if err := app.ServicePS(); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -143,15 +152,17 @@ func parseArgs(args []string) (Options, error) {
 
 	for _, arg := range args {
 		switch arg {
-		case "-u", "--up":
+		case "-u", "up":
 			opts.Opts = append(opts.Opts, UP)
-		case "-d", "--down":
+		case "-d", "down":
 			opts.Opts = append(opts.Opts, DOWN)
-		case "-r", "--restart":
+		case "-r", "restart":
 			opts.Opts = append(opts.Opts, RESTART)
-		case "-v", "--volume-clean":
+		case "-v", "volume-clean":
 			opts.Opts = append(opts.Opts, VOLUME_CLEAN)
-		case "-h", "--help":
+		case "-p", "ps":
+			opts.Opts = append(opts.Opts, PS)
+		case "-h", "help":
 			opts.IsHelp = true
 		default:
 			return opts, fmt.Errorf("invalid parameter: %s\n\n%s", arg, usageText(os.Args[0]))
@@ -166,11 +177,12 @@ func usageText(bin string) string {
   %s [OPTION]...
 
 Options:
-  -h, --help          Show this help message
-  -u, --up            Build images and start all runtime services
-  -d, --down          Stop and remove all runtime services
-  -r, --restart       Restart all runtime services
-  -v, --volume-clean  Reset all user directories
+  -h, help          Show this help message
+  -u, up            Build images and start all runtime services
+  -d, down          Stop and remove all runtime services
+  -r, restart       Restart all runtime services
+  -v, volume-clean  Reset all user directories
+  -p, ps            Show the status of all runtime services
 
 Examples:
   %s -u
