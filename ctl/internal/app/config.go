@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -52,6 +53,12 @@ func (a *App) ValidateConfig() error {
 	}
 	if a.Config.ManagerService.Container.Network == "" {
 		return errors.New("manager_service.container.network must not be empty")
+	}
+	if a.Config.ManagerService.Session.Timeout == "" {
+		return errors.New("manager_service.session.timeout must not be empty")
+	}
+	if _, err := time.ParseDuration(a.Config.ManagerService.Session.Timeout); err != nil {
+		return fmt.Errorf("manager_service.session.timeout is not a valid duration: %w", err)
 	}
 	if a.Config.UserService.Container.NamePrefix == "" {
 		return errors.New("user_service.container.name_prefix must not be empty")
