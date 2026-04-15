@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -150,7 +151,27 @@ func parseConfigFromEnv() (*config.Config, error) {
 		HostReadonlyDir:      hostReadonlyDir,
 		ContainerShareDir:    containerShareDir,
 		ContainerReadonlyDir: containerReadonlyDir,
+
+		UserLimits: config.ResourceLimits{
+			NanoCPUs:    envInt64("USER_NANO_CPUS"),
+			MemoryBytes: envInt64("USER_MEMORY_BYTES"),
+			PidsLimit:   envInt64("USER_PIDS_LIMIT"),
+			NofileSoft:  envInt64("USER_NOFILE_SOFT"),
+			NofileHard:  envInt64("USER_NOFILE_HARD"),
+		},
+		AdminLimits: config.ResourceLimits{
+			NanoCPUs:    envInt64("ADMIN_NANO_CPUS"),
+			MemoryBytes: envInt64("ADMIN_MEMORY_BYTES"),
+			PidsLimit:   envInt64("ADMIN_PIDS_LIMIT"),
+			NofileSoft:  envInt64("ADMIN_NOFILE_SOFT"),
+			NofileHard:  envInt64("ADMIN_NOFILE_HARD"),
+		},
 	}, nil
+}
+
+func envInt64(key string) int64 {
+	v, _ := strconv.ParseInt(os.Getenv(key), 10, 64)
+	return v
 }
 
 func waitForShutdown(srv *http.Server) {

@@ -2,6 +2,14 @@ package config
 
 import "time"
 
+type ResourceLimits struct {
+	NanoCPUs    int64
+	MemoryBytes int64
+	PidsLimit   int64
+	NofileSoft  int64
+	NofileHard  int64
+}
+
 type Config struct {
 	ListenAddr              string
 	UserImage               string
@@ -24,4 +32,7 @@ type Config struct {
 	HostReadonlyDir      string
 	ContainerShareDir    string
 	ContainerReadonlyDir string
+
+	UserLimits  ResourceLimits
+	AdminLimits ResourceLimits
 }

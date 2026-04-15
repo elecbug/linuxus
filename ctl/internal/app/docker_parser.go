@@ -244,7 +244,27 @@ func (a *App) buildAuthRuntimeSpec() RuntimeContainerSpec {
 	}
 }
 
-func (a *App) buildManagerRuntimeSpec() RuntimeContainerSpec {
+func (a *App) buildManagerRuntimeSpec() (RuntimeContainerSpec, error) {
+	userCPUStr := fmt.Sprintf("%v", a.Config.UserService.Container.User.Limits.CPU)
+	userNanoCPUs, err := parseNanoCPUs(userCPUStr)
+	if err != nil {
+		return RuntimeContainerSpec{}, fmt.Errorf("invalid user cpu limit: %w", err)
+	}
+	userMemBytes, err := parseMemoryBytes(a.Config.UserService.Container.User.Limits.Memory)
+	if err != nil {
+		return RuntimeContainerSpec{}, fmt.Errorf("invalid user memory limit: %w", err)
+	}
+
+	adminCPUStr := fmt.Sprintf("%v", a.Config.UserService.Container.Admin.Limits.CPU)
+	adminNanoCPUs, err := parseNanoCPUs(adminCPUStr)
+	if err != nil {
+		return RuntimeContainerSpec{}, fmt.Errorf("invalid admin cpu limit: %w", err)
+	}
+	adminMemBytes, err := parseMemoryBytes(a.Config.UserService.Container.Admin.Limits.Memory)
+	if err != nil {
+		return RuntimeContainerSpec{}, fmt.Errorf("invalid admin memory limit: %w", err)
+	}
+
 	return RuntimeContainerSpec{
 		Image: a.managerImageName(),
 		Name:  a.Config.ManagerService.Container.Name,
@@ -271,6 +291,17 @@ func (a *App) buildManagerRuntimeSpec() RuntimeContainerSpec {
 
 			"MANAGER_WAIT_TIME=" + a.Config.ManagerService.Session.Timeout,
 			"LISTEN_ADDR=:5959",
+
+			"USER_NANO_CPUS=" + fmt.Sprintf("%d", userNanoCPUs),
+			"USER_MEMORY_BYTES=" + fmt.Sprintf("%d", userMemBytes),
+			"USER_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Container.User.Limits.PID),
+			"USER_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Soft),
+			"USER_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Hard),
+			"ADMIN_NANO_CPUS=" + fmt.Sprintf("%d", adminNanoCPUs),
+			"ADMIN_MEMORY_BYTES=" + fmt.Sprintf("%d", adminMemBytes),
+			"ADMIN_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Container.Admin.Limits.PID),
+			"ADMIN_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Soft),
+			"ADMIN_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Hard),
 		},
 		Volumes: []string{
 			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Homes, a.Config.Volumes.Host.Homes),
@@ -282,5 +313,5 @@ func (a *App) buildManagerRuntimeSpec() RuntimeContainerSpec {
 		Networks: []string{
 			a.Config.ManagerService.Container.Network,
 		},
-	}
+	}, nil
 }

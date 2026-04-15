@@ -264,6 +264,28 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 		},
 	}
 
+	limits := s.cfg.UserLimits
+	if userID == s.cfg.AdminUserID {
+		limits = s.cfg.AdminLimits
+	}
+	if limits.MemoryBytes > 0 {
+		hostCfg.Memory = limits.MemoryBytes
+	}
+	if limits.NanoCPUs > 0 {
+		hostCfg.NanoCPUs = limits.NanoCPUs
+	}
+	if limits.PidsLimit > 0 {
+		pids := limits.PidsLimit
+		hostCfg.PidsLimit = &pids
+	}
+	if limits.NofileSoft > 0 || limits.NofileHard > 0 {
+		hostCfg.Ulimits = append(hostCfg.Ulimits, &container.Ulimit{
+			Name: "nofile",
+			Soft: limits.NofileSoft,
+			Hard: limits.NofileHard,
+		})
+	}
+
 	networkingCfg := &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {},

@@ -14,7 +14,11 @@ func (a *App) ensureAuthContainer() error {
 }
 
 func (a *App) ensureManagerContainer() error {
-	return a.ensureContainer(a.buildManagerRuntimeSpec())
+	spec, err := a.buildManagerRuntimeSpec()
+	if err != nil {
+		return err
+	}
+	return a.ensureContainer(spec)
 }
 
 func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
