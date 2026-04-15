@@ -35,6 +35,7 @@ type Config struct {
 	NetworkPrefix           string
 	BaseIP                  string
 	AuthContainerName       string
+	AdminUserID             string
 
 	RuntimeUser          string
 	ContainerRuntimeUser string
@@ -81,6 +82,7 @@ func main() {
 		NetworkPrefix:           envOr("NETWORK_PREFIX", "linuxus-net-"),
 		BaseIP:                  envOr("BASE_IP", "172.30.0.0"),
 		AuthContainerName:       envOr("AUTH_CONTAINER_NAME", "linuxus-auth"),
+		AdminUserID:             envOr("ADMIN_USER_ID", "alpha"),
 
 		RuntimeUser:          envOr("RUNTIME_USER", "1000:1000"),
 		ContainerRuntimeUser: envOr("CONTAINER_RUNTIME_USER", "student"),
@@ -327,7 +329,7 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 		Binds: []string{
 			fmt.Sprintf("%s:/home/%s:rw", homeDir, s.cfg.ContainerRuntimeUser),
 			fmt.Sprintf("%s:%s:rw", s.cfg.HostShareDir, s.cfg.ContainerShareDir),
-			fmt.Sprintf("%s:%s:ro", s.cfg.HostReadonlyDir, s.cfg.ContainerReadonlyDir),
+			getReadonlyBind(userID, &s.cfg),
 		},
 		Tmpfs: map[string]string{
 			"/tmp":     "rw,noexec,nosuid,nodev,size=64m",
@@ -358,6 +360,14 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 	}
 
 	return nil
+}
+
+func getReadonlyBind(userID string, cfg *Config) string {
+	if userID == cfg.AdminUserID {
+		return fmt.Sprintf("%s:%s:rw", cfg.HostReadonlyDir, cfg.ContainerReadonlyDir)
+	} else {
+		return fmt.Sprintf("%s:%s:ro", cfg.HostReadonlyDir, cfg.ContainerReadonlyDir)
+	}
 }
 
 func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) error {

@@ -256,6 +256,7 @@ func (a *App) buildManagerRuntimeSpec() RuntimeContainerSpec {
 			"BASE_IP=" + a.Config.UserService.Container.BaseIP,
 			"AUTH_CONTAINER_NAME=" + a.Config.AuthService.Container.Name,
 			"MANAGER_CONTAINER_NAME=" + a.Config.ManagerService.Container.Name,
+			"ADMIN_USER_ID=" + a.Config.UserService.Container.Admin.UserID,
 
 			"RUNTIME_USER=" + fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
 			"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Container.Runtime.User,

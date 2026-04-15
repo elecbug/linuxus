@@ -21,6 +21,4 @@ WORKDIR /app
 
 COPY --from=builder /app/linuxus-manager /app/linuxus-manager
 
-EXPOSE 8080
-
 CMD ["/app/linuxus-manager"]
