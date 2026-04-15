@@ -18,7 +18,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
-	dockernetwork "github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 )
 
@@ -263,7 +263,7 @@ func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, cont
 		if !strings.HasPrefix(netName, s.cfg.NetworkPrefix) {
 			continue
 		}
-		netInfo, err := s.docker.NetworkInspect(ctx, netName, dockernetwork.InspectOptions{})
+		netInfo, err := s.docker.NetworkInspect(ctx, netName, network.InspectOptions{})
 		if err != nil {
 			return "", "", fmt.Errorf("network inspect failed: %w", err)
 		}
@@ -302,8 +302,8 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 		},
 	}
 
-	networkingCfg := &dockernetwork.NetworkingConfig{
-		EndpointsConfig: map[string]*dockernetwork.EndpointSettings{
+	networkingCfg := &network.NetworkingConfig{
+		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {},
 		},
 	}
@@ -321,7 +321,7 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 }
 
 func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) error {
-	netInfo, err := s.docker.NetworkInspect(ctx, networkName, dockernetwork.InspectOptions{})
+	netInfo, err := s.docker.NetworkInspect(ctx, networkName, network.InspectOptions{})
 	if err != nil {
 		return fmt.Errorf("network inspect failed: %w", err)
 	}
@@ -332,7 +332,7 @@ func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) er
 		}
 	}
 
-	if err := s.docker.NetworkConnect(ctx, networkName, s.cfg.AuthContainerName, &dockernetwork.EndpointSettings{}); err != nil {
+	if err := s.docker.NetworkConnect(ctx, networkName, s.cfg.AuthContainerName, &network.EndpointSettings{}); err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "already exists") ||
 			strings.Contains(strings.ToLower(err.Error()), "already connected") {
 			return nil
@@ -389,7 +389,7 @@ func (s *Server) containerIPv4OnNetwork(ctx context.Context, containerName, netw
 }
 
 func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, error) {
-	networks, err := s.docker.NetworkList(ctx, dockernetwork.ListOptions{
+	networks, err := s.docker.NetworkList(ctx, network.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "name",
 			Value: "^" + s.cfg.NetworkPrefix,
@@ -406,7 +406,7 @@ func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, err
 			continue
 		}
 
-		inspect, err := s.docker.NetworkInspect(ctx, nw.ID, dockernetwork.InspectOptions{})
+		inspect, err := s.docker.NetworkInspect(ctx, nw.ID, network.InspectOptions{})
 		if err != nil {
 			return 0, "", fmt.Errorf("network inspect failed: %w", err)
 		}
@@ -434,7 +434,7 @@ func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, err
 }
 
 func (s *Server) networkExists(ctx context.Context, name string) (bool, error) {
-	nws, err := s.docker.NetworkList(ctx, dockernetwork.ListOptions{
+	nws, err := s.docker.NetworkList(ctx, network.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "name",
 			Value: "^" + name + "$",
@@ -458,10 +458,10 @@ func (s *Server) createNetwork(ctx context.Context, name, subnet string) error {
 		return nil
 	}
 
-	_, err := s.docker.NetworkCreate(ctx, name, dockernetwork.CreateOptions{
+	_, err := s.docker.NetworkCreate(ctx, name, network.CreateOptions{
 		Driver: "bridge",
-		IPAM: &dockernetwork.IPAM{
-			Config: []dockernetwork.IPAMConfig{
+		IPAM: &network.IPAM{
+			Config: []network.IPAMConfig{
 				{Subnet: subnet},
 			},
 		},

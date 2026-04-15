@@ -7,16 +7,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 )
 
-func (a *App) managedContainerNames() []string {
-	names := make([]string, 0, len(a.SafeIDs)+2)
-	names = append(names, a.Config.AuthService.Container.Name)
-	for _, safeID := range a.SafeIDs {
-		names = append(names, a.Config.UserService.Container.NamePrefix+safeID)
-	}
-	names = append(names, a.Config.UserService.Container.NamePrefix+a.Config.UserService.Container.Admin.UserID)
-	return names
-}
-
 func (a *App) existdockerContainer(name string) (bool, error) {
 	cli := a.dockerClient
 	if cli == nil {

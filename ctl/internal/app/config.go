@@ -44,6 +44,15 @@ func (a *App) ValidateConfig() error {
 	if a.Config.AuthService.SourceDir == "" {
 		return errors.New("auth_service.source_dir must not be empty")
 	}
+	if a.Config.ManagerService.SourceDir == "" {
+		return errors.New("manager_service.source_dir must not be empty")
+	}
+	if a.Config.ManagerService.Container.Name == "" {
+		return errors.New("manager_service.container.name must not be empty")
+	}
+	if a.Config.ManagerService.Container.Network == "" {
+		return errors.New("manager_service.container.network must not be empty")
+	}
 	if a.Config.UserService.Container.NamePrefix == "" {
 		return errors.New("user_service.container.name_prefix must not be empty")
 	}
@@ -59,6 +68,7 @@ func (a *App) ValidateConfig() error {
 func (a *App) normalizeConfigPaths() {
 	a.Config.UserService.SourceDir = a.absFromSource(a.Config.UserService.SourceDir)
 	a.Config.AuthService.SourceDir = a.absFromSource(a.Config.AuthService.SourceDir)
+	a.Config.ManagerService.SourceDir = a.absFromSource(a.Config.ManagerService.SourceDir)
 
 	a.Config.AuthService.AuthListFile.HostPath = a.absFromSource(a.Config.AuthService.AuthListFile.HostPath)
 

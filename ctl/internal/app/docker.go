@@ -18,10 +18,10 @@ func (a *App) ServiceUp() error {
 	if err := a.ensureRuntimeNetworks(); err != nil {
 		return err
 	}
-	if err := a.ensureAuthContainer(); err != nil {
+	if err := a.ensureManagerContainer(); err != nil {
 		return err
 	}
-	if err := a.ensureUserContainers(); err != nil {
+	if err := a.ensureAuthContainer(); err != nil {
 		return err
 	}
 
@@ -120,7 +120,10 @@ func (a *App) VolumeClean() error {
 func (a *App) ServicePS() error {
 	fmt.Println("[+] Runtime service status:")
 
-	names := a.managedContainerNames()
+	names, err := a.managedContainerNames()
+	if err != nil {
+		return err
+	}
 
 	results := make([]containerInfo, 0, len(names)+1)
 	results = append(results, containerInfo{
@@ -181,8 +184,12 @@ func (a *App) ServicePS() error {
 func (a *App) getUserID(name string) string {
 	if strings.HasPrefix(name, a.Config.UserService.Container.NamePrefix) {
 		return name[len(a.Config.UserService.Container.NamePrefix):]
-	} else if name == a.Config.AuthService.Container.Name {
+	}
+	if name == a.Config.AuthService.Container.Name {
 		return "AUTH SERVICE"
+	}
+	if name == a.Config.ManagerService.Container.Name {
+		return "MANAGER SERVICE"
 	}
 	return "-"
 }
