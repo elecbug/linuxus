@@ -256,14 +256,25 @@ func (a *App) buildManagerRuntimeSpec() RuntimeContainerSpec {
 			"NETWORK_PREFIX=" + a.Config.UserService.Container.NetworkPrefix,
 			"BASE_IP=" + a.Config.UserService.Container.BaseIP,
 			"AUTH_CONTAINER_NAME=" + a.Config.AuthService.Container.Name,
+
 			"RUNTIME_USER=" + fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
+			"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Container.Runtime.User,
+			"CONTAINER_HOSTNAME=" + a.Config.UserService.Container.Runtime.Hostname,
 			"WORKING_DIR=" + "/home/" + a.Config.UserService.Container.Runtime.User,
+
+			"HOST_HOMES_DIR=" + a.Config.Volumes.Host.Homes,
+			"HOST_SHARE_DIR=" + a.Config.Volumes.Host.Share,
+			"HOST_READONLY_DIR=" + a.Config.Volumes.Host.Readonly,
+			"CONTAINER_SHARE_DIR=" + a.Config.Volumes.Container.Share,
+			"CONTAINER_READONLY_DIR=" + a.Config.Volumes.Container.Readonly,
+
+			"MANAGER_WAIT_TIME=" + a.Config.ManagerService.Session.Timeout,
 			"LISTEN_ADDR=:5959",
 		},
 		Volumes: []string{
-			fmt.Sprintf("%s:/home/%s:rw", a.Config.Volumes.Host.Homes, a.Config.Volumes.Host.Homes),
-			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Share, a.Config.Volumes.Container.Share),
-			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Readonly, a.Config.Volumes.Container.Readonly),
+			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Homes, a.Config.Volumes.Host.Homes),
+			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Share),
+			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Readonly, a.Config.Volumes.Host.Readonly),
 			"/var/run/docker.sock:/var/run/docker.sock:rw",
 		},
 		Restart: "unless-stopped",

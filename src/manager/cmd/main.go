@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -37,11 +36,19 @@ type Config struct {
 	BaseIP                  string
 	AuthContainerName       string
 
-	RuntimeUser     string
-	WorkingDir      string
-	Timezone        string
-	ReadOnlyRootFS  bool
-	ManagerWaitTime time.Duration
+	RuntimeUser          string
+	ContainerRuntimeUser string
+	ContainerHostname    string
+	WorkingDir           string
+	Timezone             string
+	ReadOnlyRootFS       bool
+	ManagerWaitTime      time.Duration
+
+	HostHomesDir         string
+	HostShareDir         string
+	HostReadonlyDir      string
+	ContainerShareDir    string
+	ContainerReadonlyDir string
 }
 
 type UserUpRequest struct {
@@ -60,6 +67,13 @@ type UserUpResponse struct {
 }
 
 func main() {
+	waitTime := 10 * time.Second
+	if raw := envOr("MANAGER_WAIT_TIME", "10s"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			waitTime = d
+		}
+	}
+
 	cfg := Config{
 		ListenAddr:              envOr("LISTEN_ADDR", ":5959"),
 		UserImage:               envOr("USER_IMAGE", "linuxus-user-base:runtime"),
@@ -67,11 +81,20 @@ func main() {
 		NetworkPrefix:           envOr("NETWORK_PREFIX", "linuxus-net-"),
 		BaseIP:                  envOr("BASE_IP", "172.30.0.0"),
 		AuthContainerName:       envOr("AUTH_CONTAINER_NAME", "linuxus-auth"),
-		RuntimeUser:             envOr("RUNTIME_USER", "1000:1000"),
-		WorkingDir:              envOr("WORKING_DIR", "/home/student"),
-		Timezone:                envOr("TZ", "Asia/Seoul"),
-		ReadOnlyRootFS:          false,
-		ManagerWaitTime:         10 * time.Second,
+
+		RuntimeUser:          envOr("RUNTIME_USER", "1000:1000"),
+		ContainerRuntimeUser: envOr("CONTAINER_RUNTIME_USER", "student"),
+		ContainerHostname:    envOr("CONTAINER_HOSTNAME", "linuxus"),
+		WorkingDir:           envOr("WORKING_DIR", "/home/student"),
+		Timezone:             envOr("TZ", "Asia/Seoul"),
+		ReadOnlyRootFS:       true,
+		ManagerWaitTime:      waitTime,
+
+		HostHomesDir:         envOr("HOST_HOMES_DIR", ""),
+		HostShareDir:         envOr("HOST_SHARE_DIR", ""),
+		HostReadonlyDir:      envOr("HOST_READONLY_DIR", ""),
+		ContainerShareDir:    envOr("CONTAINER_SHARE_DIR", "/share"),
+		ContainerReadonlyDir: envOr("CONTAINER_READONLY_DIR", "/readonly"),
 	}
 
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -171,7 +194,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 	}
 
 	if exists {
-		networkName, subnet, err := s.ensureExistingContainerNetworkAndAuth(ctx, containerName, safeID)
+		networkName, subnet, err := s.ensureExistingContainerNetworkAndAuth(ctx, containerName)
 		if err != nil {
 			return nil, err
 		}
@@ -250,7 +273,7 @@ func (s *Server) inspectContainerState(ctx context.Context, name string) (bool, 
 	return true, false, nil
 }
 
-func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, containerName, safeID string) (string, string, error) {
+func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, containerName string) (string, string, error) {
 	inspect, err := s.docker.ContainerInspect(ctx, containerName)
 	if err != nil {
 		return "", "", fmt.Errorf("inspect existing container failed: %w", err)
@@ -283,20 +306,37 @@ func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, cont
 }
 
 func (s *Server) createUserContainer(ctx context.Context, containerName, userID, safeID, networkName string) error {
+	homeDir := strings.TrimRight(s.cfg.HostHomesDir, "/") + "/" + userID
+
 	cfg := &container.Config{
 		Image:      s.cfg.UserImage,
-		Hostname:   "linuxus",
+		Hostname:   s.cfg.ContainerHostname,
 		User:       s.cfg.RuntimeUser,
 		WorkingDir: s.cfg.WorkingDir,
 		Env: []string{
 			"TZ=" + s.cfg.Timezone,
+			"CONTAINER_RUNTIME_USER=" + s.cfg.ContainerRuntimeUser,
 			"USER_ID=" + userID,
-			"SAFE_ID=" + safeID,
+			"SHARED_DIR=" + s.cfg.ContainerShareDir,
+			"READONLY_DIR=" + s.cfg.ContainerReadonlyDir,
+			"IS_ADMIN=false",
 		},
 	}
 
 	hostCfg := &container.HostConfig{
+		Binds: []string{
+			fmt.Sprintf("%s:/home/%s:rw", homeDir, s.cfg.ContainerRuntimeUser),
+			fmt.Sprintf("%s:%s:rw", s.cfg.HostShareDir, s.cfg.ContainerShareDir),
+			fmt.Sprintf("%s:%s:ro", s.cfg.HostReadonlyDir, s.cfg.ContainerReadonlyDir),
+		},
+		Tmpfs: map[string]string{
+			"/tmp":     "rw,noexec,nosuid,nodev,size=64m",
+			"/run":     "rw,noexec,nosuid,nodev,size=16m",
+			"/var/tmp": "rw,noexec,nosuid,nodev,size=64m",
+		},
 		ReadonlyRootfs: s.cfg.ReadOnlyRootFS,
+		SecurityOpt:    []string{"no-new-privileges:true"},
+		CapDrop:        []string{"ALL"},
 		RestartPolicy: container.RestartPolicy{
 			Name: "unless-stopped",
 		},
@@ -562,12 +602,4 @@ func waitForShutdown(srv *http.Server) {
 	defer cancel()
 	_ = srv.Shutdown(ctx)
 	_ = srv.Close()
-}
-
-func mustAtoi(s string, fallback int) int {
-	n, err := strconv.Atoi(strings.TrimSpace(s))
-	if err != nil {
-		return fallback
-	}
-	return n
 }
