@@ -152,10 +152,10 @@ func usageText(bin string) string {
 Options:
   -h, help          Show this help message
   -u, up            Build images and start runtime services
-  -d, down          Stop and remove runtime services
+  -d, down          Stop and remove all runtime services
   -r, restart       Restart runtime services
   -v, volume-clean  Reset all user directories
-  -p, ps            Show the status of runtime services
+  -p, ps            Show the status of all runtime services
 
 Examples:
   %s -u

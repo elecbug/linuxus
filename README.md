@@ -18,7 +18,7 @@
 
 ## ✨ Overview
 
-![](./doc/fig/04-arch.png)
+<!-- ![](./doc/fig/04-arch.png) must fix-->
 
 Linuxus enables instructors to provide per-user Linux environments without requiring local setup.
 
@@ -114,9 +114,9 @@ Linuxus enables instructors to provide per-user Linux environments without requi
    | Option                 | Description                                 |
    |------------------------|---------------------------------------------|
    | `help`, `-h`           | Show this help message                      |
-   | `up`, `-u`             | Build images and start all runtime services |
+   | `up`, `-u`             | Build images and start runtime services     |
    | `down`, `-d`           | Stop and remove all runtime services        |
-   | `restart`, `-r`        | Restart all runtime services                |
+   | `restart`, `-r`        | Restart runtime services                    |
    | `volume-clean`, `-v`   | Reset all user directories                  |
    | `ps`, `-p`             | Show the status of all runtime services     |
 
