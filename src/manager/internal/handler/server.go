@@ -29,13 +29,19 @@ type Server struct {
 func NewServer(cfg *config.Config) (*Server, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		log.Fatalf("docker client init failed: %v", err)
+		return nil, fmt.Errorf("docker client init failed: %w", err)
 	}
-	defer cli.Close()
 
 	return &Server{docker: cli, cfg: cfg}, nil
 }
 
+func (s *Server) Close() error {
+	if s == nil || s.docker == nil {
+		return nil
+	}
+
+	return s.docker.Close()
+}
 func (s *Server) HandleHealthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true,
