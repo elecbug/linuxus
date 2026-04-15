@@ -57,20 +57,30 @@ func (a *App) ensureUserContainerReady(ctx context.Context, userID string) error
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 16*1024))
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 16*1024))
+	if err != nil {
+		return fmt.Errorf("failed to read manager response: %w", err)
+	}
 
 	var parsed managerUserUpResponse
-	_ = json.Unmarshal(respBody, &parsed)
+	unmarshalErr := json.Unmarshal(respBody, &parsed)
 
 	if resp.StatusCode != http.StatusOK {
-		msg := strings.TrimSpace(parsed.Message)
-		if msg == "" {
-			msg = strings.TrimSpace(string(respBody))
+		if unmarshalErr == nil {
+			msg := strings.TrimSpace(parsed.Message)
+			if msg != "" {
+				return fmt.Errorf("manager rejected request: %s", msg)
+			}
 		}
+		msg := strings.TrimSpace(string(respBody))
 		if msg == "" {
 			msg = resp.Status
 		}
 		return fmt.Errorf("manager rejected request: %s", msg)
+	}
+
+	if unmarshalErr != nil {
+		return fmt.Errorf("failed to parse manager response: %w", unmarshalErr)
 	}
 
 	if !parsed.OK {

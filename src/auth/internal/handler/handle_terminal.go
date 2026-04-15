@@ -1,14 +1,12 @@
 package handler
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
-	"time"
 )
 
 func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
@@ -27,10 +25,7 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-
-	if err := a.ensureUserContainerReady(ctx, id); err != nil {
+	if err := a.ensureUserContainerReady(r.Context(), id); err != nil {
 		log.Printf("manager prepare failed for %s: %v", id, err)
 		a.renderError(w, "Shell container is not ready. Please try again later.", http.StatusServiceUnavailable)
 		return
