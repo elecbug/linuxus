@@ -12,11 +12,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o linuxus-manager cmd/main.g
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
-
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
-    && echo $TZ > /etc/timezone
-
 WORKDIR /app
 
 COPY --from=builder /app/linuxus-manager /app/linuxus-manager
