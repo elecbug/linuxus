@@ -278,7 +278,7 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 		pids := limits.PidsLimit
 		hostCfg.PidsLimit = &pids
 	}
-	if limits.NofileSoft > 0 || limits.NofileHard > 0 {
+	if limits.NofileSoft > 0 && limits.NofileHard > 0 {
 		hostCfg.Ulimits = append(hostCfg.Ulimits, &container.Ulimit{
 			Name: "nofile",
 			Soft: limits.NofileSoft,

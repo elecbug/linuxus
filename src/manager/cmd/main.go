@@ -170,7 +170,15 @@ func parseConfigFromEnv() (*config.Config, error) {
 }
 
 func envInt64(key string) int64 {
-	v, _ := strconv.ParseInt(os.Getenv(key), 10, 64)
+	s := os.Getenv(key)
+	if s == "" {
+		return 0
+	}
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		log.Printf("warning: invalid value for %s=%q, using 0: %v", key, s, err)
+		return 0
+	}
 	return v
 }
 
