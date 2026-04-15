@@ -60,6 +60,8 @@ manager_service:
     name: linuxus_manager
     timezone: Asia/Seoul
     network: linuxus_manager_net
+  session:
+    timeout: 10s
 
 volumes:
   host:

@@ -61,6 +61,9 @@ type Config struct {
 			Timezone string `yaml:"timezone"`
 			Network  string `yaml:"network"`
 		} `yaml:"container"`
+		Session struct {
+			Timeout string `yaml:"timeout"`
+		} `yaml:"session"`
 	} `yaml:"manager_service"`
 
 	Volumes struct {

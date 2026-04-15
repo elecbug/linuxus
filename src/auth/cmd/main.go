@@ -68,6 +68,14 @@ func parseConfig() (*handler.AppConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
+	managerTimeoutStr, err := getEnv("MANAGER_TIMEOUT")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
+	}
+	managerTimeout, err := time.ParseDuration(managerTimeoutStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse MANAGER_TIMEOUT: %v", err)
+	}
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -84,6 +92,6 @@ func parseConfig() (*handler.AppConfig, error) {
 		UserContainerNamePrefix: userContainerNamePrefix,
 		TrustedProxies:          handler.ParseTrustedProxies(trustedProxies),
 		ManagerBaseURL:          managerBaseURL,
-		ManagerTimeout:          10 * time.Second,
+		ManagerTimeout:          managerTimeout,
 	}, nil
 }
