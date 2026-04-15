@@ -24,6 +24,7 @@ type App struct {
 	terminalPath            string
 	userContainerNamePrefix string
 	trustedProxies          []*net.IPNet
+	managerAddr             string
 
 	mu        sync.Mutex
 	ipFails   map[string]*loginAttempt
@@ -43,6 +44,7 @@ type AppConfig struct {
 	TerminalPath            string
 	UserContainerNamePrefix string
 	TrustedProxies          []string
+	ManagerAddr             string
 }
 
 type loginAttempt struct {
@@ -73,6 +75,7 @@ func NewApp(config *AppConfig) *App {
 		terminalPath:            config.TerminalPath,
 		userContainerNamePrefix: config.UserContainerNamePrefix,
 		trustedProxies:          trustedProxies,
+		managerAddr:             config.ManagerAddr,
 		mux:                     http.NewServeMux(),
 
 		mu:        sync.Mutex{},

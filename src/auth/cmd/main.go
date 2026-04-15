@@ -63,6 +63,10 @@ func parseConfig() (*handler.AppConfig, error) {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
 	trustedProxies := os.Getenv("TRUSTED_PROXIES")
+	managerAddr, err := getEnv("MANAGER_ADDR")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
+	}
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -78,5 +82,6 @@ func parseConfig() (*handler.AppConfig, error) {
 		TerminalPath:            terminalPath,
 		UserContainerNamePrefix: userContainerNamePrefix,
 		TrustedProxies:          handler.ParseTrustedProxies(trustedProxies),
+		ManagerAddr:             managerAddr,
 	}, nil
 }
