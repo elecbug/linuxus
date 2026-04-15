@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -223,7 +224,11 @@ func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, cont
 }
 
 func (s *Server) createUserContainer(ctx context.Context, containerName, userID, networkName string) error {
-	homeDir := strings.TrimRight(s.cfg.HostHomesDir, "/") + "/" + userID
+	baseDir := strings.TrimRight(s.cfg.HostHomesDir, "/")
+	homeDir := filepath.Clean(baseDir + "/" + userID)
+	if !strings.HasPrefix(homeDir, baseDir+"/") {
+		return fmt.Errorf("invalid user_id: path traversal detected")
+	}
 
 	cfg := &container.Config{
 		Image:      s.cfg.UserImage,
