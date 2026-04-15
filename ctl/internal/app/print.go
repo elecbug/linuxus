@@ -3,8 +3,6 @@ package app
 import "fmt"
 
 func (a *App) PrintSummary() {
-	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
-
 	fmt.Println("Runtime service plan prepared.")
 	fmt.Println()
 	fmt.Println("Config file:")
@@ -15,21 +13,19 @@ func (a *App) PrintSummary() {
 
 	fmt.Println("Images:")
 	fmt.Printf("  AUTH=%s\n", a.authImageName())
-	fmt.Printf("  USER=%s\n\n", a.userImageName())
+	fmt.Printf("  USER=%s\n", a.userImageName())
+	fmt.Printf("  MANAGER=%s\n\n", a.managerImageName())
 
-	fmt.Println("Users:")
-	for i := range a.UserIDs {
-		fmt.Printf("  ID=%s CONTAINER=%s NET=%s\n",
-			a.UserIDs[i],
-			a.Config.UserService.Container.NamePrefix+a.SafeIDs[i],
-			a.Config.UserService.Container.NetworkPrefix+a.SafeIDs[i],
-		)
-	}
-	fmt.Printf("  ADMIN=%s NET=%s\n\n",
-		a.Config.UserService.Container.Admin.UserID,
-		a.Config.UserService.Container.NetworkPrefix+adminSafe,
-	)
+	fmt.Println("Always-on services:")
+	fmt.Printf("  AUTH=%s\n", a.Config.AuthService.Container.Name)
+	fmt.Printf("  MANAGER=%s\n", a.Config.ManagerService.Container.Name)
+	fmt.Printf("  MANAGER_NET=%s\n\n", a.Config.ManagerService.Container.Network)
 
+	fmt.Println("On-demand user runtime:")
+	fmt.Printf("  CONTAINER PREFIX=%s\n", a.Config.UserService.Container.NamePrefix)
+	fmt.Printf("  NETWORK PREFIX=%s\n", a.Config.UserService.Container.NetworkPrefix)
+
+	fmt.Println()
 	fmt.Println("Run:")
 	fmt.Printf("  %s -u\n", a.execPath)
 }

@@ -205,7 +205,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 			}
 		}
 
-		if err := s.waitForTTYReady(ctx, containerName, networkName); err != nil {
+		if _, err := s.waitForContainerIP(ctx, containerName, networkName); err != nil {
 			return nil, err
 		}
 
@@ -244,7 +244,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 		return nil, err
 	}
 
-	if err := s.waitForTTYReady(ctx, containerName, networkName); err != nil {
+	if _, err := s.waitForContainerIP(ctx, containerName, networkName); err != nil {
 		return nil, err
 	}
 
@@ -383,28 +383,19 @@ func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) er
 	return nil
 }
 
-func (s *Server) waitForTTYReady(ctx context.Context, containerName, networkName string) error {
-	host, err := s.containerIPv4OnNetwork(ctx, containerName, networkName)
-	if err != nil {
-		return err
-	}
-
-	dialer := net.Dialer{Timeout: 700 * time.Millisecond}
-	addr := net.JoinHostPort(host, "7681")
-
-	ticker := time.NewTicker(250 * time.Millisecond)
+func (s *Server) waitForContainerIP(ctx context.Context, containerName, networkName string) (string, error) {
+	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
-		conn, err := dialer.DialContext(ctx, "tcp", addr)
-		if err == nil {
-			_ = conn.Close()
-			return nil
+		ip, err := s.containerIPv4OnNetwork(ctx, containerName, networkName)
+		if err == nil && strings.TrimSpace(ip) != "" {
+			return ip, nil
 		}
 
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("tty backend was not ready within timeout")
+			return "", fmt.Errorf("container network was not ready within timeout")
 		case <-ticker.C:
 		}
 	}

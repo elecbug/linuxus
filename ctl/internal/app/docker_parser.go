@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -256,6 +255,7 @@ func (a *App) buildManagerRuntimeSpec() RuntimeContainerSpec {
 			"NETWORK_PREFIX=" + a.Config.UserService.Container.NetworkPrefix,
 			"BASE_IP=" + a.Config.UserService.Container.BaseIP,
 			"AUTH_CONTAINER_NAME=" + a.Config.AuthService.Container.Name,
+			"MANAGER_CONTAINER_NAME=" + a.Config.ManagerService.Container.Name,
 
 			"RUNTIME_USER=" + fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
 			"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Container.Runtime.User,
@@ -282,8 +282,4 @@ func (a *App) buildManagerRuntimeSpec() RuntimeContainerSpec {
 			a.Config.ManagerService.Container.Network,
 		},
 	}
-}
-
-func (a *App) homeDirForUser(userID string) string {
-	return filepath.Join(a.Config.Volumes.Host.Homes, userID)
 }
