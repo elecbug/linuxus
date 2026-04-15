@@ -24,7 +24,9 @@ type App struct {
 	terminalPath            string
 	userContainerNamePrefix string
 	trustedProxies          []*net.IPNet
-	managerAddr             string
+
+	managerBaseURL string
+	managerClient  *http.Client
 
 	mu        sync.Mutex
 	ipFails   map[string]*loginAttempt
@@ -44,7 +46,9 @@ type AppConfig struct {
 	TerminalPath            string
 	UserContainerNamePrefix string
 	TrustedProxies          []string
-	ManagerAddr             string
+
+	ManagerBaseURL string
+	ManagerTimeout time.Duration
 }
 
 type loginAttempt struct {
@@ -66,6 +70,11 @@ func NewApp(config *AppConfig) *App {
 		}
 	}
 
+	timeout := config.ManagerTimeout
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+
 	app := &App{
 		users:                   config.Users,
 		sessionKey:              config.SessionKey,
@@ -75,8 +84,11 @@ func NewApp(config *AppConfig) *App {
 		terminalPath:            config.TerminalPath,
 		userContainerNamePrefix: config.UserContainerNamePrefix,
 		trustedProxies:          trustedProxies,
-		managerAddr:             config.ManagerAddr,
-		mux:                     http.NewServeMux(),
+		managerBaseURL:          strings.TrimRight(config.ManagerBaseURL, "/"),
+		managerClient: &http.Client{
+			Timeout: timeout,
+		},
+		mux: http.NewServeMux(),
 
 		mu:        sync.Mutex{},
 		ipFails:   make(map[string]*loginAttempt),

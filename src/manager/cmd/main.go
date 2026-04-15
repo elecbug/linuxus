@@ -18,90 +18,84 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
 	dockernetwork "github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 )
-
-const defaultAddr = ":5959"
 
 var reInvalid = regexp.MustCompile(`[^a-z0-9]+`)
 
 type Server struct {
 	docker *client.Client
+	cfg    Config
 }
 
-type CreateUserRuntimeRequest struct {
-	// 필수
-	UserID        string `json:"user_id"`
-	Image         string `json:"image"`
-	ContainerName string `json:"container_name"`
+type Config struct {
+	ListenAddr              string
+	UserImage               string
+	UserContainerNamePrefix string
+	NetworkPrefix           string
+	BaseIP                  string
+	AuthContainerName       string
 
-	// 네트워크 생성 규칙
-	NetworkPrefix string `json:"network_prefix"` // 예: "linuxus-net-"
-	BaseIP        string `json:"base_ip"`        // 예: "172.30.0.0"
-
-	// 선택
-	Hostname    string            `json:"hostname,omitempty"`
-	User        string            `json:"user,omitempty"`
-	WorkingDir  string            `json:"working_dir,omitempty"`
-	Env         []string          `json:"env,omitempty"`
-	Cmd         []string          `json:"cmd,omitempty"`
-	Entrypoint  []string          `json:"entrypoint,omitempty"`
-	Binds       []string          `json:"binds,omitempty"`
-	Tmpfs       []string          `json:"tmpfs,omitempty"` // "/tmp:rw,noexec,nosuid,nodev,size=64m"
-	CapDrop     []string          `json:"cap_drop,omitempty"`
-	SecurityOpt []string          `json:"security_opt,omitempty"`
-	ReadOnly    bool              `json:"read_only,omitempty"`
-	Restart     string            `json:"restart,omitempty"` // "unless-stopped" 등
-	Ports       []string          `json:"ports,omitempty"`   // ["10080:8080", "10022:22"]
-	Labels      map[string]string `json:"labels,omitempty"`
-
-	Memory string `json:"memory,omitempty"` // "512m"
-	CPUs   string `json:"cpus,omitempty"`   // "1.5"
-	Pids   int    `json:"pids,omitempty"`
-
-	NofileSoft int `json:"nofile_soft,omitempty"`
-	NofileHard int `json:"nofile_hard,omitempty"`
+	RuntimeUser     string
+	WorkingDir      string
+	Timezone        string
+	ReadOnlyRootFS  bool
+	ManagerWaitTime time.Duration
 }
 
-type CreateUserRuntimeResponse struct {
+type UserUpRequest struct {
+	UserID string `json:"user_id"`
+	SafeID string `json:"safe_id"`
+}
+
+type UserUpResponse struct {
 	OK            bool   `json:"ok"`
 	UserID        string `json:"user_id,omitempty"`
 	SafeID        string `json:"safe_id,omitempty"`
 	ContainerName string `json:"container_name,omitempty"`
 	NetworkName   string `json:"network_name,omitempty"`
 	Subnet        string `json:"subnet,omitempty"`
-	Index         int    `json:"index,omitempty"`
 	Message       string `json:"message"`
 }
 
 func main() {
-	addr := envOrDefault("LISTEN_ADDR", defaultAddr)
+	cfg := Config{
+		ListenAddr:              envOr("LISTEN_ADDR", ":5959"),
+		UserImage:               envOr("USER_IMAGE", "linuxus-user-base:runtime"),
+		UserContainerNamePrefix: envOr("USER_CONTAINER_NAME_PREFIX", "linuxus-user-"),
+		NetworkPrefix:           envOr("NETWORK_PREFIX", "linuxus-net-"),
+		BaseIP:                  envOr("BASE_IP", "172.30.0.0"),
+		AuthContainerName:       envOr("AUTH_CONTAINER_NAME", "linuxus-auth"),
+		RuntimeUser:             envOr("RUNTIME_USER", "1000:1000"),
+		WorkingDir:              envOr("WORKING_DIR", "/home/student"),
+		Timezone:                envOr("TZ", "Asia/Seoul"),
+		ReadOnlyRootFS:          false,
+		ManagerWaitTime:         10 * time.Second,
+	}
 
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		log.Fatalf("failed to create docker client: %v", err)
+		log.Fatalf("docker client init failed: %v", err)
 	}
 	defer cli.Close()
 
-	s := &Server{docker: cli}
+	s := &Server{docker: cli, cfg: cfg}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealthz)
 	mux.HandleFunc("/user/up", s.handleUserUp)
 
 	srv := &http.Server{
-		Addr:              addr,
-		Handler:           loggingMiddleware(mux),
+		Addr:              cfg.ListenAddr,
+		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	go func() {
-		log.Printf("listening on %s", addr)
+		log.Printf("manager listening on %s", cfg.ListenAddr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server error: %v", err)
+			log.Fatalf("listen failed: %v", err)
 		}
 	}()
 
@@ -109,174 +103,146 @@ func main() {
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{
-			"ok":      false,
-			"message": "method not allowed",
-		})
-		return
-	}
-
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":      true,
-		"message": "ready",
+		"ok": true,
 	})
 }
 
 func (s *Server) handleUserUp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, CreateUserRuntimeResponse{
+		writeJSON(w, http.StatusMethodNotAllowed, UserUpResponse{
 			OK:      false,
 			Message: "method not allowed",
 		})
 		return
 	}
 
-	var req CreateUserRuntimeRequest
+	var req UserUpRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, CreateUserRuntimeResponse{
+		writeJSON(w, http.StatusBadRequest, UserUpResponse{
 			OK:      false,
 			Message: "invalid json body",
 		})
 		return
 	}
 
-	if err := validateRequest(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, CreateUserRuntimeResponse{
+	req.UserID = strings.TrimSpace(req.UserID)
+	req.SafeID = strings.TrimSpace(req.SafeID)
+	if req.UserID == "" {
+		writeJSON(w, http.StatusBadRequest, UserUpResponse{
 			OK:      false,
-			Message: err.Error(),
+			Message: "user_id is required",
 		})
 		return
 	}
-
-	safeID := sanitizeName(req.UserID)
-	if req.Restart == "" {
-		req.Restart = "unless-stopped"
+	if req.SafeID == "" {
+		req.SafeID = sanitizeName(req.UserID)
 	}
 
-	result, err := s.prepareRuntime(r.Context(), &req, safeID)
+	ctx, cancel := context.WithTimeout(r.Context(), s.cfg.ManagerWaitTime)
+	defer cancel()
+
+	resp, err := s.ensureUserRuntimeReady(ctx, req.UserID, req.SafeID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, CreateUserRuntimeResponse{
+		log.Printf("user up failed user=%s safe=%s err=%v", req.UserID, req.SafeID, err)
+		writeJSON(w, http.StatusServiceUnavailable, UserUpResponse{
 			OK:            false,
 			UserID:        req.UserID,
-			SafeID:        safeID,
-			ContainerName: req.ContainerName,
+			SafeID:        req.SafeID,
+			ContainerName: s.cfg.UserContainerNamePrefix + req.SafeID,
 			Message:       err.Error(),
 		})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, result)
+	writeJSON(w, http.StatusOK, resp)
 }
 
-func validateRequest(req *CreateUserRuntimeRequest) error {
-	if strings.TrimSpace(req.UserID) == "" {
-		return fmt.Errorf("user_id is required")
-	}
-	if strings.TrimSpace(req.Image) == "" {
-		return fmt.Errorf("image is required")
-	}
-	if strings.TrimSpace(req.ContainerName) == "" {
-		return fmt.Errorf("container_name is required")
-	}
-	if strings.TrimSpace(req.NetworkPrefix) == "" {
-		return fmt.Errorf("network_prefix is required")
-	}
-	if strings.TrimSpace(req.BaseIP) == "" {
-		return fmt.Errorf("base_ip is required")
-	}
-	if _, err := parseBaseIPv4(req.BaseIP); err != nil {
-		return fmt.Errorf("invalid base_ip: %w", err)
-	}
-	return nil
-}
+func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID string) (*UserUpResponse, error) {
+	containerName := s.cfg.UserContainerNamePrefix + safeID
 
-func (s *Server) prepareRuntime(ctx context.Context, req *CreateUserRuntimeRequest, safeID string) (*CreateUserRuntimeResponse, error) {
-	// 1) 이미지 존재 확인
-	if err := s.ensureImageExists(ctx, req.Image); err != nil {
-		return nil, err
+	if _, _, err := s.docker.ImageInspectWithRaw(ctx, s.cfg.UserImage); err != nil {
+		return nil, fmt.Errorf("user image not found: %s", s.cfg.UserImage)
 	}
 
-	// 2) 이미 컨테이너가 있으면 재사용
-	exists, running, err := s.inspectContainerState(ctx, req.ContainerName)
+	exists, running, err := s.inspectContainerState(ctx, containerName)
 	if err != nil {
 		return nil, err
 	}
+
 	if exists {
-		netName, subnet, idx, _ := s.findAttachedManagedNetwork(ctx, req.ContainerName, req.NetworkPrefix, req.BaseIP)
+		networkName, subnet, err := s.ensureExistingContainerNetworkAndAuth(ctx, containerName, safeID)
+		if err != nil {
+			return nil, err
+		}
+
 		if !running {
-			if err := s.docker.ContainerStart(ctx, req.ContainerName, container.StartOptions{}); err != nil {
+			if err := s.docker.ContainerStart(ctx, containerName, container.StartOptions{}); err != nil {
 				return nil, fmt.Errorf("failed to start existing container: %w", err)
 			}
 		}
-		return &CreateUserRuntimeResponse{
+
+		if err := s.waitForTTYReady(ctx, containerName, networkName); err != nil {
+			return nil, err
+		}
+
+		return &UserUpResponse{
 			OK:            true,
-			UserID:        req.UserID,
+			UserID:        userID,
 			SafeID:        safeID,
-			ContainerName: req.ContainerName,
-			NetworkName:   netName,
+			ContainerName: containerName,
+			NetworkName:   networkName,
 			Subnet:        subnet,
-			Index:         idx,
-			Message:       "container already existed and is now ready",
+			Message:       "container ready",
 		}, nil
 	}
 
-	// 3) 빈 네트워크 슬롯 탐색
-	index, subnet, err := s.findFirstFreeNetworkSlot(ctx, req.NetworkPrefix, req.BaseIP)
+	index, subnet, err := s.findFirstFreeNetworkSlot(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	networkName := req.NetworkPrefix + safeID
+	networkName := s.cfg.NetworkPrefix + safeID
+	if exists, err := s.networkExists(ctx, networkName); err != nil {
+		return nil, err
+	} else if exists {
+		networkName = fmt.Sprintf("%sidx_%d", s.cfg.NetworkPrefix, index)
+	}
 
-	// safeID 기반 이름이 이미 다른 네트워크에 점유되어 있으면 충돌 방지
-	networkName, err = s.ensureUniqueNetworkName(ctx, networkName, req.NetworkPrefix, index)
-	if err != nil {
+	if err := s.createNetwork(ctx, networkName, subnet); err != nil {
 		return nil, err
 	}
 
-	// 4) 네트워크 생성
-	if err := s.ensureNetworkWithSubnet(ctx, networkName, subnet); err != nil {
+	if err := s.createUserContainer(ctx, containerName, userID, safeID, networkName); err != nil {
 		return nil, err
 	}
 
-	// 5) 컨테이너 생성 및 시작
-	if err := s.createAndStartContainer(ctx, req, networkName); err != nil {
+	if err := s.ensureAuthConnected(ctx, networkName); err != nil {
 		return nil, err
 	}
 
-	return &CreateUserRuntimeResponse{
+	if err := s.waitForTTYReady(ctx, containerName, networkName); err != nil {
+		return nil, err
+	}
+
+	return &UserUpResponse{
 		OK:            true,
-		UserID:        req.UserID,
+		UserID:        userID,
 		SafeID:        safeID,
-		ContainerName: req.ContainerName,
+		ContainerName: containerName,
 		NetworkName:   networkName,
 		Subnet:        subnet,
-		Index:         index,
-		Message:       "network and container created successfully",
+		Message:       "container ready",
 	}, nil
 }
 
-func (s *Server) ensureImageExists(ctx context.Context, img string) error {
-	images, err := s.docker.ImageList(ctx, image.ListOptions{})
-	if err == nil && len(images) == 0 {
-		// no-op
-	}
-
-	_, _, err = s.docker.ImageInspectWithRaw(ctx, img)
-	if err != nil {
-		return fmt.Errorf("image not found or not inspectable: %s: %w", img, err)
-	}
-	return nil
-}
-
-func (s *Server) inspectContainerState(ctx context.Context, name string) (exists bool, running bool, err error) {
+func (s *Server) inspectContainerState(ctx context.Context, name string) (bool, bool, error) {
 	inspect, err := s.docker.ContainerInspect(ctx, name)
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			return false, false, nil
 		}
-		return false, false, fmt.Errorf("failed to inspect container %s: %w", name, err)
+		return false, false, fmt.Errorf("container inspect failed: %w", err)
 	}
 	if inspect.State != nil && inspect.State.Running {
 		return true, true, nil
@@ -284,96 +250,187 @@ func (s *Server) inspectContainerState(ctx context.Context, name string) (exists
 	return true, false, nil
 }
 
-func (s *Server) findAttachedManagedNetwork(ctx context.Context, containerName, networkPrefix, baseIP string) (string, string, int, bool) {
+func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, containerName, safeID string) (string, string, error) {
 	inspect, err := s.docker.ContainerInspect(ctx, containerName)
-	if err != nil || inspect.NetworkSettings == nil {
-		return "", "", -1, false
+	if err != nil {
+		return "", "", fmt.Errorf("inspect existing container failed: %w", err)
+	}
+	if inspect.NetworkSettings == nil || len(inspect.NetworkSettings.Networks) == 0 {
+		return "", "", fmt.Errorf("existing container has no network")
 	}
 
 	for netName := range inspect.NetworkSettings.Networks {
-		if !strings.HasPrefix(netName, networkPrefix) {
+		if !strings.HasPrefix(netName, s.cfg.NetworkPrefix) {
 			continue
 		}
 		netInfo, err := s.docker.NetworkInspect(ctx, netName, dockernetwork.InspectOptions{})
-		if err != nil || netInfo.IPAM.Config == nil || len(netInfo.IPAM.Config) == 0 {
-			continue
+		if err != nil {
+			return "", "", fmt.Errorf("network inspect failed: %w", err)
 		}
-		subnet := strings.TrimSpace(netInfo.IPAM.Config[0].Subnet)
-		idx, ok := subnetToIndex(baseIP, subnet)
-		if ok {
-			return netName, subnet, idx, true
+
+		subnet := ""
+		if len(netInfo.IPAM.Config) > 0 {
+			subnet = strings.TrimSpace(netInfo.IPAM.Config[0].Subnet)
 		}
-		return netName, subnet, -1, true
+
+		if err := s.ensureAuthConnected(ctx, netName); err != nil {
+			return "", "", err
+		}
+		return netName, subnet, nil
 	}
 
-	return "", "", -1, false
+	return "", "", fmt.Errorf("existing container is not attached to managed network")
 }
 
-func (s *Server) findFirstFreeNetworkSlot(ctx context.Context, networkPrefix, baseIP string) (int, string, error) {
+func (s *Server) createUserContainer(ctx context.Context, containerName, userID, safeID, networkName string) error {
+	cfg := &container.Config{
+		Image:      s.cfg.UserImage,
+		Hostname:   "linuxus",
+		User:       s.cfg.RuntimeUser,
+		WorkingDir: s.cfg.WorkingDir,
+		Env: []string{
+			"TZ=" + s.cfg.Timezone,
+			"USER_ID=" + userID,
+			"SAFE_ID=" + safeID,
+		},
+	}
+
+	hostCfg := &container.HostConfig{
+		ReadonlyRootfs: s.cfg.ReadOnlyRootFS,
+		RestartPolicy: container.RestartPolicy{
+			Name: "unless-stopped",
+		},
+	}
+
+	networkingCfg := &dockernetwork.NetworkingConfig{
+		EndpointsConfig: map[string]*dockernetwork.EndpointSettings{
+			networkName: {},
+		},
+	}
+
+	resp, err := s.docker.ContainerCreate(ctx, cfg, hostCfg, networkingCfg, nil, containerName)
+	if err != nil {
+		return fmt.Errorf("container create failed: %w", err)
+	}
+
+	if err := s.docker.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		return fmt.Errorf("container start failed: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) error {
+	netInfo, err := s.docker.NetworkInspect(ctx, networkName, dockernetwork.InspectOptions{})
+	if err != nil {
+		return fmt.Errorf("network inspect failed: %w", err)
+	}
+
+	for _, endpoint := range netInfo.Containers {
+		if endpoint.Name == s.cfg.AuthContainerName {
+			return nil
+		}
+	}
+
+	if err := s.docker.NetworkConnect(ctx, networkName, s.cfg.AuthContainerName, &dockernetwork.EndpointSettings{}); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "already exists") ||
+			strings.Contains(strings.ToLower(err.Error()), "already connected") {
+			return nil
+		}
+		return fmt.Errorf("failed to connect auth container to %s: %w", networkName, err)
+	}
+
+	return nil
+}
+
+func (s *Server) waitForTTYReady(ctx context.Context, containerName, networkName string) error {
+	host, err := s.containerIPv4OnNetwork(ctx, containerName, networkName)
+	if err != nil {
+		return err
+	}
+
+	dialer := net.Dialer{Timeout: 700 * time.Millisecond}
+	addr := net.JoinHostPort(host, "7681")
+
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		conn, err := dialer.DialContext(ctx, "tcp", addr)
+		if err == nil {
+			_ = conn.Close()
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("tty backend was not ready within timeout")
+		case <-ticker.C:
+		}
+	}
+}
+
+func (s *Server) containerIPv4OnNetwork(ctx context.Context, containerName, networkName string) (string, error) {
+	inspect, err := s.docker.ContainerInspect(ctx, containerName)
+	if err != nil {
+		return "", fmt.Errorf("container inspect failed: %w", err)
+	}
+	if inspect.NetworkSettings == nil {
+		return "", fmt.Errorf("container has no network settings")
+	}
+	ep, ok := inspect.NetworkSettings.Networks[networkName]
+	if !ok || ep == nil {
+		return "", fmt.Errorf("container is not attached to network %s", networkName)
+	}
+	if strings.TrimSpace(ep.IPAddress) == "" {
+		return "", fmt.Errorf("container has no ipv4 on network %s", networkName)
+	}
+	return ep.IPAddress, nil
+}
+
+func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, error) {
 	networks, err := s.docker.NetworkList(ctx, dockernetwork.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "name",
-			Value: "^" + networkPrefix,
+			Value: "^" + s.cfg.NetworkPrefix,
 		}),
 	})
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to list docker networks: %w", err)
+		return 0, "", fmt.Errorf("network list failed: %w", err)
 	}
 
 	used := make(map[int]struct{})
 
 	for _, nw := range networks {
-		if !strings.HasPrefix(nw.Name, networkPrefix) {
+		if !strings.HasPrefix(nw.Name, s.cfg.NetworkPrefix) {
 			continue
 		}
 
 		inspect, err := s.docker.NetworkInspect(ctx, nw.ID, dockernetwork.InspectOptions{})
 		if err != nil {
-			return 0, "", fmt.Errorf("failed to inspect network %s: %w", nw.Name, err)
+			return 0, "", fmt.Errorf("network inspect failed: %w", err)
 		}
 		if len(inspect.IPAM.Config) == 0 {
 			continue
 		}
 
 		subnet := strings.TrimSpace(inspect.IPAM.Config[0].Subnet)
-		idx, ok := subnetToIndex(baseIP, subnet)
-		if !ok {
+		idx, ok := subnetToIndex(s.cfg.BaseIP, subnet)
+		if ok {
+			used[idx] = struct{}{}
+		}
+	}
+
+	for idx := 0; ; idx++ {
+		if _, exists := used[idx]; exists {
 			continue
 		}
-		used[idx] = struct{}{}
-	}
-
-	index := 0
-	for {
-		if _, exists := used[index]; !exists {
-			subnet, err := getSubnetByIndex(baseIP, index)
-			if err != nil {
-				return 0, "", err
-			}
-			return index, subnet, nil
+		subnet, err := getSubnetByIndex(s.cfg.BaseIP, idx)
+		if err != nil {
+			return 0, "", err
 		}
-		index++
+		return idx, subnet, nil
 	}
-}
-
-func (s *Server) ensureUniqueNetworkName(ctx context.Context, preferredName, networkPrefix string, index int) (string, error) {
-	exists, err := s.networkExists(ctx, preferredName)
-	if err != nil {
-		return "", err
-	}
-	if !exists {
-		return preferredName, nil
-	}
-
-	altName := fmt.Sprintf("%sidx_%d", networkPrefix, index)
-	exists, err = s.networkExists(ctx, altName)
-	if err != nil {
-		return "", err
-	}
-	if exists {
-		return "", fmt.Errorf("both preferred and fallback network names already exist: %s, %s", preferredName, altName)
-	}
-	return altName, nil
 }
 
 func (s *Server) networkExists(ctx context.Context, name string) (bool, error) {
@@ -384,7 +441,7 @@ func (s *Server) networkExists(ctx context.Context, name string) (bool, error) {
 		}),
 	})
 	if err != nil {
-		return false, fmt.Errorf("failed to query network %s: %w", name, err)
+		return false, fmt.Errorf("network exists query failed: %w", err)
 	}
 	for _, nw := range nws {
 		if nw.Name == name {
@@ -394,16 +451,14 @@ func (s *Server) networkExists(ctx context.Context, name string) (bool, error) {
 	return false, nil
 }
 
-func (s *Server) ensureNetworkWithSubnet(ctx context.Context, name, subnet string) error {
-	exists, err := s.networkExists(ctx, name)
-	if err != nil {
+func (s *Server) createNetwork(ctx context.Context, name, subnet string) error {
+	if exists, err := s.networkExists(ctx, name); err != nil {
 		return err
-	}
-	if exists {
+	} else if exists {
 		return nil
 	}
 
-	_, err = s.docker.NetworkCreate(ctx, name, dockernetwork.CreateOptions{
+	_, err := s.docker.NetworkCreate(ctx, name, dockernetwork.CreateOptions{
 		Driver: "bridge",
 		IPAM: &dockernetwork.IPAM{
 			Config: []dockernetwork.IPAMConfig{
@@ -412,131 +467,35 @@ func (s *Server) ensureNetworkWithSubnet(ctx context.Context, name, subnet strin
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create network %s (%s): %w", name, subnet, err)
+		return fmt.Errorf("network create failed: %w", err)
 	}
 	return nil
 }
 
-func (s *Server) createAndStartContainer(ctx context.Context, req *CreateUserRuntimeRequest, networkName string) error {
-	cfg := &container.Config{
-		Image:      req.Image,
-		Hostname:   req.Hostname,
-		User:       req.User,
-		WorkingDir: req.WorkingDir,
-		Env:        req.Env,
-		Cmd:        req.Cmd,
-		Entrypoint: req.Entrypoint,
-		Labels:     req.Labels,
-	}
-
-	exposedPorts, portBindings, err := parsePortBindings(req.Ports)
-	if err != nil {
-		return err
-	}
-	cfg.ExposedPorts = exposedPorts
-
-	hostCfg := &container.HostConfig{
-		Binds:          req.Binds,
-		Tmpfs:          parseSliceToTmpfsMap(req.Tmpfs),
-		ReadonlyRootfs: req.ReadOnly,
-		SecurityOpt:    req.SecurityOpt,
-		CapDrop:        req.CapDrop,
-		PortBindings:   portBindings,
-		RestartPolicy: container.RestartPolicy{
-			Name: container.RestartPolicyMode(req.Restart),
-		},
-	}
-
-	if req.Memory != "" {
-		memBytes, err := parseMemoryBytes(req.Memory)
-		if err != nil {
-			return fmt.Errorf("invalid memory limit %q: %w", req.Memory, err)
-		}
-		hostCfg.Memory = memBytes
-	}
-
-	if req.CPUs != "" {
-		nanoCPUs, err := parseNanoCPUs(req.CPUs)
-		if err != nil {
-			return fmt.Errorf("invalid cpu limit %q: %w", req.CPUs, err)
-		}
-		hostCfg.NanoCPUs = nanoCPUs
-	}
-
-	if req.Pids > 0 {
-		pidsLimit := int64(req.Pids)
-		hostCfg.PidsLimit = &pidsLimit
-	}
-
-	if req.NofileSoft > 0 || req.NofileHard > 0 {
-		hostCfg.Ulimits = append(hostCfg.Ulimits, &container.Ulimit{
-			Name: "nofile",
-			Soft: int64(req.NofileSoft),
-			Hard: int64(req.NofileHard),
-		})
-	}
-
-	networkingCfg := &dockernetwork.NetworkingConfig{
-		EndpointsConfig: map[string]*dockernetwork.EndpointSettings{
-			networkName: {},
-		},
-	}
-
-	resp, err := s.docker.ContainerCreate(ctx, cfg, hostCfg, networkingCfg, nil, req.ContainerName)
-	if err != nil {
-		return fmt.Errorf("failed to create container %s: %w", req.ContainerName, err)
-	}
-
-	if err := s.docker.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		return fmt.Errorf("failed to start container %s: %w", req.ContainerName, err)
-	}
-
-	return nil
-}
-
-func parseBaseIPv4(s string) (net.IP, error) {
-	ip := net.ParseIP(strings.TrimSpace(s))
-	if ip == nil {
-		return nil, fmt.Errorf("not an ip")
-	}
-	ip = ip.To4()
-	if ip == nil {
-		return nil, fmt.Errorf("not an ipv4")
-	}
-	return ip, nil
-}
-
-// 규칙:
-// index 0 -> baseIP의 3옥텟 유지, 4옥텟 0
-// index 1 -> 4옥텟 16
-// ...
-// index 15 -> 4옥텟 240
-// index 16 -> 3옥텟 +1, 4옥텟 0
 func getSubnetByIndex(baseIP string, index int) (string, error) {
-	ip, err := parseBaseIPv4(baseIP)
-	if err != nil {
-		return "", err
+	ip := net.ParseIP(strings.TrimSpace(baseIP)).To4()
+	if ip == nil {
+		return "", fmt.Errorf("invalid base ip")
 	}
 	if index < 0 {
-		return "", fmt.Errorf("index must be non-negative")
+		return "", fmt.Errorf("invalid index")
 	}
 
 	o0, o1, o2 := int(ip[0]), int(ip[1]), int(ip[2])
-
 	thirdOffset := index / 16
 	fourthOffset := (index % 16) * 16
 
 	newO2 := o2 + thirdOffset
 	if newO2 > 255 {
-		return "", fmt.Errorf("subnet overflow: 3rd octet > 255")
+		return "", fmt.Errorf("subnet overflow")
 	}
 
 	return fmt.Sprintf("%d.%d.%d.%d/28", o0, o1, newO2, fourthOffset), nil
 }
 
 func subnetToIndex(baseIP, subnet string) (int, bool) {
-	base, err := parseBaseIPv4(baseIP)
-	if err != nil {
+	base := net.ParseIP(strings.TrimSpace(baseIP)).To4()
+	if base == nil {
 		return 0, false
 	}
 
@@ -579,124 +538,13 @@ func sanitizeName(s string) string {
 	return s
 }
 
-func parsePortBindings(items []string) (nat.PortSet, nat.PortMap, error) {
-	if len(items) == 0 {
-		return nil, nil, nil
-	}
-
-	exposed := nat.PortSet{}
-	bindings := nat.PortMap{}
-
-	for _, item := range items {
-		containerPort, hostBinding, err := parsePortBinding(item)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid port binding %q: %w", item, err)
-		}
-		exposed[containerPort] = struct{}{}
-		bindings[containerPort] = append(bindings[containerPort], hostBinding)
-	}
-
-	return exposed, bindings, nil
-}
-
-func parsePortBinding(s string) (nat.Port, nat.PortBinding, error) {
-	parts := strings.Split(s, ":")
-	if len(parts) != 2 {
-		return "", nat.PortBinding{}, fmt.Errorf("expected HOST:CONTAINER, got %q", s)
-	}
-
-	hostPort := strings.TrimSpace(parts[0])
-	containerPart := strings.TrimSpace(parts[1])
-
-	containerPort, err := nat.NewPort("tcp", containerPart)
-	if err != nil {
-		return "", nat.PortBinding{}, err
-	}
-
-	return containerPort, nat.PortBinding{
-		HostIP:   "",
-		HostPort: hostPort,
-	}, nil
-}
-
-func parseSliceToTmpfsMap(items []string) map[string]string {
-	if len(items) == 0 {
-		return nil
-	}
-
-	out := make(map[string]string, len(items))
-	for _, item := range items {
-		parts := strings.SplitN(item, ":", 2)
-		mountPoint := strings.TrimSpace(parts[0])
-		if mountPoint == "" {
-			continue
-		}
-
-		opts := ""
-		if len(parts) == 2 {
-			opts = strings.TrimSpace(parts[1])
-		}
-		out[mountPoint] = opts
-	}
-	return out
-}
-
-func parseNanoCPUs(v string) (int64, error) {
-	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
-	if err != nil {
-		return 0, err
-	}
-	if f < 0 {
-		return 0, fmt.Errorf("must be non-negative")
-	}
-	return int64(f * 1_000_000_000), nil
-}
-
-func parseMemoryBytes(v string) (int64, error) {
-	s := strings.TrimSpace(strings.ToLower(v))
-	mult := int64(1)
-
-	switch {
-	case strings.HasSuffix(s, "g"):
-		mult = 1024 * 1024 * 1024
-		s = strings.TrimSuffix(s, "g")
-	case strings.HasSuffix(s, "gb"):
-		mult = 1024 * 1024 * 1024
-		s = strings.TrimSuffix(s, "gb")
-	case strings.HasSuffix(s, "m"):
-		mult = 1024 * 1024
-		s = strings.TrimSuffix(s, "m")
-	case strings.HasSuffix(s, "mb"):
-		mult = 1024 * 1024
-		s = strings.TrimSuffix(s, "mb")
-	case strings.HasSuffix(s, "k"):
-		mult = 1024
-		s = strings.TrimSuffix(s, "k")
-	case strings.HasSuffix(s, "kb"):
-		mult = 1024
-		s = strings.TrimSuffix(s, "kb")
-	case strings.HasSuffix(s, "b"):
-		mult = 1
-		s = strings.TrimSuffix(s, "b")
-	}
-
-	n, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	if n < 0 {
-		return 0, fmt.Errorf("must be non-negative")
-	}
-	return n * mult, nil
-}
-
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func envOrDefault(key, fallback string) string {
+func envOr(key, fallback string) string {
 	v := strings.TrimSpace(os.Getenv(key))
 	if v == "" {
 		return fallback
@@ -708,22 +556,18 @@ func waitForShutdown(srv *http.Server) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	sig := <-sigCh
-	log.Printf("received signal: %s", sig.String())
+	<-sigCh
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("graceful shutdown failed: %v", err)
-		_ = srv.Close()
-	}
+	_ = srv.Shutdown(ctx)
+	_ = srv.Close()
 }
 
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		next.ServeHTTP(w, r)
-		log.Printf("%s %s from=%s took=%s", r.Method, r.URL.String(), r.RemoteAddr, time.Since(start))
-	})
+func mustAtoi(s string, fallback int) int {
+	n, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return fallback
+	}
+	return n
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/elecbug/linuxus/src/auth/internal/handler"
 	"github.com/elecbug/linuxus/src/auth/internal/user"
@@ -63,7 +64,7 @@ func parseConfig() (*handler.AppConfig, error) {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
 	trustedProxies := os.Getenv("TRUSTED_PROXIES")
-	managerAddr, err := getEnv("MANAGER_ADDR")
+	managerBaseURL, err := getEnv("MANAGER_BASE_URL")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
@@ -82,6 +83,7 @@ func parseConfig() (*handler.AppConfig, error) {
 		TerminalPath:            terminalPath,
 		UserContainerNamePrefix: userContainerNamePrefix,
 		TrustedProxies:          handler.ParseTrustedProxies(trustedProxies),
-		ManagerAddr:             managerAddr,
+		ManagerBaseURL:          managerBaseURL,
+		ManagerTimeout:          10 * time.Second,
 	}, nil
 }
