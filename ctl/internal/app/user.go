@@ -49,7 +49,7 @@ func (a *App) LoadUsers() error {
 		return fmt.Errorf("failed reading auth list: %w", err)
 	}
 	if len(a.UserIDs) == 0 {
-		return fmt.Errorf("no valid user IDs found in %s", authList)
+		fmt.Println("Warning: no valid user IDs found in auth list")
 	}
 	return nil
 }

@@ -54,6 +54,15 @@ auth_service:
     session_secret: change-this-secret-before-production
     trusted_proxies: ""
 
+manager_service:
+  source_dir: ./manager
+  container:
+    name: linuxus_manager
+    timezone: Asia/Seoul
+    network: linuxus_manager_net
+  session:
+    timeout: 10s
+
 volumes:
   host:
     volumes: ./volumes

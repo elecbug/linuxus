@@ -2,22 +2,16 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 )
 
 func (a *App) ensureRuntimeNetworks() error {
-	networks, err := a.buildRuntimeNetworks()
-	if err != nil {
-		return err
-	}
-	for _, network := range networks {
-		if err := a.ensureNetwork(network); err != nil {
-			return err
-		}
-	}
-	return nil
+	return a.ensureNetwork(RuntimeNetworkSpec{
+		Name: a.Config.ManagerService.Container.Network,
+	})
 }
 
 func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
@@ -35,28 +29,23 @@ func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
 		return fmt.Errorf("Docker client is not initialized")
 	}
 
-	fmt.Printf("[+] Creating network: %s (%s)\n", spec.Name, spec.Subnet)
+	fmt.Printf("[+] Creating network: %s\n", spec.Name)
 
 	_, err = cli.NetworkCreate(a.context, spec.Name, network.CreateOptions{
 		Driver: "bridge",
-		IPAM: &network.IPAM{
-			Config: []network.IPAMConfig{
-				{
-					Subnet: spec.Subnet,
-				},
-			},
-		},
 	})
 	return err
 }
 
 func (a *App) removeManagedNetworks() error {
-	networks, err := a.buildRuntimeNetworks()
+	names, err := a.managedNetworkNames()
 	if err != nil {
 		return err
 	}
-	for i := len(networks) - 1; i >= 0; i-- {
-		name := networks[i].Name
+
+	for i := len(names) - 1; i >= 0; i-- {
+		name := names[i]
+
 		exists, err := a.existDockerNetwork(name)
 		if err != nil {
 			return err
@@ -94,31 +83,31 @@ func (a *App) existDockerNetwork(name string) (bool, error) {
 	return len(networks) > 0, nil
 }
 
-func (a *App) buildRuntimeNetworks() ([]RuntimeNetworkSpec, error) {
-	networks := make([]RuntimeNetworkSpec, 0, len(a.SafeIDs)+1)
-	seq := 0
-
-	for _, safeID := range a.SafeIDs {
-		subnet, err := getIP(a.Config.UserService.Container.BaseIP, seq)
-		if err != nil {
-			return nil, err
-		}
-		networks = append(networks, RuntimeNetworkSpec{
-			Name:   a.Config.UserService.Container.NetworkPrefix + safeID,
-			Subnet: subnet,
-		})
-		seq++
+func (a *App) managedNetworkNames() ([]string, error) {
+	cli := a.dockerClient
+	if cli == nil {
+		return nil, fmt.Errorf("Docker client is not initialized")
 	}
 
-	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
-	subnet, err := getIP(a.Config.UserService.Container.BaseIP, seq)
+	out := []string{a.Config.ManagerService.Container.Network}
+
+	networks, err := cli.NetworkList(a.context, network.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	networks = append(networks, RuntimeNetworkSpec{
-		Name:   a.Config.UserService.Container.NetworkPrefix + adminSafe,
-		Subnet: subnet,
-	})
 
-	return networks, nil
+	seen := map[string]struct{}{
+		a.Config.ManagerService.Container.Network: {},
+	}
+
+	for _, nw := range networks {
+		if strings.HasPrefix(nw.Name, a.Config.UserService.Container.NetworkPrefix) {
+			if _, ok := seen[nw.Name]; !ok {
+				seen[nw.Name] = struct{}{}
+				out = append(out, nw.Name)
+			}
+		}
+	}
+
+	return out, nil
 }

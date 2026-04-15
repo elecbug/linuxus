@@ -54,6 +54,18 @@ type Config struct {
 		} `yaml:"security"`
 	} `yaml:"auth_service"`
 
+	ManagerService struct {
+		SourceDir string `yaml:"source_dir"`
+		Container struct {
+			Name     string `yaml:"name"`
+			Timezone string `yaml:"timezone"`
+			Network  string `yaml:"network"`
+		} `yaml:"container"`
+		Session struct {
+			Timeout string `yaml:"timeout"`
+		} `yaml:"session"`
+	} `yaml:"manager_service"`
+
 	Volumes struct {
 		Host struct {
 			Volumes  string `yaml:"volumes"`

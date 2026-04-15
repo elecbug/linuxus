@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/ctl/internal/config"
@@ -57,12 +56,10 @@ type RuntimeNetworkSpec struct {
 }
 
 func CreateApp(currentDir, execDir, repoDir, sourceDir, configFile string) (*App, error) {
-
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
-	defer cli.Close()
 
 	app := &App{
 		dockerClient: cli,
@@ -74,13 +71,6 @@ func CreateApp(currentDir, execDir, repoDir, sourceDir, configFile string) (*App
 		configFile:   configFile,
 		seen:         make(map[string]struct{}),
 	}
-
-	if err := os.Chdir(app.sourceDir); err != nil {
-		return nil, fmt.Errorf("failed to change directory to source dir: %w", err)
-	}
-	defer func() {
-		_ = os.Chdir(app.currentDir)
-	}()
 
 	return app, nil
 }

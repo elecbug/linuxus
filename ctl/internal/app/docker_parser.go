@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -215,13 +214,7 @@ func parseSliceToTmpfsMap(items []string) map[string]string {
 	return out
 }
 
-func (a *App) buildAuthRuntimeSpec(adminSafe string) RuntimeContainerSpec {
-	networks := make([]string, 0, len(a.SafeIDs)+1)
-	for _, safeID := range a.SafeIDs {
-		networks = append(networks, a.Config.UserService.Container.NetworkPrefix+safeID)
-	}
-	networks = append(networks, a.Config.UserService.Container.NetworkPrefix+adminSafe)
-
+func (a *App) buildAuthRuntimeSpec() RuntimeContainerSpec {
 	return RuntimeContainerSpec{
 		Image: a.authImageName(),
 		Name:  a.Config.AuthService.Container.Name,
@@ -235,6 +228,8 @@ func (a *App) buildAuthRuntimeSpec(adminSafe string) RuntimeContainerSpec {
 			"TERMINAL_PATH=" + a.Config.AuthService.URLPath.Terminal,
 			"USER_CONTAINER_NAME_PREFIX=" + a.Config.UserService.Container.NamePrefix,
 			"TRUSTED_PROXIES=" + a.Config.AuthService.Security.TrustedProxies,
+			"MANAGER_BASE_URL=" + fmt.Sprintf("http://%s:5959", a.Config.ManagerService.Container.Name),
+			"MANAGER_TIMEOUT=" + a.Config.ManagerService.Session.Timeout,
 		},
 		Volumes: []string{
 			fmt.Sprintf("%s:%s:rw", a.Config.AuthService.AuthListFile.HostPath, a.Config.AuthService.AuthListFile.ContainerPath),
@@ -242,95 +237,81 @@ func (a *App) buildAuthRuntimeSpec(adminSafe string) RuntimeContainerSpec {
 		Ports: []string{
 			fmt.Sprintf("%d:8080", a.Config.AuthService.Container.ExternalPort),
 		},
-		Restart:  "unless-stopped",
-		Networks: networks,
+		Restart: "unless-stopped",
+		Networks: []string{
+			a.Config.ManagerService.Container.Network,
+		},
 	}
 }
 
-func (a *App) buildUserRuntimeSpec(userID, safeID string) RuntimeContainerSpec {
+func (a *App) buildManagerRuntimeSpec() (RuntimeContainerSpec, error) {
+	userCPUStr := fmt.Sprintf("%v", a.Config.UserService.Container.User.Limits.CPU)
+	userNanoCPUs, err := parseNanoCPUs(userCPUStr)
+	if err != nil {
+		return RuntimeContainerSpec{}, fmt.Errorf("invalid user cpu limit: %w", err)
+	}
+	userMemBytes, err := parseMemoryBytes(a.Config.UserService.Container.User.Limits.Memory)
+	if err != nil {
+		return RuntimeContainerSpec{}, fmt.Errorf("invalid user memory limit: %w", err)
+	}
+
+	adminCPUStr := fmt.Sprintf("%v", a.Config.UserService.Container.Admin.Limits.CPU)
+	adminNanoCPUs, err := parseNanoCPUs(adminCPUStr)
+	if err != nil {
+		return RuntimeContainerSpec{}, fmt.Errorf("invalid admin cpu limit: %w", err)
+	}
+	adminMemBytes, err := parseMemoryBytes(a.Config.UserService.Container.Admin.Limits.Memory)
+	if err != nil {
+		return RuntimeContainerSpec{}, fmt.Errorf("invalid admin memory limit: %w", err)
+	}
+
 	return RuntimeContainerSpec{
-		Image:      a.userImageName(),
-		Name:       a.Config.UserService.Container.NamePrefix + safeID,
-		User:       fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
-		Hostname:   a.Config.UserService.Container.Runtime.Hostname,
-		WorkingDir: "/home/" + a.Config.UserService.Container.Runtime.User,
-		ReadOnly:   true,
-		Tmpfs: []string{
-			"/tmp:rw,noexec,nosuid,nodev,size=64m",
-			"/run:rw,noexec,nosuid,nodev,size=16m",
-			"/var/tmp:rw,noexec,nosuid,nodev,size=64m",
-		},
+		Image: a.managerImageName(),
+		Name:  a.Config.ManagerService.Container.Name,
 		Environment: []string{
-			"TZ=" + a.Config.UserService.Container.Runtime.Timezone,
+			"TZ=" + a.Config.ManagerService.Container.Timezone,
+			"USER_IMAGE=" + a.userImageName(),
+			"USER_CONTAINER_NAME_PREFIX=" + a.Config.UserService.Container.NamePrefix,
+			"NETWORK_PREFIX=" + a.Config.UserService.Container.NetworkPrefix,
+			"BASE_IP=" + a.Config.UserService.Container.BaseIP,
+			"AUTH_CONTAINER_NAME=" + a.Config.AuthService.Container.Name,
+			"MANAGER_CONTAINER_NAME=" + a.Config.ManagerService.Container.Name,
+			"ADMIN_USER_ID=" + a.Config.UserService.Container.Admin.UserID,
+
+			"RUNTIME_USER=" + fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
 			"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Container.Runtime.User,
-			"USER_ID=" + userID,
-			"SHARED_DIR=" + a.Config.Volumes.Container.Share,
-			"READONLY_DIR=" + a.Config.Volumes.Container.Readonly,
-			"IS_ADMIN=false",
+			"CONTAINER_HOSTNAME=" + a.Config.UserService.Container.Runtime.Hostname,
+			"WORKING_DIR=" + "/home/" + a.Config.UserService.Container.Runtime.User,
+
+			"HOST_HOMES_DIR=" + a.Config.Volumes.Host.Homes,
+			"HOST_SHARE_DIR=" + a.Config.Volumes.Host.Share,
+			"HOST_READONLY_DIR=" + a.Config.Volumes.Host.Readonly,
+			"CONTAINER_SHARE_DIR=" + a.Config.Volumes.Container.Share,
+			"CONTAINER_READONLY_DIR=" + a.Config.Volumes.Container.Readonly,
+
+			"MANAGER_WAIT_TIME=" + a.Config.ManagerService.Session.Timeout,
+			"LISTEN_ADDR=:5959",
+
+			"USER_NANO_CPUS=" + fmt.Sprintf("%d", userNanoCPUs),
+			"USER_MEMORY_BYTES=" + fmt.Sprintf("%d", userMemBytes),
+			"USER_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Container.User.Limits.PID),
+			"USER_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Soft),
+			"USER_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Hard),
+			"ADMIN_NANO_CPUS=" + fmt.Sprintf("%d", adminNanoCPUs),
+			"ADMIN_MEMORY_BYTES=" + fmt.Sprintf("%d", adminMemBytes),
+			"ADMIN_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Container.Admin.Limits.PID),
+			"ADMIN_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Soft),
+			"ADMIN_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Hard),
 		},
 		Volumes: []string{
-			fmt.Sprintf("%s:/home/%s:rw", a.homeDirForUser(userID), a.Config.UserService.Container.Runtime.User),
-			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Share, a.Config.Volumes.Container.Share),
-			fmt.Sprintf("%s:%s:ro", a.Config.Volumes.Host.Readonly, a.Config.Volumes.Container.Readonly),
+			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Homes, a.Config.Volumes.Host.Homes),
+			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Share),
+			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Readonly, a.Config.Volumes.Host.Readonly),
+			"/var/run/docker.sock:/var/run/docker.sock:rw",
 		},
-		Restart:     "unless-stopped",
-		SecurityOpt: []string{"no-new-privileges:true"},
-		CapDrop:     []string{"ALL"},
-		Limits: ContainerLimits{
-			Memory:     a.Config.UserService.Container.User.Limits.Memory,
-			CPUs:       fmt.Sprintf("%v", a.Config.UserService.Container.User.Limits.CPU),
-			Pids:       a.Config.UserService.Container.User.Limits.PID,
-			NofileSoft: a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Soft,
-			NofileHard: a.Config.UserService.Container.User.Limits.Ulimits.Nofile.Hard,
-		},
+		Restart: "unless-stopped",
 		Networks: []string{
-			a.Config.UserService.Container.NetworkPrefix + safeID,
+			a.Config.ManagerService.Container.Network,
 		},
-	}
-}
-
-func (a *App) buildAdminRuntimeSpec(adminSafe string) RuntimeContainerSpec {
-	return RuntimeContainerSpec{
-		Image:      a.userImageName(),
-		Name:       a.Config.UserService.Container.NamePrefix + a.Config.UserService.Container.Admin.UserID,
-		User:       fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
-		Hostname:   a.Config.UserService.Container.Runtime.Hostname,
-		WorkingDir: "/home/" + a.Config.UserService.Container.Runtime.User,
-		ReadOnly:   true,
-		Tmpfs: []string{
-			"/tmp:rw,noexec,nosuid,nodev,size=64m",
-			"/run:rw,noexec,nosuid,nodev,size=16m",
-			"/var/tmp:rw,noexec,nosuid,nodev,size=64m",
-		},
-		Environment: []string{
-			"TZ=" + a.Config.UserService.Container.Runtime.Timezone,
-			"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Container.Runtime.User,
-			"USER_ID=" + a.Config.UserService.Container.Admin.UserID,
-			"SHARED_DIR=" + a.Config.Volumes.Container.Share,
-			"READONLY_DIR=" + a.Config.Volumes.Container.Readonly,
-			"IS_ADMIN=true",
-		},
-		Volumes: []string{
-			fmt.Sprintf("%s:/home/%s:rw", a.homeDirForUser(a.Config.UserService.Container.Admin.UserID), a.Config.UserService.Container.Runtime.User),
-			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Share, a.Config.Volumes.Container.Share),
-			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Readonly, a.Config.Volumes.Container.Readonly),
-		},
-		Restart:     "unless-stopped",
-		SecurityOpt: []string{"no-new-privileges:true"},
-		CapDrop:     []string{"ALL"},
-		Limits: ContainerLimits{
-			Memory:     a.Config.UserService.Container.Admin.Limits.Memory,
-			CPUs:       fmt.Sprintf("%v", a.Config.UserService.Container.Admin.Limits.CPU),
-			Pids:       a.Config.UserService.Container.Admin.Limits.PID,
-			NofileSoft: a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Soft,
-			NofileHard: a.Config.UserService.Container.Admin.Limits.Ulimits.Nofile.Hard,
-		},
-		Networks: []string{
-			a.Config.UserService.Container.NetworkPrefix + adminSafe,
-		},
-	}
-}
-
-func (a *App) homeDirForUser(userID string) string {
-	return filepath.Join(a.Config.Volumes.Host.Homes, userID)
+	}, nil
 }

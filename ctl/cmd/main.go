@@ -85,9 +85,6 @@ func run() error {
 			}
 
 		case DOWN:
-			if err := app.LoadUsers(); err != nil {
-				return err
-			}
 			if err := app.ServiceDown(); err != nil {
 				return err
 			}
@@ -109,9 +106,6 @@ func run() error {
 			}
 
 		case PS:
-			if err := app.LoadUsers(); err != nil {
-				return err
-			}
 			if err := app.ServicePS(); err != nil {
 				return err
 			}
@@ -157,9 +151,9 @@ func usageText(bin string) string {
 
 Options:
   -h, help          Show this help message
-  -u, up            Build images and start all runtime services
+  -u, up            Build images and start runtime services
   -d, down          Stop and remove all runtime services
-  -r, restart       Restart all runtime services
+  -r, restart       Restart runtime services
   -v, volume-clean  Reset all user directories
   -p, ps            Show the status of all runtime services
 

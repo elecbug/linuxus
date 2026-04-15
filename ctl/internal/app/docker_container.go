@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -9,18 +10,15 @@ import (
 )
 
 func (a *App) ensureAuthContainer() error {
-	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
-	return a.ensureContainer(a.buildAuthRuntimeSpec(adminSafe))
+	return a.ensureContainer(a.buildAuthRuntimeSpec())
 }
 
-func (a *App) ensureUserContainers() error {
-	for i := range a.UserIDs {
-		if err := a.ensureContainer(a.buildUserRuntimeSpec(a.UserIDs[i], a.SafeIDs[i])); err != nil {
-			return err
-		}
+func (a *App) ensureManagerContainer() error {
+	spec, err := a.buildManagerRuntimeSpec()
+	if err != nil {
+		return err
 	}
-	adminSafe := sanitizeName(a.Config.UserService.Container.Admin.UserID)
-	return a.ensureContainer(a.buildAdminRuntimeSpec(adminSafe))
+	return a.ensureContainer(spec)
 }
 
 func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
@@ -143,7 +141,11 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 }
 
 func (a *App) removeManagedContainers() error {
-	names := a.managedContainerNames()
+	names, err := a.managedContainerNames()
+	if err != nil {
+		return err
+	}
+
 	for _, name := range names {
 		exists, err := a.existdockerContainer(name)
 		if err != nil {
@@ -165,4 +167,40 @@ func (a *App) removeManagedContainers() error {
 		}
 	}
 	return nil
+}
+
+func (a *App) managedContainerNames() ([]string, error) {
+	cli := a.dockerClient
+	if cli == nil {
+		return nil, fmt.Errorf("Docker client is not initialized")
+	}
+
+	out := []string{
+		a.Config.AuthService.Container.Name,
+		a.Config.ManagerService.Container.Name,
+	}
+
+	summary, err := cli.ContainerList(a.context, container.ListOptions{All: true})
+	if err != nil {
+		return nil, err
+	}
+
+	seen := map[string]struct{}{
+		a.Config.AuthService.Container.Name:    {},
+		a.Config.ManagerService.Container.Name: {},
+	}
+
+	for _, c := range summary {
+		for _, raw := range c.Names {
+			name := strings.TrimPrefix(raw, "/")
+			if strings.HasPrefix(name, a.Config.UserService.Container.NamePrefix) {
+				if _, ok := seen[name]; !ok {
+					seen[name] = struct{}{}
+					out = append(out, name)
+				}
+			}
+		}
+	}
+
+	return out, nil
 }

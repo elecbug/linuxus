@@ -25,12 +25,18 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := a.ensureUserContainerReady(r.Context(), id); err != nil {
+		log.Printf("manager prepare failed for %s: %v", id, err)
+		a.renderError(w, "Shell container is not ready. Please try again later.", http.StatusServiceUnavailable)
+		return
+	}
+
 	safeID := sanitizeID(id)
 	targetURL := fmt.Sprintf("http://%s%s:7681", a.userContainerNamePrefix, safeID)
 
 	target, err := url.Parse(targetURL)
 	if err != nil {
-		http.Error(w, "Invalid backend target", http.StatusInternalServerError)
+		a.renderError(w, "Invalid backend target", http.StatusInternalServerError)
 		return
 	}
 
@@ -44,7 +50,6 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 		req.URL.Host = target.Host
 		req.Host = target.Host
 
-		// Strip "/$TERMINAL_PATH" prefix
 		newPath := strings.TrimPrefix(req.URL.Path, "/"+a.terminalPath)
 		if newPath == "" {
 			newPath = "/"
@@ -61,7 +66,7 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("proxy error for %s: %v", id, err)
-		http.Error(w, "Shell backend is unavailable", http.StatusBadGateway)
+		a.renderError(w, "Shell backend is unavailable", http.StatusBadGateway)
 	}
 
 	proxy.ServeHTTP(w, r)

@@ -30,6 +30,10 @@ func (a *App) buildRuntimeImages() error {
 		return fmt.Errorf("failed to build user image: %w", err)
 	}
 
+	if err := a.buildImage(a.Config.ManagerService.SourceDir, a.managerImageName(), nil); err != nil {
+		return fmt.Errorf("failed to build manager image: %w", err)
+	}
+
 	return nil
 }
 
@@ -125,4 +129,8 @@ func (a *App) authImageName() string {
 
 func (a *App) userImageName() string {
 	return a.Config.UserService.Container.NamePrefix + "base:runtime"
+}
+
+func (a *App) managerImageName() string {
+	return a.Config.ManagerService.Container.Name + ":runtime"
 }

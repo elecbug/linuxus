@@ -1,2 +1,4 @@
 # Ignore build artifacts and temporary files.
 linuxusctl
+temp
+debug/
