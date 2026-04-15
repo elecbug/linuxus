@@ -230,7 +230,7 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 			"USER_ID=" + userID,
 			"SHARED_DIR=" + s.cfg.ContainerShareDir,
 			"READONLY_DIR=" + s.cfg.ContainerReadonlyDir,
-			"IS_ADMIN=false",
+			fmt.Sprintf("IS_ADMIN=%t", userID == s.cfg.AdminUserID),
 		},
 	}
 
