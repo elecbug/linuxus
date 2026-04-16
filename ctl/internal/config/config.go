@@ -60,6 +60,7 @@ type Config struct {
 			Name     string `yaml:"name"`
 			Timezone string `yaml:"timezone"`
 			Network  string `yaml:"network"`
+			Subnet   string `yaml:"subnet"`
 		} `yaml:"container"`
 		Session struct {
 			Timeout string `yaml:"timeout"`

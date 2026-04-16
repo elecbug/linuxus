@@ -60,6 +60,9 @@ func (a *App) ValidateConfig() error {
 	if _, err := time.ParseDuration(a.Config.ManagerService.Session.Timeout); err != nil {
 		return fmt.Errorf("manager_service.session.timeout is not a valid duration: %w", err)
 	}
+	if a.Config.ManagerService.Container.Subnet == "" {
+		return errors.New("manager_service.container.base_ip must not be empty")
+	}
 	if a.Config.UserService.Container.NamePrefix == "" {
 		return errors.New("user_service.container.name_prefix must not be empty")
 	}

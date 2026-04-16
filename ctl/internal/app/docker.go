@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/containerd/errdefs"
+	"github.com/docker/docker/api/types/network"
 )
 
 func (a *App) ServiceUp() error {
@@ -125,11 +126,10 @@ func (a *App) ServicePS() error {
 		return err
 	}
 
-	results := make([]containerInfo, 0, len(names)+1)
-	results = append(results, containerInfo{
+	containerInfos := make([]containerInfo, 0, len(names)+1)
+	containerInfos = append(containerInfos, containerInfo{
 		Name:   "CONTAINER NAME",
-		State:  "STATUS",
-		Status: "STATUS",
+		Status: "STATE(STATUS)",
 		Image:  "IMAGE",
 		Ports:  "PORTS",
 		UserID: "USER ID",
@@ -139,9 +139,8 @@ func (a *App) ServicePS() error {
 		info, err := a.dockerClient.ContainerInspect(a.context, name)
 		if err != nil {
 			if errdefs.IsNotFound(err) {
-				results = append(results, containerInfo{
+				containerInfos = append(containerInfos, containerInfo{
 					Name:   name,
-					State:  "not found",
 					Status: "not found",
 					Image:  "-",
 					Ports:  "-",
@@ -152,9 +151,11 @@ func (a *App) ServicePS() error {
 			return fmt.Errorf("failed to inspect container %s: %w", name, err)
 		}
 
+		hasState := false
 		state := "-"
 		status := "-"
 		if info.State != nil {
+			hasState = true
 			state = info.State.Status
 			status = parseContainerStatusText(info)
 		}
@@ -162,19 +163,50 @@ func (a *App) ServicePS() error {
 		image := info.Config.Image
 		ports := parsePortSummary(info)
 
-		results = append(results, containerInfo{
+		containerInfos = append(containerInfos, containerInfo{
 			Name:   name,
-			State:  state,
-			Status: status,
+			Status: getStatusText(state, status, hasState),
 			Image:  image,
 			Ports:  ports,
 			UserID: a.getUserID(name),
 		})
 	}
 
-	strResults := parseContainerInfos(results)
+	strContainerResults := parseContainerInfos(containerInfos)
 
-	for _, result := range strResults {
+	for _, result := range strContainerResults {
+		fmt.Println(result)
+	}
+
+	fmt.Println("[+] Runtime network status:")
+
+	networkInfos := make([]networkInfo, 0)
+	networkInfos = append(networkInfos, networkInfo{
+		Name:   "NETWORK NAME",
+		ID:     "NETWORK ID",
+		Subnet: "SUBNET",
+	})
+
+	networks, err := a.dockerClient.NetworkList(a.context, network.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list networks: %w", err)
+	}
+
+	for _, net := range networks {
+		if strings.HasPrefix(net.Name, a.Config.UserService.Container.NetworkPrefix) ||
+			net.Name == a.Config.ManagerService.Container.Network {
+			info := networkInfo{
+				Name:   net.Name,
+				ID:     displayNetworkID(net.ID),
+				Subnet: net.IPAM.Config[0].Subnet,
+			}
+			networkInfos = append(networkInfos, info)
+		}
+	}
+
+	strNetResults := parseNetworkInfos(networkInfos)
+
+	for _, result := range strNetResults {
 		fmt.Println(result)
 	}
 
@@ -186,10 +218,29 @@ func (a *App) getUserID(name string) string {
 		return name[len(a.Config.UserService.Container.NamePrefix):]
 	}
 	if name == a.Config.AuthService.Container.Name {
-		return "AUTH SERVICE"
+		return "<AUTH SERVICE>"
 	}
 	if name == a.Config.ManagerService.Container.Name {
-		return "MANAGER SERVICE"
+		return "<MANAGER SERVICE>"
 	}
 	return "-"
+}
+
+func displayNetworkID(id string) string {
+	if len(id) > 12 {
+		return fmt.Sprintf("%s...", id[:12])
+	}
+	return id
+}
+
+func getStatusText(state, status string, hasState bool) string {
+	if !hasState {
+		return "-"
+	} else {
+		if state == status {
+			return state
+		} else {
+			return fmt.Sprintf("%s(%s)", state, status)
+		}
+	}
 }

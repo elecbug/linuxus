@@ -11,11 +11,16 @@ import (
 
 type containerInfo struct {
 	Name   string
-	State  string
 	Status string
 	Image  string
 	Ports  string
 	UserID string
+}
+
+type networkInfo struct {
+	Name   string
+	ID     string
+	Subnet string
 }
 
 func parseNanoCPUs(v string) (int64, error) {
@@ -89,7 +94,6 @@ func parsePortBinding(s string) (nat.Port, nat.PortBinding, error) {
 
 func parseContainerInfos(infos []containerInfo) []string {
 	maxName := 0
-	maxState := 0
 	maxStatus := 0
 	maxImage := 0
 	maxPorts := 0
@@ -98,9 +102,6 @@ func parseContainerInfos(infos []containerInfo) []string {
 	for _, info := range infos {
 		if len(info.Name) > maxName {
 			maxName = len(info.Name)
-		}
-		if len(info.State) > maxState {
-			maxState = len(info.State)
 		}
 		if len(info.Status) > maxStatus {
 			maxStatus = len(info.Status)
@@ -118,19 +119,50 @@ func parseContainerInfos(infos []containerInfo) []string {
 
 	out := make([]string, len(infos))
 	for i, info := range infos {
-		out[i] = fmt.Sprintf("%-*s | %-*s | %-*s | %-*s | %-*s | %s",
+		out[i] = fmt.Sprintf("| %-*s | %-*s | %-*s | %-*s | %-*s |",
 			maxName, info.Name,
 			maxUserID, info.UserID,
-			maxState, info.State,
 			maxStatus, info.Status,
 			maxImage, info.Image,
-			info.Ports,
+			maxPorts, info.Ports,
 		)
 		if i == 0 {
-			out[i] += "\n" + strings.Repeat("-", maxName) + "-|-" +
-				strings.Repeat("-", maxUserID) + "-|-" + strings.Repeat("-", maxState) + "-|-" +
-				strings.Repeat("-", maxStatus) + "-|-" + strings.Repeat("-", maxImage) + "-|-" +
-				strings.Repeat("-", maxPorts)
+			out[i] += "\n|-" + strings.Repeat("-", maxName) + "-|-" +
+				strings.Repeat("-", maxUserID) + "-|-" + strings.Repeat("-", maxStatus) + "-|-" +
+				strings.Repeat("-", maxImage) + "-|-" + strings.Repeat("-", maxPorts) + "-|"
+		}
+	}
+
+	return out
+}
+
+func parseNetworkInfos(infos []networkInfo) []string {
+	maxName := 0
+	maxID := 0
+	maxSubnet := 0
+
+	for _, info := range infos {
+		if len(info.Name) > maxName {
+			maxName = len(info.Name)
+		}
+		if len(info.ID) > maxID {
+			maxID = len(info.ID)
+		}
+		if len(info.Subnet) > maxSubnet {
+			maxSubnet = len(info.Subnet)
+		}
+	}
+
+	out := make([]string, len(infos))
+	for i, info := range infos {
+		out[i] = fmt.Sprintf("| %-*s | %-*s | %-*s |",
+			maxName, info.Name,
+			maxID, info.ID,
+			maxSubnet, info.Subnet,
+		)
+		if i == 0 {
+			out[i] += "\n|-" + strings.Repeat("-", maxName) + "-|-" +
+				strings.Repeat("-", maxID) + "-|-" + strings.Repeat("-", maxSubnet) + "-|"
 		}
 	}
 
