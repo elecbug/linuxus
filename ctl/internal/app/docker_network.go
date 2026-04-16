@@ -10,7 +10,8 @@ import (
 
 func (a *App) ensureRuntimeNetworks() error {
 	return a.ensureNetwork(RuntimeNetworkSpec{
-		Name: a.Config.ManagerService.Container.Network,
+		Name:   a.Config.ManagerService.Container.Network,
+		Subnet: a.Config.ManagerService.Container.Subnet,
 	})
 }
 
@@ -33,6 +34,13 @@ func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
 
 	_, err = cli.NetworkCreate(a.context, spec.Name, network.CreateOptions{
 		Driver: "bridge",
+		IPAM: &network.IPAM{
+			Config: []network.IPAMConfig{
+				{
+					Subnet: spec.Subnet,
+				},
+			},
+		},
 	})
 	return err
 }
