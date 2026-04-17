@@ -158,8 +158,8 @@ func serviceBodyCSS() *page.CSSContent {
 	)
 }
 
-// serviceToorBarCSS returns style rules for the service top toolbar.
-func serviceToorBarCSS() []*page.CSSContent {
+// serviceToolBarCSS returns style rules for the service top toolbar.
+func serviceToolBarCSS() []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("div.topbar",
 			page.NewAttributes(
