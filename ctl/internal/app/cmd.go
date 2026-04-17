@@ -8,7 +8,6 @@ import (
 	"strings"
 )
 
-// runCmd executes a command and streams stdout/stderr to the current process.
 func runCmd(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
@@ -19,7 +18,6 @@ func runCmd(name string, args ...string) error {
 	return nil
 }
 
-// runCmdOutput executes a command and returns captured stdout.
 func runCmdOutput(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
 	var out bytes.Buffer
@@ -31,7 +29,6 @@ func runCmdOutput(name string, args ...string) (string, error) {
 	return out.String(), nil
 }
 
-// runCmdAllowFail executes a command and returns its raw error without wrapping.
 func runCmdAllowFail(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout

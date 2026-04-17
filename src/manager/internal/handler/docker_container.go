@@ -11,7 +11,6 @@ import (
 	"github.com/elecbug/linuxus/src/manager/internal/config"
 )
 
-// createUserContainer creates and starts a user runtime container on the target network.
 func (s *Server) createUserContainer(ctx context.Context, containerName, userID, networkName string) error {
 	baseDir := strings.TrimRight(s.cfg.HostHomesDir, "/")
 	homeDir := filepath.Clean(baseDir + "/" + userID)
@@ -93,7 +92,6 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 	return nil
 }
 
-// getReadonlyBind returns readonly/shared mount mode based on admin identity.
 func getReadonlyBind(userID string, cfg *config.Config) string {
 	if userID == cfg.AdminUserID {
 		return fmt.Sprintf("%s:%s:rw", cfg.HostReadonlyDir, cfg.ContainerReadonlyDir)

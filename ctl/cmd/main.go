@@ -19,15 +19,11 @@ const (
 	PS
 )
 
-// Options represents parsed CLI operations and global flags.
 type Options struct {
-	// Opts stores the ordered command operations requested by CLI arguments.
-	Opts []Option
-	// IsHelp indicates whether the user requested help output.
+	Opts   []Option
 	IsHelp bool
 }
 
-// main executes the CLI entrypoint and exits with a non-zero code on error.
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -35,7 +31,6 @@ func main() {
 	}
 }
 
-// run resolves runtime paths, loads config, and executes requested service operations.
 func run() error {
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -120,7 +115,6 @@ func run() error {
 	return nil
 }
 
-// parseArgs converts raw CLI arguments into executable option flags.
 func parseArgs(args []string) (Options, error) {
 	opts := Options{
 		Opts: make([]Option, 0),
@@ -151,7 +145,6 @@ func parseArgs(args []string) (Options, error) {
 	return opts, nil
 }
 
-// usageText returns the formatted CLI usage and examples for the given binary name.
 func usageText(bin string) string {
 	return fmt.Sprintf(`Usage:
   %s [OPTION]...
@@ -170,7 +163,6 @@ Examples:
   %s -r`, bin, bin, bin, bin)
 }
 
-// printUsage writes the CLI usage text to standard output.
 func printUsage(bin string) {
 	fmt.Println(usageText(bin))
 }

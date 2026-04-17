@@ -10,33 +10,21 @@ import (
 	"strings"
 )
 
-// managerUserUpRequest is the payload for manager container-prepare requests.
 type managerUserUpRequest struct {
-	// UserID is the original user identifier.
 	UserID string `json:"user_id"`
-	// SafeID is the sanitized user identifier used in runtime naming.
 	SafeID string `json:"safe_id"`
 }
 
-// managerUserUpResponse is the manager response for container-prepare requests.
 type managerUserUpResponse struct {
-	// OK indicates whether the manager completed the prepare operation.
-	OK bool `json:"ok"`
-	// UserID echoes the original user identifier.
-	UserID string `json:"user_id"`
-	// SafeID echoes the sanitized user identifier.
-	SafeID string `json:"safe_id"`
-	// ContainerName is the prepared container name.
+	OK            bool   `json:"ok"`
+	UserID        string `json:"user_id"`
+	SafeID        string `json:"safe_id"`
 	ContainerName string `json:"container_name"`
-	// NetworkName is the prepared network name.
-	NetworkName string `json:"network_name"`
-	// Subnet is the network subnet assigned by the manager.
-	Subnet string `json:"subnet"`
-	// Message carries human-readable status details.
-	Message string `json:"message"`
+	NetworkName   string `json:"network_name"`
+	Subnet        string `json:"subnet"`
+	Message       string `json:"message"`
 }
 
-// ensureUserContainerReady asks the manager service to ensure a user runtime is ready.
 func (a *App) ensureUserContainerReady(ctx context.Context, userID string) error {
 	if a.managerBaseURL == "" {
 		return fmt.Errorf("manager base url is not configured")

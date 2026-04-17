@@ -16,7 +16,6 @@ import (
 	"github.com/elecbug/linuxus/src/manager/internal/handler"
 )
 
-// main initializes configuration, starts the manager server, and waits for shutdown.
 func main() {
 	cfg, err := parseConfigFromEnv()
 	if err != nil {
@@ -48,7 +47,6 @@ func main() {
 	waitForShutdown(srv)
 }
 
-// parseConfigFromEnv builds a runtime config from required environment variables.
 func parseConfigFromEnv() (*config.Config, error) {
 	listenAddr := os.Getenv("LISTEN_ADDR")
 	if listenAddr == "" {
@@ -171,7 +169,6 @@ func parseConfigFromEnv() (*config.Config, error) {
 	}, nil
 }
 
-// envInt64 parses an int64 from an environment variable and falls back to zero on error.
 func envInt64(key string) int64 {
 	s := os.Getenv(key)
 	if s == "" {
@@ -185,7 +182,6 @@ func envInt64(key string) int64 {
 	return v
 }
 
-// waitForShutdown blocks on termination signals and gracefully stops the HTTP server.
 func waitForShutdown(srv *http.Server) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
