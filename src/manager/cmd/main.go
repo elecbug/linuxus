@@ -131,6 +131,48 @@ func parseConfigFromEnv() (*config.Config, error) {
 		return nil, fmt.Errorf("CONTAINER_READONLY_DIR is required")
 	}
 
+	userNanoCPUs, err := envInt64("USER_NANO_CPUS")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_NANO_CPUS: %w", err)
+	}
+	userMemoryBytes, err := envInt64("USER_MEMORY_BYTES")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_MEMORY_BYTES: %w", err)
+	}
+	userPidsLimit, err := envInt64("USER_PIDS_LIMIT")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_PIDS_LIMIT: %w", err)
+	}
+	userNofileSoft, err := envInt64("USER_NOFILE_SOFT")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_NOFILE_SOFT: %w", err)
+	}
+	userNofileHard, err := envInt64("USER_NOFILE_HARD")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_NOFILE_HARD: %w", err)
+	}
+
+	adminNanoCPUs, err := envInt64("ADMIN_NANO_CPUS")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_NANO_CPUS: %w", err)
+	}
+	adminMemoryBytes, err := envInt64("ADMIN_MEMORY_BYTES")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_MEMORY_BYTES: %w", err)
+	}
+	adminPidsLimit, err := envInt64("ADMIN_PIDS_LIMIT")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_PIDS_LIMIT: %w", err)
+	}
+	adminNofileSoft, err := envInt64("ADMIN_NOFILE_SOFT")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_NOFILE_SOFT: %w", err)
+	}
+	adminNofileHard, err := envInt64("ADMIN_NOFILE_HARD")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_NOFILE_HARD: %w", err)
+	}
+
 	return &config.Config{
 		ListenAddr:              listenAddr,
 		UserImage:               userImage,
@@ -155,34 +197,33 @@ func parseConfigFromEnv() (*config.Config, error) {
 		ContainerReadonlyDir: containerReadonlyDir,
 
 		UserLimits: config.ResourceLimits{
-			NanoCPUs:    envInt64("USER_NANO_CPUS"),
-			MemoryBytes: envInt64("USER_MEMORY_BYTES"),
-			PidsLimit:   envInt64("USER_PIDS_LIMIT"),
-			NofileSoft:  envInt64("USER_NOFILE_SOFT"),
-			NofileHard:  envInt64("USER_NOFILE_HARD"),
+			NanoCPUs:    userNanoCPUs,
+			MemoryBytes: userMemoryBytes,
+			PidsLimit:   userPidsLimit,
+			NofileSoft:  userNofileSoft,
+			NofileHard:  userNofileHard,
 		},
 		AdminLimits: config.ResourceLimits{
-			NanoCPUs:    envInt64("ADMIN_NANO_CPUS"),
-			MemoryBytes: envInt64("ADMIN_MEMORY_BYTES"),
-			PidsLimit:   envInt64("ADMIN_PIDS_LIMIT"),
-			NofileSoft:  envInt64("ADMIN_NOFILE_SOFT"),
-			NofileHard:  envInt64("ADMIN_NOFILE_HARD"),
+			NanoCPUs:    adminNanoCPUs,
+			MemoryBytes: adminMemoryBytes,
+			PidsLimit:   adminPidsLimit,
+			NofileSoft:  adminNofileSoft,
+			NofileHard:  adminNofileHard,
 		},
 	}, nil
 }
 
 // envInt64 parses an int64 from an environment variable and falls back to zero on error.
-func envInt64(key string) int64 {
+func envInt64(key string) (int64, error) {
 	s := os.Getenv(key)
 	if s == "" {
-		return 0
+		return 0, nil
 	}
 	v, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		log.Printf("warning: invalid value for %s=%q, using 0: %v", key, s, err)
-		return 0
+		return 0, fmt.Errorf("invalid %s: %w", key, err)
 	}
-	return v
+	return v, nil
 }
 
 // waitForShutdown blocks on termination signals and gracefully stops the HTTP server.
