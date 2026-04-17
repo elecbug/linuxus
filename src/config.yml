@@ -3,7 +3,7 @@ user_service:
   container:
     name_prefix: linuxus_user_
     network_prefix: linuxus_user_net_
-    base_ip: "10.10.1.0"
+    base_ip: "10.10.0.0"
     runtime:
       uid: 1000
       gid: 1000
