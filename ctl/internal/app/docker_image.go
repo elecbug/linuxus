@@ -13,6 +13,7 @@ import (
 	"github.com/moby/term"
 )
 
+// buildRuntimeImages builds all runtime Docker images required by managed services.
 func (a *App) buildRuntimeImages() error {
 	fmt.Println("[+] Building runtime images...")
 
@@ -37,6 +38,7 @@ func (a *App) buildRuntimeImages() error {
 	return nil
 }
 
+// buildImage builds a Docker image from sourceDir with the given tag and build args.
 func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*string) error {
 	buildCtx, err := tarBuildContext(sourceDir)
 	if err != nil {
@@ -70,6 +72,7 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 	return nil
 }
 
+// tarBuildContext creates an in-memory tar stream for a Docker build context.
 func tarBuildContext(dir string) (io.Reader, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
@@ -123,14 +126,17 @@ func tarBuildContext(dir string) (io.Reader, error) {
 	return buf, nil
 }
 
+// authImageName returns the runtime tag for the auth service image.
 func (a *App) authImageName() string {
 	return a.Config.AuthService.Container.Name + ":runtime"
 }
 
+// userImageName returns the runtime tag for the user base image.
 func (a *App) userImageName() string {
 	return a.Config.UserService.Container.NamePrefix + "base:runtime"
 }
 
+// managerImageName returns the runtime tag for the manager service image.
 func (a *App) managerImageName() string {
 	return a.Config.ManagerService.Container.Name + ":runtime"
 }

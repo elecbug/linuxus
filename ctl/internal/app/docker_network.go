@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 )
 
+// ensureRuntimeNetworks creates required runtime networks if they do not exist.
 func (a *App) ensureRuntimeNetworks() error {
 	return a.ensureNetwork(RuntimeNetworkSpec{
 		Name:   a.Config.ManagerService.Container.Network,
@@ -15,6 +16,7 @@ func (a *App) ensureRuntimeNetworks() error {
 	})
 }
 
+// ensureNetwork creates a Docker bridge network from the provided specification.
 func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
 	exists, err := a.existDockerNetwork(spec.Name)
 	if err != nil {
@@ -45,6 +47,7 @@ func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
 	return err
 }
 
+// removeManagedNetworks removes runtime-managed networks in reverse dependency order.
 func (a *App) removeManagedNetworks() error {
 	names, err := a.managedNetworkNames()
 	if err != nil {
@@ -76,6 +79,7 @@ func (a *App) removeManagedNetworks() error {
 	return nil
 }
 
+// existDockerNetwork checks whether a network with the exact name exists.
 func (a *App) existDockerNetwork(name string) (bool, error) {
 	cli := a.dockerClient
 	if cli == nil {
@@ -91,6 +95,7 @@ func (a *App) existDockerNetwork(name string) (bool, error) {
 	return len(networks) > 0, nil
 }
 
+// managedNetworkNames returns network names owned by this runtime manager.
 func (a *App) managedNetworkNames() ([]string, error) {
 	cli := a.dockerClient
 	if cli == nil {

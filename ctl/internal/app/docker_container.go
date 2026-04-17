@@ -9,10 +9,12 @@ import (
 	"github.com/docker/go-connections/nat"
 )
 
+// ensureAuthContainer creates or recreates the auth service container from config.
 func (a *App) ensureAuthContainer() error {
 	return a.ensureContainer(a.buildAuthRuntimeSpec())
 }
 
+// ensureManagerContainer creates or recreates the manager service container from config.
 func (a *App) ensureManagerContainer() error {
 	spec, err := a.buildManagerRuntimeSpec()
 	if err != nil {
@@ -21,6 +23,7 @@ func (a *App) ensureManagerContainer() error {
 	return a.ensureContainer(spec)
 }
 
+// ensureContainer reconciles a container to match the provided runtime specification.
 func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 	cli := a.dockerClient
 	if cli == nil {
@@ -140,6 +143,7 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 	return nil
 }
 
+// removeManagedContainers force-removes all runtime-managed containers.
 func (a *App) removeManagedContainers() error {
 	names, err := a.managedContainerNames()
 	if err != nil {
@@ -169,6 +173,7 @@ func (a *App) removeManagedContainers() error {
 	return nil
 }
 
+// managedContainerNames returns container names owned by this runtime manager.
 func (a *App) managedContainerNames() ([]string, error) {
 	cli := a.dockerClient
 	if cli == nil {
