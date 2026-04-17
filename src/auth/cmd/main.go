@@ -10,6 +10,7 @@ import (
 	"github.com/elecbug/linuxus/src/auth/internal/user"
 )
 
+// main boots the auth service with environment-derived configuration.
 func main() {
 	config, err := parseConfig()
 	if err != nil {
@@ -24,6 +25,7 @@ func main() {
 	}
 }
 
+// getEnv returns a required environment variable or an error when empty.
 func getEnv(key string) (string, error) {
 	value := os.Getenv(key)
 	if value == "" {
@@ -32,6 +34,7 @@ func getEnv(key string) (string, error) {
 	return value, nil
 }
 
+// parseConfig reads environment values and constructs the auth application config.
 func parseConfig() (*handler.AppConfig, error) {
 	var err error
 

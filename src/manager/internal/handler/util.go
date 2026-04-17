@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// getSubnetByIndex computes a /28 subnet from the base IP and slot index.
 func getSubnetByIndex(baseIP string, index int) (string, error) {
 	ip := net.ParseIP(strings.TrimSpace(baseIP)).To4()
 	if ip == nil {
@@ -29,6 +30,7 @@ func getSubnetByIndex(baseIP string, index int) (string, error) {
 	return fmt.Sprintf("%d.%d.%d.%d/28", o0, o1, newO2, fourthOffset), nil
 }
 
+// subnetToIndex converts a managed /28 subnet back to its slot index.
 func subnetToIndex(baseIP, subnet string) (int, bool) {
 	base := net.ParseIP(strings.TrimSpace(baseIP)).To4()
 	if base == nil {
@@ -64,6 +66,7 @@ func subnetToIndex(baseIP, subnet string) (int, bool) {
 	return index, true
 }
 
+// sanitizeName normalizes an identifier for safe Docker resource naming.
 func sanitizeName(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	s = reInvalid.ReplaceAllString(s, "_")
@@ -74,6 +77,7 @@ func sanitizeName(s string) string {
 	return s
 }
 
+// writeJSON writes a JSON response with the given HTTP status code.
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)

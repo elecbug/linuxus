@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// LoadUsers parses the auth list and populates unique runtime user identifiers.
 func (a *App) LoadUsers() error {
 	authList := a.Config.AuthService.AuthListFile.HostPath
 

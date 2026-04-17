@@ -6,6 +6,7 @@ import (
 	"github.com/elecbug/linuxus/src/auth/internal/page"
 )
 
+// TestCSSRendering verifies deterministic CSS rendering output.
 func TestCSSRendering(t *testing.T) {
 	css := page.NewCSS(
 		page.NewCSSContent("body.main",
@@ -79,6 +80,7 @@ func TestCSSRendering(t *testing.T) {
 	}
 }
 
+// TestHTMLPageRendering verifies composed HTML page rendering output.
 func TestHTMLPageRendering(t *testing.T) {
 	css := page.NewCSS(
 		page.NewCSSContent("body.main",
@@ -149,6 +151,7 @@ func TestHTMLPageRendering(t *testing.T) {
 	}
 }
 
+// TestHTMLPageRemoveContent verifies body content removal behavior.
 func TestHTMLPageRemoveContent(t *testing.T) {
 	htmlContent := page.NewHTML(
 		"div",

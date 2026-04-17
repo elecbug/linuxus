@@ -10,6 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// LoadConfig reads and unmarshals the YAML configuration file into App.Config.
 func (a *App) LoadConfig() error {
 	data, err := os.ReadFile(a.configFile)
 	if err != nil {
@@ -23,6 +24,7 @@ func (a *App) LoadConfig() error {
 	return nil
 }
 
+// ValidateConfig checks required configuration values and basic format constraints.
 func (a *App) ValidateConfig() error {
 	if a.Config.AuthService.Container.ExternalPort <= 0 {
 		return errors.New("auth_service.external_port must be a positive integer")
@@ -75,6 +77,7 @@ func (a *App) ValidateConfig() error {
 	return nil
 }
 
+// normalizeConfigPaths converts configured relative paths to source-root absolute paths.
 func (a *App) normalizeConfigPaths() {
 	a.Config.UserService.SourceDir = a.absFromSource(a.Config.UserService.SourceDir)
 	a.Config.AuthService.SourceDir = a.absFromSource(a.Config.AuthService.SourceDir)
@@ -88,6 +91,7 @@ func (a *App) normalizeConfigPaths() {
 	a.Config.Volumes.Host.Volumes = a.absFromSource(a.Config.Volumes.Host.Volumes)
 }
 
+// absFromSource resolves a relative path from App.sourceDir and normalizes it.
 func (a *App) absFromSource(path string) string {
 	if path == "" {
 		return path

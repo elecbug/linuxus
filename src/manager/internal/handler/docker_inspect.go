@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/client"
 )
 
+// ensureUserRuntimeReady reconciles image, network, and container state for a user runtime.
 func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID string) (*UserUpResponse, error) {
 	containerName := s.cfg.UserContainerNamePrefix + safeID
 
@@ -87,6 +88,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 	}, nil
 }
 
+// inspectContainerState reports whether a container exists and whether it is running.
 func (s *Server) inspectContainerState(ctx context.Context, name string) (bool, bool, error) {
 	inspect, err := s.docker.ContainerInspect(ctx, name)
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 )
 
+// ensureExistingContainerNetworkAndAuth returns managed network info for an existing container and ensures auth connectivity.
 func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, containerName string) (string, string, error) {
 	inspect, err := s.docker.ContainerInspect(ctx, containerName)
 	if err != nil {
@@ -42,6 +43,7 @@ func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, cont
 	return "", "", fmt.Errorf("existing container is not attached to managed network")
 }
 
+// ensureAuthConnected attaches the auth container to the target network if needed.
 func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) error {
 	netInfo, err := s.docker.NetworkInspect(ctx, networkName, network.InspectOptions{})
 	if err != nil {
@@ -65,6 +67,7 @@ func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) er
 	return nil
 }
 
+// waitForContainerIP polls until a container obtains an IPv4 on the target network.
 func (s *Server) waitForContainerIP(ctx context.Context, containerName, networkName string) (string, error) {
 	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
@@ -83,6 +86,7 @@ func (s *Server) waitForContainerIP(ctx context.Context, containerName, networkN
 	}
 }
 
+// containerIPv4OnNetwork returns a container IPv4 address for a specific network.
 func (s *Server) containerIPv4OnNetwork(ctx context.Context, containerName, networkName string) (string, error) {
 	inspect, err := s.docker.ContainerInspect(ctx, containerName)
 	if err != nil {
@@ -101,6 +105,7 @@ func (s *Server) containerIPv4OnNetwork(ctx context.Context, containerName, netw
 	return ep.IPAddress, nil
 }
 
+// findFirstFreeNetworkSlot finds the first unused managed subnet slot.
 func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, error) {
 	networks, err := s.docker.NetworkList(ctx, network.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
@@ -146,6 +151,7 @@ func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, err
 	}
 }
 
+// existNetwork checks whether a Docker network exists by exact name.
 func (s *Server) existNetwork(ctx context.Context, name string) (bool, error) {
 	nws, err := s.docker.NetworkList(ctx, network.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
@@ -164,6 +170,7 @@ func (s *Server) existNetwork(ctx context.Context, name string) (bool, error) {
 	return false, nil
 }
 
+// createNetwork creates a managed bridge network when it does not already exist.
 func (s *Server) createNetwork(ctx context.Context, name, subnet string) error {
 	if exists, err := s.existNetwork(ctx, name); err != nil {
 		return err

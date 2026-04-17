@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+// TestHTMLRendering verifies login page template generation is non-empty.
 func TestHTMLRendering(t *testing.T) {
 	config := &AppConfig{
 		Users:                   nil,
@@ -26,6 +27,7 @@ func TestHTMLRendering(t *testing.T) {
 	}
 }
 
+// TestGetErrorPageRendering verifies error page template generation is non-empty.
 func TestGetErrorPageRendering(t *testing.T) {
 	errorPage := getErrorPage()
 	if errorPage == "" {

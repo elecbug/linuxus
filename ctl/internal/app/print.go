@@ -2,6 +2,7 @@ package app
 
 import "fmt"
 
+// PrintSummary prints a concise runtime configuration summary for operators.
 func (a *App) PrintSummary() {
 	fmt.Println("Runtime service plan prepared.")
 	fmt.Println()
