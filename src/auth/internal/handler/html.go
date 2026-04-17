@@ -4,7 +4,6 @@ import (
 	"github.com/elecbug/linuxus/src/auth/internal/page"
 )
 
-// getLoginPage renders the login page template source.
 func getLoginPage(app *App) string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | Login",
@@ -62,7 +61,6 @@ func getLoginPage(app *App) string {
 	return htmlpage.Render()
 }
 
-// getServicePage renders the authenticated service page template source.
 func getServicePage(app *App) string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | {{.ID}}",
@@ -119,7 +117,6 @@ func getServicePage(app *App) string {
 	return htmlpage.Render()
 }
 
-// getErrorPage renders the generic error page template source.
 func getErrorPage() string {
 	htmlpage := page.NewHTMLPage(
 		"Linuxus | Error",
@@ -146,7 +143,6 @@ func getErrorPage() string {
 	return htmlpage.Render()
 }
 
-// getBaseMeta returns default meta tag attributes for rendered pages.
 func getBaseMeta() []page.Attribute {
 	return page.NewAttributes(
 		"charset", "UTF-8",
@@ -155,7 +151,6 @@ func getBaseMeta() []page.Attribute {
 	)
 }
 
-// linuxusFooterHTML returns a shared footer HTML block.
 func linuxusFooterHTML() *page.HTML {
 	return page.NewHTML(
 		"footer",

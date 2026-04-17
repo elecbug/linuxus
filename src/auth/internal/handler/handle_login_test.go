@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// TestIsBlocked_NotBlocked verifies no block state on a fresh app.
 func TestIsBlocked_NotBlocked(t *testing.T) {
 	app := newTestApp()
 	ok, _ := app.isBlocked("1.2.3.4", "user1")
@@ -14,7 +13,6 @@ func TestIsBlocked_NotBlocked(t *testing.T) {
 	}
 }
 
-// TestIsBlocked_BlockedAfterUserFailures verifies user lockout after repeated failures.
 func TestIsBlocked_BlockedAfterUserFailures(t *testing.T) {
 	app := newTestApp()
 	for i := 0; i < 5; i++ {
@@ -29,7 +27,6 @@ func TestIsBlocked_BlockedAfterUserFailures(t *testing.T) {
 	}
 }
 
-// TestIsBlocked_BlockedAfterIPFailures verifies IP lockout after repeated failures.
 func TestIsBlocked_BlockedAfterIPFailures(t *testing.T) {
 	app := newTestApp()
 	for i := 0; i < 20; i++ {
@@ -41,7 +38,6 @@ func TestIsBlocked_BlockedAfterIPFailures(t *testing.T) {
 	}
 }
 
-// TestRecordFail_UnknownUserSkipsUserFails verifies unknown-user failures are not tracked per user.
 func TestRecordFail_UnknownUserSkipsUserFails(t *testing.T) {
 	app := newTestApp()
 	for i := 0; i < 10; i++ {
@@ -52,7 +48,6 @@ func TestRecordFail_UnknownUserSkipsUserFails(t *testing.T) {
 	}
 }
 
-// TestRecordFail_KnownUserTracksUserFails verifies known-user failures are tracked per user.
 func TestRecordFail_KnownUserTracksUserFails(t *testing.T) {
 	app := newTestApp()
 	app.recordFail("1.2.3.4", "knownuser", true)
@@ -61,7 +56,6 @@ func TestRecordFail_KnownUserTracksUserFails(t *testing.T) {
 	}
 }
 
-// TestLockDuration verifies lockout backoff durations.
 func TestLockDuration(t *testing.T) {
 	cases := []struct {
 		lockCount int
@@ -81,7 +75,6 @@ func TestLockDuration(t *testing.T) {
 	}
 }
 
-// TestResetWindow_FailCountAfter15Min verifies fail-count reset window behavior.
 func TestResetWindow_FailCountAfter15Min(t *testing.T) {
 	app := newTestApp()
 	app.userFails["user1"] = &loginAttempt{
@@ -95,7 +88,6 @@ func TestResetWindow_FailCountAfter15Min(t *testing.T) {
 	}
 }
 
-// TestResetWindow_LockCountAfter30Min verifies lock-count reset window behavior.
 func TestResetWindow_LockCountAfter30Min(t *testing.T) {
 	app := newTestApp()
 	app.userFails["user1"] = &loginAttempt{

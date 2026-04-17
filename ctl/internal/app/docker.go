@@ -10,7 +10,6 @@ import (
 	"github.com/docker/docker/api/types/network"
 )
 
-// ServiceUp builds images and ensures all runtime-managed services are running.
 func (a *App) ServiceUp() error {
 	fmt.Println("[+] Starting runtime-managed containers...")
 
@@ -31,7 +30,6 @@ func (a *App) ServiceUp() error {
 	return nil
 }
 
-// ServiceDown removes runtime-managed containers and networks.
 func (a *App) ServiceDown() error {
 	fmt.Println("[+] Stopping runtime-managed containers...")
 	if err := a.removeManagedContainers(); err != nil {
@@ -43,7 +41,6 @@ func (a *App) ServiceDown() error {
 	return nil
 }
 
-// ServiceRestart restarts runtime-managed services by running down then up.
 func (a *App) ServiceRestart() error {
 	fmt.Println("[+] Restarting runtime-managed containers...")
 	if err := a.ServiceDown(); err != nil {
@@ -52,7 +49,6 @@ func (a *App) ServiceRestart() error {
 	return a.ServiceUp()
 }
 
-// VolumeClean stops services, unmounts disks, detaches loops, and removes volume paths.
 func (a *App) VolumeClean() error {
 	fmt.Println("[+] Cleaning volumes...")
 
@@ -122,7 +118,6 @@ func (a *App) VolumeClean() error {
 	return nil
 }
 
-// ServicePS prints table-form runtime status for managed containers and networks.
 func (a *App) ServicePS() error {
 	fmt.Println("[+] Runtime service status:")
 
@@ -218,7 +213,6 @@ func (a *App) ServicePS() error {
 	return nil
 }
 
-// getUserID extracts a display user identifier from a managed container name.
 func (a *App) getUserID(name string) string {
 	if strings.HasPrefix(name, a.Config.UserService.Container.NamePrefix) {
 		return name[len(a.Config.UserService.Container.NamePrefix):]
@@ -232,7 +226,6 @@ func (a *App) getUserID(name string) string {
 	return "-"
 }
 
-// displayNetworkID shortens long network IDs for status output.
 func displayNetworkID(id string) string {
 	if len(id) > 12 {
 		return fmt.Sprintf("%s...", id[:12])
@@ -240,7 +233,6 @@ func displayNetworkID(id string) string {
 	return id
 }
 
-// getStatusText combines Docker state and parsed status text for display.
 func getStatusText(state, status string, hasState bool) string {
 	if !hasState {
 		return "-"

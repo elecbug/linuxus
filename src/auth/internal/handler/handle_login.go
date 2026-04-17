@@ -14,10 +14,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// dummyHash equalizes password verification timing for unknown users.
 var dummyHash = []byte("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy")
 
-// handleLogin serves login page requests and processes login form submissions.
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -76,7 +74,6 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// isBlocked checks whether the IP or user is currently lock-limited.
 func (a *App) isBlocked(ip, id string) (bool, time.Time) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -92,7 +89,6 @@ func (a *App) isBlocked(ip, id string) (bool, time.Time) {
 	return false, time.Time{}
 }
 
-// renderLogin renders the login template with an optional error message.
 func (a *App) renderLogin(w http.ResponseWriter, errMsg string) {
 	data := struct {
 		Error string
@@ -105,7 +101,6 @@ func (a *App) renderLogin(w http.ResponseWriter, errMsg string) {
 	}
 }
 
-// renderError renders the error template with the provided HTTP status code.
 func (a *App) renderError(w http.ResponseWriter, errMsg string, statusCode int) {
 	data := struct {
 		Error string
@@ -123,7 +118,6 @@ func (a *App) renderError(w http.ResponseWriter, errMsg string, statusCode int) 
 	_, _ = buf.WriteTo(w)
 }
 
-// setSessionCookie writes a signed session cookie for the authenticated user.
 func (a *App) setSessionCookie(w http.ResponseWriter, id string) {
 	signature := a.sign(id)
 	payload := id + "|" + signature
@@ -139,14 +133,12 @@ func (a *App) setSessionCookie(w http.ResponseWriter, id string) {
 	})
 }
 
-// sign returns a base64 HMAC signature for the provided value.
 func (a *App) sign(value string) string {
 	mac := hmac.New(sha256.New, a.sessionKey)
 	mac.Write([]byte(value))
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
-// recordFail updates lockout counters for failed authentication attempts.
 func (a *App) recordFail(ip, id string, trackUser bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -184,7 +176,6 @@ func (a *App) recordFail(ip, id string, trackUser bool) {
 	}
 }
 
-// clearFail removes failure tracking state for a successful authentication.
 func (a *App) clearFail(ip, id string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -193,7 +184,6 @@ func (a *App) clearFail(ip, id string) {
 	delete(a.userFails, id)
 }
 
-// clientIP resolves the caller IP, honoring forwarding headers from trusted proxies.
 func (a *App) clientIP(r *http.Request) string {
 	remoteHost, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -214,7 +204,6 @@ func (a *App) clientIP(r *http.Request) string {
 	return remoteHost
 }
 
-// isTrustedProxy reports whether the host IP belongs to a trusted proxy network.
 func (a *App) isTrustedProxy(host string) bool {
 	ip := net.ParseIP(host)
 	if ip == nil {
@@ -228,7 +217,6 @@ func (a *App) isTrustedProxy(host string) bool {
 	return false
 }
 
-// printTime formats lock expiration time for user-facing messages.
 func printTime(d time.Time) string {
 	if time.Until(d) < 24*time.Hour {
 		return d.Format("15:04:05")
@@ -236,7 +224,6 @@ func printTime(d time.Time) string {
 	return d.Format("2006.01.02. 15:04:05")
 }
 
-// lockDuration returns lockout duration based on escalation count.
 func lockDuration(lockCount int) time.Duration {
 	switch lockCount {
 	case 1:
