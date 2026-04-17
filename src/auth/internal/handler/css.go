@@ -37,7 +37,7 @@ func getServiceCSS() *page.CSS {
 	return page.NewCSS().AddContents(
 		serviceBodyCSS(),
 	).AddContents(
-		serviceToorBarCSS()...,
+		serviceToolBarCSS()...,
 	).AddContents(
 		serviceIframeCSS()...,
 	).AddContents(

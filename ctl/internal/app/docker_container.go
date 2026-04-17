@@ -30,7 +30,7 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 		return fmt.Errorf("Docker client is not initialized")
 	}
 
-	exists, err := a.existdockerContainer(spec.Name)
+	exists, err := a.existDockerContainer(spec.Name)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (a *App) removeManagedContainers() error {
 	}
 
 	for _, name := range names {
-		exists, err := a.existdockerContainer(name)
+		exists, err := a.existDockerContainer(name)
 		if err != nil {
 			return err
 		}
