@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// newTestApp creates a minimal App instance for login-throttling unit tests.
 func newTestApp() *App {
 	return &App{
 		ipFails:   make(map[string]*loginAttempt),
@@ -12,6 +13,7 @@ func newTestApp() *App {
 	}
 }
 
+// TestEvictStaleEntries verifies stale failure state cleanup behavior.
 func TestEvictStaleEntries(t *testing.T) {
 	app := newTestApp()
 

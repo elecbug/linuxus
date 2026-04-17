@@ -2,6 +2,7 @@ package handler
 
 import "net/http"
 
+// handleServiceRedirect validates session and normalizes service route path.
 func (a *App) handleServiceRedirect(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.getSessionID(r); !ok {
 		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
@@ -11,6 +12,7 @@ func (a *App) handleServiceRedirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
 }
 
+// handleServicePage renders the authenticated service page.
 func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
 	id, ok := a.getSessionID(r)
 	if !ok {
