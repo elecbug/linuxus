@@ -108,6 +108,10 @@ func (a *App) ensureUserContainerReady(ctx context.Context, userID string) error
 
 // reportSessionState sends the current active session count for a user to the manager.
 func (a *App) reportSessionState(id string, active int) error {
+	if a.managerBaseURL == "" {
+		return nil
+	}
+
 	payload := sessionStateReport{
 		UserID:         id,
 		ActiveSessions: active,
@@ -119,11 +123,17 @@ func (a *App) reportSessionState(id string, active int) error {
 		return fmt.Errorf("marshal session state: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, a.managerBaseURL+"/user/session-state", bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(context.Background(), a.sessionReportTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.managerBaseURL+"/user/session-state", bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if a.managerSecret != "" {
+		req.Header.Set("X-Manager-Secret", a.managerSecret)
+	}
 
 	resp, err := a.managerClient.Do(req)
 	if err != nil {

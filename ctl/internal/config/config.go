@@ -72,6 +72,10 @@ type Config struct {
 		Session struct {
 			Timeout string `yaml:"timeout"`
 		} `yaml:"session"`
+		// Security defines authentication settings for manager endpoints.
+		Security struct {
+			ManagerSecret string `yaml:"manager_secret"`
+		} `yaml:"security"`
 	} `yaml:"manager_service"`
 
 	Volumes struct {

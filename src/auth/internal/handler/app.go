@@ -27,6 +27,7 @@ type App struct {
 
 	managerBaseURL string
 	managerClient  *http.Client
+	managerSecret  string
 
 	mu        sync.Mutex
 	ipFails   map[string]*loginAttempt
@@ -56,6 +57,7 @@ type AppConfig struct {
 
 	ManagerBaseURL string
 	ManagerTimeout time.Duration
+	ManagerSecret  string
 }
 
 type loginAttempt struct {
@@ -95,6 +97,7 @@ func NewApp(config *AppConfig) *App {
 		managerClient: &http.Client{
 			Timeout: timeout,
 		},
+		managerSecret: config.ManagerSecret,
 		mux: http.NewServeMux(),
 
 		mu:        sync.Mutex{},

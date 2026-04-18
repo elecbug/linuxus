@@ -32,7 +32,9 @@ func main() {
 	mux.HandleFunc("/user/up", s.HandleUserUp)
 	mux.HandleFunc("/user/session-state", s.HandleUserSessionState)
 
-	s.StartIdleReaper(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+
+	s.StartIdleReaper(ctx)
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
@@ -47,7 +49,7 @@ func main() {
 		}
 	}()
 
-	waitForShutdown(srv)
+	waitForShutdown(srv, cancel)
 }
 
 func parseConfigFromEnv() (*config.Config, error) {
@@ -79,6 +81,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if adminUserID == "" {
 		return nil, fmt.Errorf("ADMIN_USER_ID is required")
 	}
+	managerSecret := os.Getenv("MANAGER_SECRET")
 
 	runtimeUser := os.Getenv("RUNTIME_USER")
 	if runtimeUser == "" {
@@ -190,6 +193,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 		BaseIP:                  baseIP,
 		AuthContainerName:       authContainerName,
 		AdminUserID:             adminUserID,
+		ManagerSecret:           managerSecret,
 
 		RuntimeUser:          runtimeUser,
 		ContainerRuntimeUser: containerRuntimeUser,
@@ -236,14 +240,16 @@ func envInt64(key string) (int64, error) {
 	return v, nil
 }
 
-func waitForShutdown(srv *http.Server) {
+func waitForShutdown(srv *http.Server, cancel context.CancelFunc) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sigCh
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	cancel()
+
+	ctx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
 	_ = srv.Shutdown(ctx)
 	_ = srv.Close()
 }

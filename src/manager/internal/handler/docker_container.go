@@ -143,7 +143,10 @@ func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userI
 		Force:         true,
 		RemoveVolumes: false,
 	}); err != nil {
-		return fmt.Errorf("container remove failed: %w", err)
+		if !strings.Contains(strings.ToLower(err.Error()), "no such container") {
+			return fmt.Errorf("container remove failed: %w", err)
+		}
+		log.Printf("container already removed for %s, continuing cleanup", userID)
 	}
 
 	if err := s.disconnectAuthFromNetwork(ctx, networkName); err != nil {

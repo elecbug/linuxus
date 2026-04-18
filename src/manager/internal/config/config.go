@@ -18,6 +18,7 @@ type Config struct {
 	BaseIP                  string
 	AuthContainerName       string
 	AdminUserID             string
+	ManagerSecret           string
 
 	RuntimeUser          string
 	ContainerRuntimeUser string

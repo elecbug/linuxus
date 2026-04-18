@@ -14,6 +14,13 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if s.cfg.ManagerSecret != "" {
+		if r.Header.Get("X-Manager-Secret") != s.cfg.ManagerSecret {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	var req sessionStateReport
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json body", http.StatusBadRequest)
@@ -40,15 +47,17 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) updateSessionState(userID string, active int, observedAt time.Time) {
+	safeID := sanitizeID(userID)
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rt, ok := s.runtimes[userID]
+	rt, ok := s.runtimes[safeID]
 	if !ok {
 		rt = &RuntimeState{
 			UserID: userID,
 		}
-		s.runtimes[userID] = rt
+		s.runtimes[safeID] = rt
 	}
 
 	prev := rt.ActiveSessions
