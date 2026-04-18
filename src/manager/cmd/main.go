@@ -110,9 +110,13 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid MANAGER_WAIT_TIME: %w", err)
 	}
-	containerTimeout, err := time.ParseDuration(os.Getenv("CONTAINER_USER_TIMEOUT"))
-	if err != nil {
-		return nil, fmt.Errorf("invalid CONTAINER_USER_TIMEOUT: %w", err)
+	var containerTimeout time.Duration
+	containerTimeoutStr := os.Getenv("CONTAINER_USER_TIMEOUT")
+	if containerTimeoutStr != "" {
+		containerTimeout, err = time.ParseDuration(containerTimeoutStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid CONTAINER_USER_TIMEOUT: %w", err)
+		}
 	}
 
 	hostHomesDir := os.Getenv("HOST_HOMES_DIR")
