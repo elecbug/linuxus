@@ -74,7 +74,7 @@ func run() error {
 	for _, v := range opts.Opts {
 		switch v {
 		case UP:
-			if err := app.LoadUsers(); err != nil {
+			if err := app.LoadUserList(); err != nil {
 				return err
 			}
 			if err := app.PrepareUserDisks(); err != nil {
@@ -90,7 +90,7 @@ func run() error {
 			}
 
 		case RESTART:
-			if err := app.LoadUsers(); err != nil {
+			if err := app.LoadUserList(); err != nil {
 				return err
 			}
 			if err := app.PrepareUserDisks(); err != nil {

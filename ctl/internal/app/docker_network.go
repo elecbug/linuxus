@@ -6,16 +6,17 @@ import (
 
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
+	"github.com/elecbug/linuxus/src/ctl/internal/spec"
 )
 
 func (a *App) ensureRuntimeNetworks() error {
-	return a.ensureNetwork(RuntimeNetworkSpec{
+	return a.ensureNetwork(spec.RuntimeNetworkSpec{
 		Name:   a.Config.ManagerService.Container.Network,
 		Subnet: a.Config.ManagerService.Container.Subnet,
 	})
 }
 
-func (a *App) ensureNetwork(spec RuntimeNetworkSpec) error {
+func (a *App) ensureNetwork(spec spec.RuntimeNetworkSpec) error {
 	exists, err := a.existDockerNetwork(spec.Name)
 	if err != nil {
 		return err
@@ -76,21 +77,6 @@ func (a *App) removeManagedNetworks() error {
 	return nil
 }
 
-func (a *App) existDockerNetwork(name string) (bool, error) {
-	cli := a.dockerClient
-	if cli == nil {
-		return false, fmt.Errorf("Docker client is not initialized")
-	}
-
-	networks, err := cli.NetworkList(a.context, network.ListOptions{
-		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "^" + name + "$"}),
-	})
-	if err != nil {
-		return false, err
-	}
-	return len(networks) > 0, nil
-}
-
 func (a *App) managedNetworkNames() ([]string, error) {
 	cli := a.dockerClient
 	if cli == nil {
@@ -118,4 +104,19 @@ func (a *App) managedNetworkNames() ([]string, error) {
 	}
 
 	return out, nil
+}
+
+func (a *App) existDockerNetwork(name string) (bool, error) {
+	cli := a.dockerClient
+	if cli == nil {
+		return false, fmt.Errorf("Docker client is not initialized")
+	}
+
+	networks, err := cli.NetworkList(a.context, network.ListOptions{
+		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "^" + name + "$"}),
+	})
+	if err != nil {
+		return false, err
+	}
+	return len(networks) > 0, nil
 }

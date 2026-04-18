@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 )
 
-func (a *App) LoadUsers() error {
+func (a *App) LoadUserList() error {
 	authList := a.Config.AuthService.AuthListFile.HostPath
 
 	f, err := os.Open(authList)
@@ -52,4 +53,17 @@ func (a *App) LoadUsers() error {
 		fmt.Println("Warning: no valid user IDs found in auth list")
 	}
 	return nil
+}
+
+func sanitizeName(s string) string {
+	s = strings.ToLower(s)
+	reInvalid := regexp.MustCompile(`[^a-z0-9]+`)
+	s = reInvalid.ReplaceAllString(s, "_")
+	reDup := regexp.MustCompile(`_+`)
+	s = reDup.ReplaceAllString(s, "_")
+	s = strings.Trim(s, "_")
+	if s == "" {
+		return "invalid"
+	}
+	return s
 }

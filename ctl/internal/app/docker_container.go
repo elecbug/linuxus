@@ -5,8 +5,11 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
+	"github.com/elecbug/linuxus/src/ctl/internal/format"
+	"github.com/elecbug/linuxus/src/ctl/internal/spec"
 )
 
 func (a *App) ensureAuthContainer() error {
@@ -21,7 +24,7 @@ func (a *App) ensureManagerContainer() error {
 	return a.ensureContainer(spec)
 }
 
-func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
+func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 	cli := a.dockerClient
 	if cli == nil {
 		return fmt.Errorf("Docker client is not initialized")
@@ -50,7 +53,7 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 		portBindings = nat.PortMap{}
 
 		for _, p := range spec.Ports {
-			containerPort, hostBinding, err := parsePortBinding(p)
+			containerPort, hostBinding, err := format.StringToPortBinding(p)
 			if err != nil {
 				return fmt.Errorf("invalid port binding %q: %w", p, err)
 			}
@@ -70,7 +73,7 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 
 	hostCfg := &container.HostConfig{
 		Binds:          spec.Volumes,
-		Tmpfs:          parseSliceToTmpfsMap(spec.Tmpfs),
+		Tmpfs:          format.StringsToTmpfsMap(spec.Tmpfs),
 		PortBindings:   portBindings,
 		ReadonlyRootfs: spec.ReadOnly,
 		SecurityOpt:    spec.SecurityOpt,
@@ -81,14 +84,14 @@ func (a *App) ensureContainer(spec RuntimeContainerSpec) error {
 	}
 
 	if spec.Limits.Memory != "" {
-		memBytes, err := parseMemoryBytes(spec.Limits.Memory)
+		memBytes, err := format.StringToMemoryBytes(spec.Limits.Memory)
 		if err != nil {
 			return fmt.Errorf("invalid memory limit %q: %w", spec.Limits.Memory, err)
 		}
 		hostCfg.Memory = memBytes
 	}
 	if spec.Limits.CPUs != "" {
-		nanoCPUs, err := parseNanoCPUs(spec.Limits.CPUs)
+		nanoCPUs, err := format.StringToNanoCPUs(spec.Limits.CPUs)
 		if err != nil {
 			return fmt.Errorf("invalid cpu limit %q: %w", spec.Limits.CPUs, err)
 		}
@@ -203,4 +206,20 @@ func (a *App) managedContainerNames() ([]string, error) {
 	}
 
 	return out, nil
+}
+
+func (a *App) existDockerContainer(name string) (bool, error) {
+	cli := a.dockerClient
+	if cli == nil {
+		return false, fmt.Errorf("Docker client is not initialized")
+	}
+
+	summary, err := cli.ContainerList(a.context, container.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "^/" + name + "$"}),
+	})
+	if err != nil {
+		return false, err
+	}
+	return len(summary) > 0, nil
 }
