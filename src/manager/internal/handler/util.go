@@ -74,6 +74,30 @@ func sanitizeName(s string) string {
 	return s
 }
 
+// sanitizeID converts user IDs into safe backend hostname fragments.
+func sanitizeID(id string) string {
+	id = strings.ToLower(id)
+	var b strings.Builder
+
+	for _, ch := range id {
+		if (ch >= 'a' && ch <= 'z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '_' || ch == '-' || ch == '.' {
+			b.WriteRune(ch)
+		} else {
+			b.WriteRune('_')
+		}
+	}
+
+	result := b.String()
+	result = strings.TrimLeft(result, "._-")
+	if result == "" {
+		return "invalid"
+	}
+	return result
+}
+
+// writeJSON writes a JSON response with the given HTTP status code.
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)

@@ -76,6 +76,7 @@ func parseConfig() (*handler.AppConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MANAGER_TIMEOUT: %v", err)
 	}
+	managerSecret := os.Getenv("MANAGER_SECRET")
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -93,5 +94,6 @@ func parseConfig() (*handler.AppConfig, error) {
 		TrustedProxies:          handler.ParseTrustedProxies(trustedProxies),
 		ManagerBaseURL:          managerBaseURL,
 		ManagerTimeout:          managerTimeout,
+		ManagerSecret:           managerSecret,
 	}, nil
 }

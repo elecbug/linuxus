@@ -42,6 +42,14 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
 
+	isWS := isWebSocketRequest(r)
+	if isWS {
+		go a.markSessionStart(id)
+		defer func(sessionID string) {
+			go a.markSessionEnd(sessionID)
+		}(id)
+	}
+
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
@@ -92,4 +100,38 @@ func sanitizeID(id string) string {
 		return "invalid"
 	}
 	return result
+}
+
+// isWebSocketRequest checks if the incoming HTTP request is a WebSocket upgrade request.
+func isWebSocketRequest(r *http.Request) bool {
+	connection := strings.ToLower(r.Header.Get("Connection"))
+	upgrade := strings.ToLower(r.Header.Get("Upgrade"))
+
+	return strings.Contains(connection, "upgrade") && upgrade == "websocket"
+}
+
+// ensureUserContainerReady asks the manager to prepare the user runtime and waits for it to be ready.
+func (a *App) markSessionStart(id string) {
+	a.sessionMu.Lock()
+	a.activeSessions[id]++
+	current := a.activeSessions[id]
+	a.sessionMu.Unlock()
+
+	if err := a.reportSessionState(id, current); err != nil {
+		log.Printf("failed to report session start for %s: %v", id, err)
+	}
+}
+
+// markSessionEnd decrements the active session count for a user and reports the updated state to the manager.
+func (a *App) markSessionEnd(id string) {
+	a.sessionMu.Lock()
+	if a.activeSessions[id] > 0 {
+		a.activeSessions[id]--
+	}
+	current := a.activeSessions[id]
+	a.sessionMu.Unlock()
+
+	if err := a.reportSessionState(id, current); err != nil {
+		log.Printf("failed to report session end for %s: %v", id, err)
+	}
 }

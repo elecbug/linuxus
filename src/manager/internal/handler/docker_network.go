@@ -65,6 +65,19 @@ func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) er
 	return nil
 }
 
+func (s *Server) disconnectAuthFromNetwork(ctx context.Context, networkName string) error {
+	if err := s.docker.NetworkDisconnect(ctx, networkName, s.cfg.AuthContainerName, true); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "not found") ||
+			strings.Contains(strings.ToLower(err.Error()), "already disconnected") {
+			return nil
+		}
+		return fmt.Errorf("failed to disconnect auth container from %s: %w", networkName, err)
+	}
+
+	return nil
+}
+
+// waitForContainerIP polls until a container obtains an IPv4 on the target network.
 func (s *Server) waitForContainerIP(ctx context.Context, containerName, networkName string) (string, error) {
 	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
@@ -181,6 +194,16 @@ func (s *Server) createNetwork(ctx context.Context, name, subnet string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("network create failed: %w", err)
+	}
+	return nil
+}
+
+func (s *Server) removeNetwork(ctx context.Context, name string) error {
+	if err := s.docker.NetworkRemove(ctx, name); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+			return nil
+		}
+		return fmt.Errorf("network remove failed: %w", err)
 	}
 	return nil
 }

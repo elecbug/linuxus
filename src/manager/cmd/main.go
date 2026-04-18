@@ -30,6 +30,11 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.HandleHealthz)
 	mux.HandleFunc("/user/up", s.HandleUserUp)
+	mux.HandleFunc("/user/session-state", s.HandleUserSessionState)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	s.StartIdleReaper(ctx)
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
@@ -44,7 +49,7 @@ func main() {
 		}
 	}()
 
-	waitForShutdown(srv)
+	waitForShutdown(srv, cancel)
 }
 
 func parseConfigFromEnv() (*config.Config, error) {
@@ -76,6 +81,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if adminUserID == "" {
 		return nil, fmt.Errorf("ADMIN_USER_ID is required")
 	}
+	managerSecret := os.Getenv("MANAGER_SECRET")
 
 	runtimeUser := os.Getenv("RUNTIME_USER")
 	if runtimeUser == "" {
@@ -107,6 +113,14 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid MANAGER_WAIT_TIME: %w", err)
 	}
+	var containerTimeout time.Duration
+	containerTimeoutStr := os.Getenv("CONTAINER_USER_TIMEOUT")
+	if containerTimeoutStr != "" {
+		containerTimeout, err = time.ParseDuration(containerTimeoutStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid CONTAINER_USER_TIMEOUT: %w", err)
+		}
+	}
 
 	hostHomesDir := os.Getenv("HOST_HOMES_DIR")
 	if hostHomesDir == "" {
@@ -129,6 +143,48 @@ func parseConfigFromEnv() (*config.Config, error) {
 		return nil, fmt.Errorf("CONTAINER_READONLY_DIR is required")
 	}
 
+	userNanoCPUs, err := envInt64("USER_NANO_CPUS")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_NANO_CPUS: %w", err)
+	}
+	userMemoryBytes, err := envInt64("USER_MEMORY_BYTES")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_MEMORY_BYTES: %w", err)
+	}
+	userPidsLimit, err := envInt64("USER_PIDS_LIMIT")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_PIDS_LIMIT: %w", err)
+	}
+	userNofileSoft, err := envInt64("USER_NOFILE_SOFT")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_NOFILE_SOFT: %w", err)
+	}
+	userNofileHard, err := envInt64("USER_NOFILE_HARD")
+	if err != nil {
+		return nil, fmt.Errorf("invalid USER_NOFILE_HARD: %w", err)
+	}
+
+	adminNanoCPUs, err := envInt64("ADMIN_NANO_CPUS")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_NANO_CPUS: %w", err)
+	}
+	adminMemoryBytes, err := envInt64("ADMIN_MEMORY_BYTES")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_MEMORY_BYTES: %w", err)
+	}
+	adminPidsLimit, err := envInt64("ADMIN_PIDS_LIMIT")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_PIDS_LIMIT: %w", err)
+	}
+	adminNofileSoft, err := envInt64("ADMIN_NOFILE_SOFT")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_NOFILE_SOFT: %w", err)
+	}
+	adminNofileHard, err := envInt64("ADMIN_NOFILE_HARD")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ADMIN_NOFILE_HARD: %w", err)
+	}
+
 	return &config.Config{
 		ListenAddr:              listenAddr,
 		UserImage:               userImage,
@@ -137,6 +193,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 		BaseIP:                  baseIP,
 		AuthContainerName:       authContainerName,
 		AdminUserID:             adminUserID,
+		ManagerSecret:           managerSecret,
 
 		RuntimeUser:          runtimeUser,
 		ContainerRuntimeUser: containerRuntimeUser,
@@ -145,6 +202,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 		Timezone:             timezone,
 		ReadOnlyRootFS:       readonlyRootFS,
 		ManagerWaitTime:      waitTime,
+		ContainerTimeout:     containerTimeout,
 
 		HostHomesDir:         hostHomesDir,
 		HostShareDir:         hostShareDir,
@@ -153,43 +211,45 @@ func parseConfigFromEnv() (*config.Config, error) {
 		ContainerReadonlyDir: containerReadonlyDir,
 
 		UserLimits: config.ResourceLimits{
-			NanoCPUs:    envInt64("USER_NANO_CPUS"),
-			MemoryBytes: envInt64("USER_MEMORY_BYTES"),
-			PidsLimit:   envInt64("USER_PIDS_LIMIT"),
-			NofileSoft:  envInt64("USER_NOFILE_SOFT"),
-			NofileHard:  envInt64("USER_NOFILE_HARD"),
+			NanoCPUs:    userNanoCPUs,
+			MemoryBytes: userMemoryBytes,
+			PidsLimit:   userPidsLimit,
+			NofileSoft:  userNofileSoft,
+			NofileHard:  userNofileHard,
 		},
 		AdminLimits: config.ResourceLimits{
-			NanoCPUs:    envInt64("ADMIN_NANO_CPUS"),
-			MemoryBytes: envInt64("ADMIN_MEMORY_BYTES"),
-			PidsLimit:   envInt64("ADMIN_PIDS_LIMIT"),
-			NofileSoft:  envInt64("ADMIN_NOFILE_SOFT"),
-			NofileHard:  envInt64("ADMIN_NOFILE_HARD"),
+			NanoCPUs:    adminNanoCPUs,
+			MemoryBytes: adminMemoryBytes,
+			PidsLimit:   adminPidsLimit,
+			NofileSoft:  adminNofileSoft,
+			NofileHard:  adminNofileHard,
 		},
 	}, nil
 }
 
-func envInt64(key string) int64 {
+// envInt64 parses an int64 from an environment variable, returning zero if unset and an error if invalid.
+func envInt64(key string) (int64, error) {
 	s := os.Getenv(key)
 	if s == "" {
-		return 0
+		return 0, nil
 	}
 	v, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		log.Printf("warning: invalid value for %s=%q, using 0: %v", key, s, err)
-		return 0
+		return 0, fmt.Errorf("invalid %s: %w", key, err)
 	}
-	return v
+	return v, nil
 }
 
-func waitForShutdown(srv *http.Server) {
+func waitForShutdown(srv *http.Server, cancel context.CancelFunc) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sigCh
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	cancel()
+
+	ctx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
 	_ = srv.Shutdown(ctx)
 	_ = srv.Close()
 }

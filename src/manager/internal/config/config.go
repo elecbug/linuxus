@@ -18,6 +18,7 @@ type Config struct {
 	BaseIP                  string
 	AuthContainerName       string
 	AdminUserID             string
+	ManagerSecret           string
 
 	RuntimeUser          string
 	ContainerRuntimeUser string
@@ -26,6 +27,7 @@ type Config struct {
 	Timezone             string
 	ReadOnlyRootFS       bool
 	ManagerWaitTime      time.Duration
+	ContainerTimeout     time.Duration
 
 	HostHomesDir         string
 	HostShareDir         string

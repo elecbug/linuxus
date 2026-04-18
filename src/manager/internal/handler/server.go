@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/manager/internal/config"
@@ -17,7 +19,20 @@ var reInvalid = regexp.MustCompile(`[^a-z0-9]+`)
 
 type Server struct {
 	docker *client.Client
-	cfg    *config.Config
+	// cfg is the active runtime configuration.
+	cfg *config.Config
+
+	// mu protects runtimes map access.
+	mu sync.Mutex
+	// runtimes tracks active user runtimes by sanitized user ID.
+	runtimes map[string]*RuntimeState
+}
+
+type RuntimeState struct {
+	UserID         string
+	ActiveSessions int
+	LastObservedAt time.Time
+	IdleSince      time.Time
 }
 
 func NewServer(cfg *config.Config) (*Server, error) {
@@ -26,7 +41,13 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("docker client init failed: %w", err)
 	}
 
-	return &Server{docker: cli, cfg: cfg}, nil
+	return &Server{
+		docker: cli,
+		cfg:    cfg,
+
+		mu:       sync.Mutex{},
+		runtimes: make(map[string]*RuntimeState),
+	}, nil
 }
 
 func (s *Server) Close() error {
@@ -45,16 +66,16 @@ func (s *Server) HandleHealthz(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, UserUpResponse{
+		writeJSON(w, http.StatusMethodNotAllowed, userUpResponse{
 			OK:      false,
 			Message: "method not allowed",
 		})
 		return
 	}
 
-	var req UserUpRequest
+	var req userUpRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, UserUpResponse{
+		writeJSON(w, http.StatusBadRequest, userUpResponse{
 			OK:      false,
 			Message: "invalid json body",
 		})
@@ -64,7 +85,7 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	req.UserID = strings.TrimSpace(req.UserID)
 	req.SafeID = strings.TrimSpace(req.SafeID)
 	if req.UserID == "" {
-		writeJSON(w, http.StatusBadRequest, UserUpResponse{
+		writeJSON(w, http.StatusBadRequest, userUpResponse{
 			OK:      false,
 			Message: "user_id is required",
 		})
@@ -80,7 +101,7 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.ensureUserRuntimeReady(ctx, req.UserID, req.SafeID)
 	if err != nil {
 		log.Printf("user up failed user=%s safe=%s err=%v", req.UserID, req.SafeID, err)
-		writeJSON(w, http.StatusServiceUnavailable, UserUpResponse{
+		writeJSON(w, http.StatusServiceUnavailable, userUpResponse{
 			OK:            false,
 			UserID:        req.UserID,
 			SafeID:        req.SafeID,

@@ -27,6 +27,7 @@ type App struct {
 
 	managerBaseURL string
 	managerClient  *http.Client
+	managerSecret  string
 
 	mu        sync.Mutex
 	ipFails   map[string]*loginAttempt
@@ -35,6 +36,13 @@ type App struct {
 	done chan struct{}
 
 	mux *http.ServeMux
+
+	// session aggregation
+	sessionMu      sync.Mutex
+	activeSessions map[string]int
+
+	// optional: report timeout / retry tuning
+	sessionReportTimeout time.Duration
 }
 
 type AppConfig struct {
@@ -49,6 +57,7 @@ type AppConfig struct {
 
 	ManagerBaseURL string
 	ManagerTimeout time.Duration
+	ManagerSecret  string
 }
 
 type loginAttempt struct {
@@ -88,6 +97,7 @@ func NewApp(config *AppConfig) *App {
 		managerClient: &http.Client{
 			Timeout: timeout,
 		},
+		managerSecret: config.ManagerSecret,
 		mux: http.NewServeMux(),
 
 		mu:        sync.Mutex{},
@@ -95,6 +105,10 @@ func NewApp(config *AppConfig) *App {
 		userFails: make(map[string]*loginAttempt),
 
 		done: make(chan struct{}),
+
+		sessionMu:            sync.Mutex{},
+		activeSessions:       make(map[string]int),
+		sessionReportTimeout: 5 * time.Second,
 	}
 
 	go func() {

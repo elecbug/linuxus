@@ -3,7 +3,7 @@ user_service:
   container:
     name_prefix: linuxus_user_
     network_prefix: linuxus_user_net_
-    base_ip: "10.10.1.0"
+    base_ip: "10.10.0.0"
     runtime:
       uid: 1000
       gid: 1000
@@ -61,6 +61,8 @@ manager_service:
     timezone: Asia/Seoul
     network: linuxus_manager_net
     subnet: "10.11.0.0/24"
+  user:
+    timeout: 5m
   session:
     timeout: 30s
 

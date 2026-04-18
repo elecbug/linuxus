@@ -56,15 +56,26 @@ type Config struct {
 
 	ManagerService struct {
 		SourceDir string `yaml:"source_dir"`
+		// Container defines runtime and network settings for manager
 		Container struct {
 			Name     string `yaml:"name"`
 			Timezone string `yaml:"timezone"`
 			Network  string `yaml:"network"`
 			Subnet   string `yaml:"subnet"`
 		} `yaml:"container"`
+		// User defines session timeout settings for user sessions managed by the manager service.
+		User struct {
+			// Timeout is the duration a user session remains active without activity.
+			Timeout string `yaml:"timeout"`
+		} `yaml:"user"`
+		// Session defines manager request/session timing behavior.
 		Session struct {
 			Timeout string `yaml:"timeout"`
 		} `yaml:"session"`
+		// Security defines authentication settings for manager endpoints.
+		Security struct {
+			ManagerSecret string `yaml:"manager_secret"`
+		} `yaml:"security"`
 	} `yaml:"manager_service"`
 
 	Volumes struct {

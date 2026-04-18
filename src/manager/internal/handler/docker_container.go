@@ -3,9 +3,12 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/elecbug/linuxus/src/manager/internal/config"
@@ -48,7 +51,7 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 		SecurityOpt:    []string{"no-new-privileges:true"},
 		CapDrop:        []string{"ALL"},
 		RestartPolicy: container.RestartPolicy{
-			Name: "unless-stopped",
+			Name: "no",
 		},
 	}
 
@@ -98,4 +101,62 @@ func getReadonlyBind(userID string, cfg *config.Config) string {
 	} else {
 		return fmt.Sprintf("%s:%s:ro", cfg.HostReadonlyDir, cfg.ContainerReadonlyDir)
 	}
+}
+
+func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (string, string) {
+	containerName := s.cfg.UserContainerNamePrefix + sanitizeID(userID)
+	networkName := s.cfg.NetworkPrefix + sanitizeID(userID)
+
+	inspect, err := s.docker.ContainerInspect(ctx, containerName)
+	if err != nil {
+		return containerName, networkName
+	}
+
+	if inspect.NetworkSettings != nil {
+		for attachedNetworkName := range inspect.NetworkSettings.Networks {
+			if strings.HasPrefix(attachedNetworkName, s.cfg.NetworkPrefix) {
+				networkName = attachedNetworkName
+				break
+			}
+		}
+	}
+
+	return containerName, networkName
+}
+
+func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userID string) error {
+	containerName, networkName := s.resolveUserRuntimeNames(ctx, userID)
+	stopCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	timeoutSec := 10
+	err := s.docker.ContainerStop(stopCtx, containerName, container.StopOptions{
+		Timeout: &timeoutSec,
+	})
+	if err != nil {
+		log.Printf("container stop warning for %s: %v", userID, err)
+	}
+
+	removeCtx, removeCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer removeCancel()
+
+	if err := s.docker.ContainerRemove(removeCtx, containerName, container.RemoveOptions{
+		Force:         true,
+		RemoveVolumes: false,
+	}); err != nil {
+		if !errdefs.IsNotFound(err) {
+			return fmt.Errorf("container remove failed: %w", err)
+		}
+		log.Printf("container already removed for %s, continuing cleanup", userID)
+	}
+
+	if err := s.disconnectAuthFromNetwork(ctx, networkName); err != nil {
+		log.Printf("auth disconnect warning for %s: %v", userID, err)
+	}
+
+	if err := s.removeNetwork(ctx, networkName); err != nil {
+		return fmt.Errorf("network remove failed: %w", err)
+	}
+
+	return nil
 }

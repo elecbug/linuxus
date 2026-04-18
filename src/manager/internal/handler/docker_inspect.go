@@ -9,7 +9,8 @@ import (
 	"github.com/docker/docker/client"
 )
 
-func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID string) (*UserUpResponse, error) {
+// ensureUserRuntimeReady reconciles image, network, and container state for a user runtime.
+func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID string) (*userUpResponse, error) {
 	containerName := s.cfg.UserContainerNamePrefix + safeID
 
 	if _, err := s.docker.ImageInspect(ctx, s.cfg.UserImage, client.ImageInspectWithRawResponse(nil)); err != nil {
@@ -37,7 +38,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 			return nil, err
 		}
 
-		return &UserUpResponse{
+		return &userUpResponse{
 			OK:            true,
 			UserID:        userID,
 			SafeID:        safeID,
@@ -76,7 +77,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 		return nil, err
 	}
 
-	return &UserUpResponse{
+	return &userUpResponse{
 		OK:            true,
 		UserID:        userID,
 		SafeID:        safeID,
