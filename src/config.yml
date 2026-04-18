@@ -65,6 +65,8 @@ manager_service:
     timeout: 5m
   session:
     timeout: 30s
+  security:
+    manager_secret: change-this-secret-before-production
 
 volumes:
   host:
