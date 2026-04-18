@@ -109,6 +109,10 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid MANAGER_WAIT_TIME: %w", err)
 	}
+	containerTimeout, err := time.ParseDuration(os.Getenv("CONTAINER_RUNTIME_TIMEOUT"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid CONTAINER_RUNTIME_TIMEOUT: %w", err)
+	}
 
 	hostHomesDir := os.Getenv("HOST_HOMES_DIR")
 	if hostHomesDir == "" {
@@ -189,6 +193,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 		Timezone:             timezone,
 		ReadOnlyRootFS:       readonlyRootFS,
 		ManagerWaitTime:      waitTime,
+		ContainerTimeout:     containerTimeout,
 
 		HostHomesDir:         hostHomesDir,
 		HostShareDir:         hostShareDir,

@@ -93,7 +93,7 @@ type Config struct {
 	ManagerService struct {
 		// SourceDir is the path to the manager service build context.
 		SourceDir string `yaml:"source_dir"`
-		// Container defines runtime and network settings for manager.
+		// Container defines runtime and network settings for manager
 		Container struct {
 			// Name is the manager container name.
 			Name string `yaml:"name"`
@@ -103,6 +103,8 @@ type Config struct {
 			Network string `yaml:"network"`
 			// Subnet is the CIDR subnet assigned to the manager network.
 			Subnet string `yaml:"subnet"`
+			// Timeout is the duration the container remains alive from the user's last activity time.
+			Timeout string `yaml:"timeout"`
 		} `yaml:"container"`
 		// Session defines manager request/session timing behavior.
 		Session struct {

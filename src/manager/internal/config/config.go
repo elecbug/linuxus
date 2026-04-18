@@ -47,6 +47,8 @@ type Config struct {
 	ReadOnlyRootFS bool
 	// ManagerWaitTime is the timeout used for user runtime preparation requests.
 	ManagerWaitTime time.Duration
+	// Timeout is the duration the container remains alive from the user's last activity time.
+	ContainerTimeout time.Duration
 
 	// HostHomesDir is the host directory root for user home mounts.
 	HostHomesDir string
