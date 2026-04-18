@@ -12,10 +12,12 @@ import (
 	"github.com/elecbug/linuxus/src/ctl/internal/spec"
 )
 
+// ensureAuthContainer creates or recreates the auth runtime container.
 func (a *App) ensureAuthContainer() error {
 	return a.ensureContainer(a.buildAuthRuntimeSpec())
 }
 
+// ensureManagerContainer creates or recreates the manager runtime container.
 func (a *App) ensureManagerContainer() error {
 	spec, err := a.buildManagerRuntimeSpec()
 	if err != nil {
@@ -24,6 +26,7 @@ func (a *App) ensureManagerContainer() error {
 	return a.ensureContainer(spec)
 }
 
+// ensureContainer creates a container from the given runtime specification.
 func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 	cli := a.dockerClient
 	if cli == nil {
@@ -143,6 +146,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 	return nil
 }
 
+// removeManagedContainers removes all containers controlled by this CLI.
 func (a *App) removeManagedContainers() error {
 	names, err := a.managedContainerNames()
 	if err != nil {
@@ -172,6 +176,7 @@ func (a *App) removeManagedContainers() error {
 	return nil
 }
 
+// managedContainerNames returns known managed container names, including user containers.
 func (a *App) managedContainerNames() ([]string, error) {
 	cli := a.dockerClient
 	if cli == nil {
@@ -208,6 +213,7 @@ func (a *App) managedContainerNames() ([]string, error) {
 	return out, nil
 }
 
+// existDockerContainer checks whether a container with exact name exists.
 func (a *App) existDockerContainer(name string) (bool, error) {
 	cli := a.dockerClient
 	if cli == nil {

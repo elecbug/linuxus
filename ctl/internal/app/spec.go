@@ -7,6 +7,7 @@ import (
 	"github.com/elecbug/linuxus/src/ctl/internal/spec"
 )
 
+// buildAuthRuntimeSpec builds the auth service container runtime specification.
 func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 	return spec.RuntimeContainerSpec{
 		Image: a.authImageName(),
@@ -38,6 +39,7 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 	}
 }
 
+// buildManagerRuntimeSpec builds the manager service container runtime specification.
 func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 	userCPUStr := fmt.Sprintf("%v", a.Config.UserService.Container.User.Limits.CPU)
 	userNanoCPUs, err := format.StringToNanoCPUs(userCPUStr)

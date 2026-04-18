@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// LoadUserList parses user IDs from the auth list file.
 func (a *App) LoadUserList() error {
 	authList := a.Config.AuthService.AuthListFile.HostPath
 
@@ -55,6 +56,7 @@ func (a *App) LoadUserList() error {
 	return nil
 }
 
+// sanitizeName converts an arbitrary user ID to a Docker-safe identifier.
 func sanitizeName(s string) string {
 	s = strings.ToLower(s)
 	reInvalid := regexp.MustCompile(`[^a-z0-9]+`)

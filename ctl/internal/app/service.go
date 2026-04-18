@@ -12,6 +12,7 @@ import (
 	"github.com/elecbug/linuxus/src/ctl/internal/spec"
 )
 
+// ServiceUp builds images and starts all runtime-managed services.
 func (a *App) ServiceUp() error {
 	fmt.Println("[+] Starting runtime-managed containers...")
 
@@ -32,6 +33,7 @@ func (a *App) ServiceUp() error {
 	return nil
 }
 
+// ServiceDown stops and removes all runtime-managed services.
 func (a *App) ServiceDown() error {
 	fmt.Println("[+] Stopping runtime-managed containers...")
 	if err := a.removeManagedContainers(); err != nil {
@@ -43,6 +45,7 @@ func (a *App) ServiceDown() error {
 	return nil
 }
 
+// ServiceRestart recreates runtime-managed services.
 func (a *App) ServiceRestart() error {
 	fmt.Println("[+] Restarting runtime-managed containers...")
 	if err := a.ServiceDown(); err != nil {
@@ -51,6 +54,7 @@ func (a *App) ServiceRestart() error {
 	return a.ServiceUp()
 }
 
+// VolumeClean unmounts and removes managed volume data and loop devices.
 func (a *App) VolumeClean() error {
 	fmt.Println("[+] Cleaning volumes...")
 
@@ -120,6 +124,7 @@ func (a *App) VolumeClean() error {
 	return nil
 }
 
+// ServicePS prints runtime status for managed containers and networks.
 func (a *App) ServicePS() error {
 	fmt.Println("[+] Runtime service status:")
 

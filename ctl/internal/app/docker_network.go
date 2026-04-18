@@ -9,6 +9,7 @@ import (
 	"github.com/elecbug/linuxus/src/ctl/internal/spec"
 )
 
+// ensureRuntimeNetworks creates required runtime networks.
 func (a *App) ensureRuntimeNetworks() error {
 	return a.ensureNetwork(spec.RuntimeNetworkSpec{
 		Name:   a.Config.ManagerService.Container.Network,
@@ -16,6 +17,7 @@ func (a *App) ensureRuntimeNetworks() error {
 	})
 }
 
+// ensureNetwork creates a Docker network if it does not already exist.
 func (a *App) ensureNetwork(spec spec.RuntimeNetworkSpec) error {
 	exists, err := a.existDockerNetwork(spec.Name)
 	if err != nil {
@@ -46,6 +48,7 @@ func (a *App) ensureNetwork(spec spec.RuntimeNetworkSpec) error {
 	return err
 }
 
+// removeManagedNetworks removes all networks controlled by this CLI.
 func (a *App) removeManagedNetworks() error {
 	names, err := a.managedNetworkNames()
 	if err != nil {
@@ -77,6 +80,7 @@ func (a *App) removeManagedNetworks() error {
 	return nil
 }
 
+// managedNetworkNames returns known managed network names, including user networks.
 func (a *App) managedNetworkNames() ([]string, error) {
 	cli := a.dockerClient
 	if cli == nil {
@@ -106,6 +110,7 @@ func (a *App) managedNetworkNames() ([]string, error) {
 	return out, nil
 }
 
+// existDockerNetwork checks whether a network with exact name exists.
 func (a *App) existDockerNetwork(name string) (bool, error) {
 	cli := a.dockerClient
 	if cli == nil {
