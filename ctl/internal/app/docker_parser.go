@@ -341,7 +341,7 @@ func (a *App) buildManagerRuntimeSpec() (RuntimeContainerSpec, error) {
 			"CONTAINER_SHARE_DIR=" + a.Config.Volumes.Container.Share,
 			"CONTAINER_READONLY_DIR=" + a.Config.Volumes.Container.Readonly,
 
-			"CONTAINER_RUNTIME_TIMEOUT=" + a.Config.ManagerService.Container.Timeout,
+			"CONTAINER_USER_TIMEOUT=" + a.Config.ManagerService.User.Timeout,
 			"MANAGER_WAIT_TIME=" + a.Config.ManagerService.Session.Timeout,
 			"LISTEN_ADDR=:5959",
 

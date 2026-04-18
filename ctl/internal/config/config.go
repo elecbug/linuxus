@@ -103,9 +103,12 @@ type Config struct {
 			Network string `yaml:"network"`
 			// Subnet is the CIDR subnet assigned to the manager network.
 			Subnet string `yaml:"subnet"`
-			// Timeout is the duration the container remains alive from the user's last activity time.
-			Timeout string `yaml:"timeout"`
 		} `yaml:"container"`
+		// User defines session timeout settings for user sessions managed by the manager service.
+		User struct {
+			// Timeout is the duration a user session remains active without activity.
+			Timeout string `yaml:"timeout"`
+		} `yaml:"user"`
 		// Session defines manager request/session timing behavior.
 		Session struct {
 			// Timeout is the duration used for manager-side wait and session windows.

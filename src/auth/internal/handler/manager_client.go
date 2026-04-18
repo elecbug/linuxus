@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // managerUserUpRequest is the payload for manager container-prepare requests.
@@ -34,6 +35,16 @@ type managerUserUpResponse struct {
 	Subnet string `json:"subnet"`
 	// Message carries human-readable status details.
 	Message string `json:"message"`
+}
+
+// sessionStateReport defines the structure of session state reports sent to the manager.
+type sessionStateReport struct {
+	// UserID is the original user identifier.
+	UserID string `json:"user_id"`
+	// ActiveSessions is the count of active sessions for the user.
+	ActiveSessions int `json:"active_sessions"`
+	// ObservedAt is the timestamp when the session state was observed.
+	ObservedAt time.Time `json:"observed_at"`
 }
 
 // ensureUserContainerReady asks the manager service to ensure a user runtime is ready.
@@ -101,6 +112,39 @@ func (a *App) ensureUserContainerReady(ctx context.Context, userID string) error
 			msg = "manager returned not-ready response"
 		}
 		return fmt.Errorf("%s", msg)
+	}
+
+	return nil
+}
+
+// reportSessionState sends the current active session count for a user to the manager.
+func (a *App) reportSessionState(id string, active int) error {
+	payload := sessionStateReport{
+		UserID:         id,
+		ActiveSessions: active,
+		ObservedAt:     time.Now(),
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal session state: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, a.managerBaseURL+"/user/session-state", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.managerClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("post session state: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return fmt.Errorf("manager returned %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
 	}
 
 	return nil

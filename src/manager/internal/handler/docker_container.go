@@ -3,8 +3,10 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -100,4 +102,31 @@ func getReadonlyBind(userID string, cfg *config.Config) string {
 	} else {
 		return fmt.Sprintf("%s:%s:ro", cfg.HostReadonlyDir, cfg.ContainerReadonlyDir)
 	}
+}
+
+func (s *Server) stopAndRemoveUserContainer(ctx context.Context, userID string) error {
+	containerName := s.cfg.UserContainerNamePrefix + sanitizeID(userID)
+
+	stopCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	timeoutSec := 10
+	err := s.docker.ContainerStop(stopCtx, containerName, container.StopOptions{
+		Timeout: &timeoutSec,
+	})
+	if err != nil {
+		log.Printf("container stop warning for %s: %v", userID, err)
+	}
+
+	removeCtx, removeCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer removeCancel()
+
+	if err := s.docker.ContainerRemove(removeCtx, containerName, container.RemoveOptions{
+		Force:         true,
+		RemoveVolumes: false,
+	}); err != nil {
+		return fmt.Errorf("container remove failed: %w", err)
+	}
+
+	return nil
 }

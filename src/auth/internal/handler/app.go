@@ -54,6 +54,13 @@ type App struct {
 
 	// mux is the HTTP request multiplexer.
 	mux *http.ServeMux
+
+	// session aggregation
+	sessionMu      sync.Mutex
+	activeSessions map[string]int
+
+	// optional: report timeout / retry tuning
+	sessionReportTimeout time.Duration
 }
 
 // AppConfig defines startup configuration for the auth application.
@@ -131,6 +138,10 @@ func NewApp(config *AppConfig) *App {
 		userFails: make(map[string]*loginAttempt),
 
 		done: make(chan struct{}),
+
+		sessionMu:            sync.Mutex{},
+		activeSessions:       make(map[string]int),
+		sessionReportTimeout: 5 * time.Second,
 	}
 
 	go func() {

@@ -31,6 +31,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.HandleHealthz)
 	mux.HandleFunc("/user/up", s.HandleUserUp)
+	mux.HandleFunc("/user/session-state", s.HandleUserSessionState)
+
+	s.StartIdleReaper(context.Background())
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
@@ -109,9 +112,9 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid MANAGER_WAIT_TIME: %w", err)
 	}
-	containerTimeout, err := time.ParseDuration(os.Getenv("CONTAINER_RUNTIME_TIMEOUT"))
+	containerTimeout, err := time.ParseDuration(os.Getenv("CONTAINER_USER_TIMEOUT"))
 	if err != nil {
-		return nil, fmt.Errorf("invalid CONTAINER_RUNTIME_TIMEOUT: %w", err)
+		return nil, fmt.Errorf("invalid CONTAINER_USER_TIMEOUT: %w", err)
 	}
 
 	hostHomesDir := os.Getenv("HOST_HOMES_DIR")
