@@ -223,7 +223,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 	}, nil
 }
 
-// envInt64 parses an int64 from an environment variable and falls back to zero on error.
+// envInt64 parses an int64 from an environment variable, returning zero if unset and an error if invalid.
 func envInt64(key string) (int64, error) {
 	s := os.Getenv(key)
 	if s == "" {
