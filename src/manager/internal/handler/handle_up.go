@@ -19,6 +19,7 @@ import (
 	"github.com/elecbug/linuxus/src/manager/internal/packet"
 )
 
+// HandleUserUp handles user runtime preparation requests.
 func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, packet.UserUpResponse{
@@ -69,6 +70,7 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// ensureUserRuntimeReady ensures a user container and network are ready to serve requests.
 func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID string) (*packet.UserUpResponse, error) {
 	containerName := s.cfg.UserContainerNamePrefix + safeID
 
@@ -147,6 +149,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 	}, nil
 }
 
+// inspectContainerState returns existence and running state for a container.
 func (s *Server) inspectContainerState(ctx context.Context, name string) (bool, bool, error) {
 	inspect, err := s.docker.ContainerInspect(ctx, name)
 	if err != nil {
@@ -161,6 +164,7 @@ func (s *Server) inspectContainerState(ctx context.Context, name string) (bool, 
 	return true, false, nil
 }
 
+// ensureExistingContainerNetworkAndAuth validates network state for an existing container.
 func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, containerName string) (string, string, error) {
 	inspect, err := s.docker.ContainerInspect(ctx, containerName)
 	if err != nil {
@@ -193,6 +197,7 @@ func (s *Server) ensureExistingContainerNetworkAndAuth(ctx context.Context, cont
 	return "", "", fmt.Errorf("existing container is not attached to managed network")
 }
 
+// ensureAuthConnected attaches auth container to a user network if needed.
 func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) error {
 	netInfo, err := s.docker.NetworkInspect(ctx, networkName, network.InspectOptions{})
 	if err != nil {
@@ -216,6 +221,7 @@ func (s *Server) ensureAuthConnected(ctx context.Context, networkName string) er
 	return nil
 }
 
+// createUserContainer creates and starts a user runtime container on the target network.
 func (s *Server) createUserContainer(ctx context.Context, containerName, userID, networkName string) error {
 	baseDir := strings.TrimRight(s.cfg.HostHomesDir, "/")
 	homeDir := filepath.Clean(baseDir + "/" + userID)
@@ -297,6 +303,7 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 	return nil
 }
 
+// getReadonlyBind returns readonly/shared bind mode based on user privilege.
 func getReadonlyBind(userID string, cfg *config.Config) string {
 	if userID == cfg.AdminUserID {
 		return fmt.Sprintf("%s:%s:rw", cfg.HostReadonlyDir, cfg.ContainerReadonlyDir)
@@ -324,6 +331,7 @@ func (s *Server) waitForContainerIP(ctx context.Context, containerName, networkN
 	}
 }
 
+// containerIPv4OnNetwork returns the container IPv4 address on a managed network.
 func (s *Server) containerIPv4OnNetwork(ctx context.Context, containerName, networkName string) (string, error) {
 	inspect, err := s.docker.ContainerInspect(ctx, containerName)
 	if err != nil {
@@ -342,6 +350,7 @@ func (s *Server) containerIPv4OnNetwork(ctx context.Context, containerName, netw
 	return ep.IPAddress, nil
 }
 
+// findFirstFreeNetworkSlot finds an unused subnet slot for a new user network.
 func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, error) {
 	networks, err := s.docker.NetworkList(ctx, network.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
@@ -387,6 +396,7 @@ func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, err
 	}
 }
 
+// existNetwork reports whether a Docker network with exact name exists.
 func (s *Server) existNetwork(ctx context.Context, name string) (bool, error) {
 	nws, err := s.docker.NetworkList(ctx, network.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
@@ -405,6 +415,7 @@ func (s *Server) existNetwork(ctx context.Context, name string) (bool, error) {
 	return false, nil
 }
 
+// createNetwork creates a managed user network if it does not already exist.
 func (s *Server) createNetwork(ctx context.Context, name, subnet string) error {
 	if exists, err := s.existNetwork(ctx, name); err != nil {
 		return err

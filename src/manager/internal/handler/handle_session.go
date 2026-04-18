@@ -14,6 +14,7 @@ import (
 	"github.com/elecbug/linuxus/src/manager/internal/packet"
 )
 
+// HandleUserSessionState records active session counts reported by auth service.
 func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -52,6 +53,7 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
+// updateSessionState updates runtime idle/session tracking state for a user.
 func (s *Server) updateSessionState(userID string, active int, observedAt time.Time) {
 	safeID := sanitizeID(userID)
 
@@ -82,6 +84,7 @@ func (s *Server) updateSessionState(userID string, active int, observedAt time.T
 	}
 }
 
+// stopAndRemoveUserContainerAndNetwork stops and removes user runtime resources.
 func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userID string) error {
 	containerName, networkName := s.resolveUserRuntimeNames(ctx, userID)
 	stopCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -119,6 +122,7 @@ func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userI
 	return nil
 }
 
+// resolveUserRuntimeNames resolves managed container/network names for a user.
 func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (string, string) {
 	containerName := s.cfg.UserContainerNamePrefix + sanitizeID(userID)
 	networkName := s.cfg.NetworkPrefix + sanitizeID(userID)
@@ -140,6 +144,7 @@ func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (st
 	return containerName, networkName
 }
 
+// disconnectAuthFromUserNetwork detaches the auth container from a user network.
 func (s *Server) disconnectAuthFromUserNetwork(ctx context.Context, networkName string) error {
 	if err := s.docker.NetworkDisconnect(ctx, networkName, s.cfg.AuthContainerName, true); err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "not found") ||
@@ -152,6 +157,7 @@ func (s *Server) disconnectAuthFromUserNetwork(ctx context.Context, networkName 
 	return nil
 }
 
+// removeNetwork removes a user network if present.
 func (s *Server) removeNetwork(ctx context.Context, name string) error {
 	if err := s.docker.NetworkRemove(ctx, name); err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {

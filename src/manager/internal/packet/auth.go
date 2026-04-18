@@ -6,6 +6,7 @@ import "time"
 type UserUpRequest struct {
 	// UserID is the original user identifier.
 	UserID string `json:"user_id"`
+	// SafeID is the sanitized identifier used for runtime resources.
 	SafeID string `json:"safe_id"`
 }
 
@@ -19,9 +20,12 @@ type UserUpResponse struct {
 	SafeID string `json:"safe_id,omitempty"`
 	// ContainerName is the prepared runtime container name.
 	ContainerName string `json:"container_name,omitempty"`
-	NetworkName   string `json:"network_name,omitempty"`
-	Subnet        string `json:"subnet,omitempty"`
-	Message       string `json:"message"`
+	// NetworkName is the prepared runtime network name.
+	NetworkName string `json:"network_name,omitempty"`
+	// Subnet is the allocated runtime subnet.
+	Subnet string `json:"subnet,omitempty"`
+	// Message contains human-readable status details.
+	Message string `json:"message"`
 }
 
 // SessionStateReport defines the structure of session state reports sent to the manager.

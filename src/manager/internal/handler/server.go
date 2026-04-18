@@ -17,11 +17,15 @@ import (
 	"github.com/elecbug/linuxus/src/manager/internal/config"
 )
 
+// reInvalid matches characters that are not allowed in sanitized runtime names.
 var reInvalid = regexp.MustCompile(`[^a-z0-9]+`)
 
+// Server holds manager service dependencies and runtime state tracking.
 type Server struct {
+	// docker is the Docker API client.
 	docker *client.Client
-	mux    *http.ServeMux
+	// mux is the HTTP route multiplexer.
+	mux *http.ServeMux
 	// cfg is the active runtime configuration.
 	cfg *config.Config
 
@@ -31,13 +35,19 @@ type Server struct {
 	runtimes map[string]*RuntimeState
 }
 
+// RuntimeState tracks observed session activity for one user runtime.
 type RuntimeState struct {
-	UserID         string
+	// UserID is the original user identifier.
+	UserID string
+	// ActiveSessions is the current number of active sessions.
 	ActiveSessions int
+	// LastObservedAt is the most recent session state observation time.
 	LastObservedAt time.Time
-	IdleSince      time.Time
+	// IdleSince is when active sessions dropped to zero.
+	IdleSince time.Time
 }
 
+// NewServer creates a manager server and initializes the Docker client.
 func NewServer(cfg *config.Config) (*Server, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -53,6 +63,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}, nil
 }
 
+// RegisterRoutes registers all HTTP endpoints served by manager.
 func (s *Server) RegisterRoutes() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.HandleHealthz)
@@ -62,6 +73,7 @@ func (s *Server) RegisterRoutes() {
 	s.mux = mux
 }
 
+// Start runs the HTTP server and handles graceful shutdown on signals.
 func (s *Server) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -93,6 +105,7 @@ func (s *Server) Start() {
 	_ = srv.Close()
 }
 
+// Close releases server resources.
 func (s *Server) Close() error {
 	if s == nil || s.docker == nil {
 		return nil
@@ -101,6 +114,7 @@ func (s *Server) Close() error {
 	return s.docker.Close()
 }
 
+// StartIdleReaper starts periodic cleanup for idle user runtimes.
 func (s *Server) StartIdleReaper(ctx context.Context) {
 	timeout := s.cfg.ContainerTimeout
 	if timeout <= 0 {
@@ -131,6 +145,7 @@ func (s *Server) StartIdleReaper(ctx context.Context) {
 	}()
 }
 
+// reapIdleContainers removes user runtimes that have been idle past timeout.
 func (s *Server) reapIdleContainers(ctx context.Context) {
 	var candidates []string
 	now := time.Now()
@@ -175,6 +190,7 @@ func (s *Server) reapIdleContainers(ctx context.Context) {
 	}
 }
 
+// HandleHealthz responds with a simple readiness payload.
 func (s *Server) HandleHealthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true,

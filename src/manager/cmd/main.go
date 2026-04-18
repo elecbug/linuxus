@@ -11,6 +11,7 @@ import (
 	"github.com/elecbug/linuxus/src/manager/internal/handler"
 )
 
+// main loads environment configuration and starts the manager server.
 func main() {
 	cfg, err := parseConfigFromEnv()
 	if err != nil {
@@ -26,6 +27,7 @@ func main() {
 	s.Start()
 }
 
+// parseConfigFromEnv reads required and optional manager settings from environment variables.
 func parseConfigFromEnv() (*config.Config, error) {
 	listenAddr := os.Getenv("LISTEN_ADDR")
 	if listenAddr == "" {
