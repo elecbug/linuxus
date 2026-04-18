@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/elecbug/linuxus/src/manager/internal/config"
@@ -143,7 +144,7 @@ func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userI
 		Force:         true,
 		RemoveVolumes: false,
 	}); err != nil {
-		if !strings.Contains(strings.ToLower(err.Error()), "no such container") {
+		if !errdefs.IsNotFound(err) {
 			return fmt.Errorf("container remove failed: %w", err)
 		}
 		log.Printf("container already removed for %s, continuing cleanup", userID)
