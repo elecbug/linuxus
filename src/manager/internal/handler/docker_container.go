@@ -102,10 +102,29 @@ func getReadonlyBind(userID string, cfg *config.Config) string {
 	}
 }
 
-func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userID string) error {
+func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (string, string) {
 	containerName := s.cfg.UserContainerNamePrefix + sanitizeID(userID)
 	networkName := s.cfg.NetworkPrefix + sanitizeID(userID)
 
+	inspect, err := s.docker.ContainerInspect(ctx, containerName)
+	if err != nil {
+		return containerName, networkName
+	}
+
+	if inspect.NetworkSettings != nil {
+		for attachedNetworkName := range inspect.NetworkSettings.Networks {
+			if strings.HasPrefix(attachedNetworkName, s.cfg.NetworkPrefix) {
+				networkName = attachedNetworkName
+				break
+			}
+		}
+	}
+
+	return containerName, networkName
+}
+
+func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userID string) error {
+	containerName, networkName := s.resolveUserRuntimeNames(ctx, userID)
 	stopCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
