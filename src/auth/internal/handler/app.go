@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/elecbug/linuxus/src/auth/internal/page"
 )
 
 type App struct {
@@ -98,7 +100,7 @@ func NewApp(config *AppConfig) *App {
 			Timeout: timeout,
 		},
 		managerSecret: config.ManagerSecret,
-		mux: http.NewServeMux(),
+		mux:           http.NewServeMux(),
 
 		mu:        sync.Mutex{},
 		ipFails:   make(map[string]*loginAttempt),
@@ -127,10 +129,6 @@ func NewApp(config *AppConfig) *App {
 	return app
 }
 
-func (a *App) Muxer() *http.ServeMux {
-	return a.mux
-}
-
 func (a *App) LoginPath() string {
 	return a.loginPath
 }
@@ -149,7 +147,7 @@ func (a *App) TerminalPath() string {
 
 func (a *App) Start(addr string) error {
 	log.Printf("Auth server listening on %s", addr)
-	return http.ListenAndServe(addr, a.Muxer())
+	return http.ListenAndServe(addr, a.mux)
 }
 
 func (a *App) Stop() {
@@ -157,17 +155,17 @@ func (a *App) Stop() {
 }
 
 func (a *App) RegisterRoutes() {
-	loginTmpl, err := template.New(a.loginPath).Parse(getLoginPage(a))
+	loginTmpl, err := template.New(a.loginPath).Parse(page.GetLoginPage(a.loginPath))
 	if err != nil {
 		log.Fatalf("failed to parse login template: %v", err)
 	}
 
-	serviceTmpl, err := template.New(a.servicePath).Parse(getServicePage(a))
+	serviceTmpl, err := template.New(a.servicePath).Parse(page.GetServicePage(a.terminalPath, a.logoutPath))
 	if err != nil {
 		log.Fatalf("failed to parse service template: %v", err)
 	}
 
-	errorTmpl, err := template.New("error").Parse(getErrorPage())
+	errorTmpl, err := template.New("error").Parse(page.GetErrorPage())
 	if err != nil {
 		log.Fatalf("failed to parse error template: %v", err)
 	}

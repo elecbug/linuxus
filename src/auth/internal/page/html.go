@@ -1,200 +1,166 @@
 package page
 
-type HTML struct {
-	tag        string
-	attributes []Attribute
-	contents   []any
-	prefixes   []string
-	suffixes   []string
+import (
+	"github.com/elecbug/linuxus/src/auth/internal/html"
+)
+
+func GetLoginPage(loginPath string) string {
+	htmlpage := html.NewHTMLPage(
+		"Linuxus | Login",
+		getBaseMeta(),
+		getLoginCSS(),
+		html.NewHTML(
+			"h2",
+			html.NewAttributes(),
+			"Linuxus Login",
+		),
+		html.NewHTML(
+			"p",
+			html.NewAttributes("class", "error"),
+			"{{.Error}}",
+		).AddPrefix("{{if .Error}}").AddSuffix("{{end}}"),
+		html.NewHTML(
+			"form",
+			html.NewAttributes(
+				"class", "login-form",
+				"method", "post",
+				"action", "/"+loginPath,
+			),
+			html.NewHTML(
+				"input",
+				html.NewAttributes(
+					"type", "text",
+					"name", "id",
+					"placeholder", "ID",
+					"required", "true",
+				),
+			),
+			html.NewHTML(
+				"input",
+				html.NewAttributes(
+					"type", "password",
+					"name", "password",
+					"placeholder", "Password",
+					"required", "true",
+				),
+			),
+			html.NewHTML(
+				"button",
+				html.NewAttributes("type", "submit"),
+				"Login",
+			),
+		),
+		html.NewHTML(
+			"p",
+			html.NewAttributes("class", "tooltip"),
+			"Don't have an account? Contact the administrator.",
+		),
+		linuxusFooterHTML(),
+	)
+
+	return htmlpage.Render()
 }
 
-func NewHTML(tag string, attributes []Attribute, contents ...any) *HTML {
-	return &HTML{
-		tag:        tag,
-		attributes: attributes,
-		contents:   contents,
-		prefixes:   make([]string, 0),
-		suffixes:   make([]string, 0),
-	}
+func GetServicePage(terminalPath, logoutPath string) string {
+	htmlpage := html.NewHTMLPage(
+		"Linuxus | {{.ID}}",
+		getBaseMeta(),
+		getServiceCSS(),
+		html.NewHTML(
+			"div",
+			html.NewAttributes("class", "topbar"),
+			html.NewHTML(
+				"div",
+				html.NewAttributes("class", "left"),
+				html.NewHTML("p",
+					html.NewAttributes(),
+					"Linuxus | {{.ID}}",
+				),
+			),
+			html.NewHTML(
+				"div",
+				html.NewAttributes("class", "right"),
+				html.NewHTML(
+					"a",
+					html.NewAttributes(
+						"class", "btn",
+						"href", "/"+terminalPath+"/",
+						"target", "shellframe",
+					),
+					"Open Shell",
+				),
+				html.NewHTML(
+					"a",
+					html.NewAttributes(
+						"class", "btn btn-danger",
+						"href", "/"+logoutPath,
+					),
+					"Logout",
+				),
+			),
+		),
+		html.NewHTML(
+			"div",
+			html.NewAttributes("class", "frame-wrap"),
+			html.NewHTML(
+				"iframe",
+				html.NewAttributes(
+					"name", "shellframe",
+					"src", "/"+terminalPath+"/",
+				),
+				"", // The iframe content will be loaded from the terminal path
+			),
+		),
+		linuxusFooterHTML(),
+	)
+
+	return htmlpage.Render()
 }
 
-func (h *HTML) SetTag(tag string) *HTML {
-	h.tag = tag
-	return h
+func GetErrorPage() string {
+	htmlpage := html.NewHTMLPage(
+		"Linuxus | Error",
+		getBaseMeta(),
+		getErrorCSS(),
+		html.NewHTML(
+			"h2",
+			html.NewAttributes(),
+			"An Error Occurred",
+		),
+		html.NewHTML(
+			"p",
+			html.NewAttributes("class", "error"),
+			"{{.Error}}",
+		),
+		html.NewHTML(
+			"p",
+			html.NewAttributes("class", "tooltip"),
+			"Please try again or contact the administrator.",
+		),
+		linuxusFooterHTML(),
+	)
+
+	return htmlpage.Render()
 }
 
-func (h *HTML) Tag() string {
-	return h.tag
+func getBaseMeta() []html.Attribute {
+	return html.NewAttributes(
+		"charset", "UTF-8",
+		"name", "viewport",
+		"content", "width=device-width, initial-scale=1.0",
+	)
 }
 
-func (h *HTML) AddAttribute(key string, value string) *HTML {
-	if h.attributes == nil {
-		h.attributes = make([]Attribute, 0)
-	}
-
-	h.attributes = append(h.attributes, Attribute{Key: key, Value: value})
-	return h
-}
-
-func (h *HTML) RemoveAttribute(predicate func(x Attribute) bool) *HTML {
-	for i, attr := range h.attributes {
-		if predicate(attr) {
-			h.attributes = append(h.attributes[:i], h.attributes[i+1:]...)
-			break
-		}
-	}
-	return h
-}
-
-func (h *HTML) Attributes() []Attribute {
-	return h.attributes
-}
-
-func (h *HTML) AddContent(content any) *HTML {
-	if h.contents == nil {
-		h.contents = make([]any, 0)
-		h.contents = append(h.contents, content)
-		return h
-	}
-
-	h.contents = append(h.contents, content)
-	return h
-}
-
-func (h *HTML) RemoveContent(predicate func(x any) bool) *HTML {
-	if h.contents == nil {
-		return h
-	}
-
-	for i, content := range h.contents {
-		if predicate(content) {
-			h.contents = append(h.contents[:i], h.contents[i+1:]...)
-			break
-		}
-	}
-	return h
-}
-
-func (h *HTML) AddPrefix(prefix string) *HTML {
-	if h.prefixes == nil {
-		h.prefixes = make([]string, 0)
-	}
-
-	h.prefixes = append(h.prefixes, prefix)
-	return h
-}
-
-func (h *HTML) RemovePrefix(predicate func(x string) bool) *HTML {
-	for i, prefix := range h.prefixes {
-		if predicate(prefix) {
-			h.prefixes = append(h.prefixes[:i], h.prefixes[i+1:]...)
-			break
-		}
-	}
-	return h
-}
-
-func (h *HTML) Prefixes() []string {
-	return h.prefixes
-}
-
-func (h *HTML) AddSuffix(suffix string) *HTML {
-	if h.suffixes == nil {
-		h.suffixes = make([]string, 0)
-	}
-
-	h.suffixes = append(h.suffixes, suffix)
-	return h
-}
-
-func (h *HTML) RemoveSuffix(predicate func(x string) bool) *HTML {
-	for i, suffix := range h.suffixes {
-		if predicate(suffix) {
-			h.suffixes = append(h.suffixes[:i], h.suffixes[i+1:]...)
-			break
-		}
-	}
-	return h
-}
-
-func (h *HTML) Suffixes() []string {
-	return h.suffixes
-}
-
-func (h *HTML) Contents() any {
-	return h.contents
-}
-
-func (h *HTML) Render() string {
-	return h.renderWithIndent(0)
-}
-
-func (h *HTML) renderWithIndent(indent int) string {
-	indentStr := getIndentStr(indent)
-	htmlStr := ""
-
-	if h.prefixes != nil {
-		htmlStr += indentStr
-		for _, prefix := range h.prefixes {
-			htmlStr += prefix
-		}
-	} else {
-		htmlStr += indentStr
-	}
-
-	htmlStr += "<" + h.tag
-	for _, attr := range h.attributes {
-		htmlStr += " " + attr.Key + `="` + attr.Value + `"`
-	}
-	htmlStr += ">"
-
-	if len(h.contents) >= 2 {
-		htmlStr += "\n"
-	}
-
-	for _, content := range h.contents {
-		switch content := content.(type) {
-		case nil:
-			// No content to render
-			break
-		case string:
-			if len(h.contents) == 1 {
-				htmlStr += content
-			} else {
-				htmlStr += getIndentStr(indent+1) + content + "\n"
-			}
-		case *HTML:
-			htmlStr += content.renderWithIndent(indent + 1)
-		}
-	}
-
-	if len(h.contents) >= 2 {
-		htmlStr += indentStr + "</" + h.tag + ">"
-	} else if len(h.contents) == 1 {
-		if _, ok := h.contents[0].(string); ok {
-			htmlStr += "</" + h.tag + ">"
-		} else {
-			htmlStr += "\n" + indentStr + "</" + h.tag + ">"
-		}
-	}
-
-	if h.suffixes != nil {
-		for _, suffix := range h.suffixes {
-			htmlStr += suffix
-		}
-	}
-
-	htmlStr += "\n"
-
-	return htmlStr
-}
-
-func getIndentStr(indent int) string {
-	indentStr := ""
-
-	for i := 0; i < indent; i++ {
-		indentStr += "\t"
-	}
-
-	return indentStr
+func linuxusFooterHTML() *html.HTML {
+	return html.NewHTML(
+		"footer",
+		html.NewAttributes(),
+		"© 2026 ",
+		html.NewHTML(
+			"a",
+			html.NewAttributes("href", "https://github.com/elecbug/linuxus"),
+			"Linuxus",
+		),
+		". All rights reserved.",
+	)
 }

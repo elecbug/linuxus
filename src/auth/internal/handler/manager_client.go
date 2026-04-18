@@ -9,32 +9,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/elecbug/linuxus/src/auth/internal/packet"
 )
-
-type managerUserUpRequest struct {
-	UserID string `json:"user_id"`
-	SafeID string `json:"safe_id"`
-}
-
-type managerUserUpResponse struct {
-	OK            bool   `json:"ok"`
-	UserID        string `json:"user_id"`
-	SafeID        string `json:"safe_id"`
-	ContainerName string `json:"container_name"`
-	NetworkName   string `json:"network_name"`
-	Subnet        string `json:"subnet"`
-	Message       string `json:"message"`
-}
-
-// sessionStateReport defines the structure of session state reports sent to the manager.
-type sessionStateReport struct {
-	// UserID is the original user identifier.
-	UserID string `json:"user_id"`
-	// ActiveSessions is the count of active sessions for the user.
-	ActiveSessions int `json:"active_sessions"`
-	// ObservedAt is the timestamp when the session state was observed.
-	ObservedAt time.Time `json:"observed_at"`
-}
 
 // ensureUserContainerReady asks the manager service to ensure a user runtime is ready.
 func (a *App) ensureUserContainerReady(ctx context.Context, userID string) error {
@@ -42,7 +19,7 @@ func (a *App) ensureUserContainerReady(ctx context.Context, userID string) error
 		return fmt.Errorf("manager base url is not configured")
 	}
 
-	payload := managerUserUpRequest{
+	payload := packet.UserUpRequest{
 		UserID: userID,
 		SafeID: sanitizeID(userID),
 	}
@@ -74,7 +51,7 @@ func (a *App) ensureUserContainerReady(ctx context.Context, userID string) error
 		return fmt.Errorf("failed to read manager response: %w", err)
 	}
 
-	var parsed managerUserUpResponse
+	var parsed packet.UserUpResponse
 	unmarshalErr := json.Unmarshal(respBody, &parsed)
 
 	if resp.StatusCode != http.StatusOK {
@@ -112,7 +89,7 @@ func (a *App) reportSessionState(id string, active int) error {
 		return nil
 	}
 
-	payload := sessionStateReport{
+	payload := packet.SessionStateReport{
 		UserID:         id,
 		ActiveSessions: active,
 		ObservedAt:     time.Now(),

@@ -1,4 +1,4 @@
-package page
+package html
 
 type CSSContent struct {
 	tag        string

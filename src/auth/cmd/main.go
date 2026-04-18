@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/elecbug/linuxus/src/auth/internal/handler"
@@ -22,14 +23,6 @@ func main() {
 	if err := app.Start(":8080"); err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
-}
-
-func getEnv(key string) (string, error) {
-	value := os.Getenv(key)
-	if value == "" {
-		return "", fmt.Errorf("environment variable %s not set", key)
-	}
-	return value, nil
 }
 
 func parseConfig() (*handler.AppConfig, error) {
@@ -76,7 +69,10 @@ func parseConfig() (*handler.AppConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MANAGER_TIMEOUT: %v", err)
 	}
-	managerSecret := os.Getenv("MANAGER_SECRET")
+	managerSecret, err := getEnv("MANAGER_SECRET")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
+	}
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -91,9 +87,32 @@ func parseConfig() (*handler.AppConfig, error) {
 		ServicePath:             servicePath,
 		TerminalPath:            terminalPath,
 		UserContainerNamePrefix: userContainerNamePrefix,
-		TrustedProxies:          handler.ParseTrustedProxies(trustedProxies),
+		TrustedProxies:          trustProxiesToSlice(trustedProxies),
 		ManagerBaseURL:          managerBaseURL,
 		ManagerTimeout:          managerTimeout,
 		ManagerSecret:           managerSecret,
 	}, nil
+}
+
+func trustProxiesToSlice(trustedProxies string) []string {
+	var trustedProxyCIDRs []string
+
+	if tp := trustedProxies; tp != "" {
+		for _, cidr := range strings.Split(tp, ",") {
+			cidr = strings.TrimSpace(cidr)
+			if cidr != "" {
+				trustedProxyCIDRs = append(trustedProxyCIDRs, cidr)
+			}
+		}
+	}
+
+	return trustedProxyCIDRs
+}
+
+func getEnv(key string) (string, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		return "", fmt.Errorf("environment variable %s not set", key)
+	}
+	return value, nil
 }

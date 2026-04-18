@@ -35,7 +35,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// 1) Block check
 		if ok, until := a.isBlocked(ip, id); ok {
 			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(until).Seconds())+1))
-			a.renderError(w, "Too many login attempts. Please try again later: "+printTime(until), http.StatusTooManyRequests)
+			a.renderError(w, "Too many login attempts. Please try again later: "+timeToStr(until), http.StatusTooManyRequests)
 			return
 		}
 
@@ -217,7 +217,7 @@ func (a *App) isTrustedProxy(host string) bool {
 	return false
 }
 
-func printTime(d time.Time) string {
+func timeToStr(d time.Time) string {
 	if time.Until(d) < 24*time.Hour {
 		return d.Format("15:04:05")
 	}

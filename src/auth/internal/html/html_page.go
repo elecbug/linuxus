@@ -1,4 +1,4 @@
-package page
+package html
 
 type HTMLPage struct {
 	title string
