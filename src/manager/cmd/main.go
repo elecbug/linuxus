@@ -1,15 +1,10 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/elecbug/linuxus/src/manager/internal/config"
@@ -27,29 +22,8 @@ func main() {
 		log.Fatalf("failed to create server: %v", err)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", s.HandleHealthz)
-	mux.HandleFunc("/user/up", s.HandleUserUp)
-	mux.HandleFunc("/user/session-state", s.HandleUserSessionState)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	s.StartIdleReaper(ctx)
-
-	srv := &http.Server{
-		Addr:              cfg.ListenAddr,
-		Handler:           mux,
-		ReadHeaderTimeout: 5 * time.Second,
-	}
-
-	go func() {
-		log.Printf("manager listening on %s", cfg.ListenAddr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("listen failed: %v", err)
-		}
-	}()
-
-	waitForShutdown(srv, cancel)
+	s.RegisterRoutes()
+	s.Start()
 }
 
 func parseConfigFromEnv() (*config.Config, error) {
@@ -238,18 +212,4 @@ func envInt64(key string) (int64, error) {
 		return 0, fmt.Errorf("invalid %s: %w", key, err)
 	}
 	return v, nil
-}
-
-func waitForShutdown(srv *http.Server, cancel context.CancelFunc) {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-	<-sigCh
-
-	cancel()
-
-	ctx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
-	_ = srv.Shutdown(ctx)
-	_ = srv.Close()
 }

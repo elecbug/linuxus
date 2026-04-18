@@ -2,13 +2,15 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
-	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -19,6 +21,7 @@ var reInvalid = regexp.MustCompile(`[^a-z0-9]+`)
 
 type Server struct {
 	docker *client.Client
+	mux    *http.ServeMux
 	// cfg is the active runtime configuration.
 	cfg *config.Config
 
@@ -50,6 +53,46 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}, nil
 }
 
+func (s *Server) RegisterRoutes() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", s.HandleHealthz)
+	mux.HandleFunc("/user/up", s.HandleUserUp)
+	mux.HandleFunc("/user/session-state", s.HandleUserSessionState)
+
+	s.mux = mux
+}
+
+func (s *Server) Start() {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	s.StartIdleReaper(ctx)
+
+	srv := &http.Server{
+		Addr:              s.cfg.ListenAddr,
+		Handler:           s.mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	go func() {
+		log.Printf("manager listening on %s", s.cfg.ListenAddr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("listen failed: %v", err)
+		}
+	}()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	<-sigCh
+
+	cancel()
+
+	ctx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	_ = srv.Shutdown(ctx)
+	_ = srv.Close()
+}
+
 func (s *Server) Close() error {
 	if s == nil || s.docker == nil {
 		return nil
@@ -58,58 +101,82 @@ func (s *Server) Close() error {
 	return s.docker.Close()
 }
 
+func (s *Server) StartIdleReaper(ctx context.Context) {
+	timeout := s.cfg.ContainerTimeout
+	if timeout <= 0 {
+		return
+	}
+
+	interval := time.Minute
+	if timeout < interval {
+		interval = timeout / 2
+		if interval < 5*time.Second {
+			interval = 5 * time.Second
+		}
+	}
+
+	ticker := time.NewTicker(interval)
+
+	go func() {
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.reapIdleContainers(ctx)
+			}
+		}
+	}()
+}
+
+func (s *Server) reapIdleContainers(ctx context.Context) {
+	var candidates []string
+	now := time.Now()
+
+	s.mu.Lock()
+	for userID, rt := range s.runtimes {
+		if rt == nil {
+			continue
+		}
+		if rt.ActiveSessions > 0 {
+			continue
+		}
+		if rt.IdleSince.IsZero() {
+			continue
+		}
+		if now.Sub(rt.IdleSince) > s.cfg.ContainerTimeout {
+			candidates = append(candidates, userID)
+		}
+	}
+	s.mu.Unlock()
+
+	for _, userID := range candidates {
+		s.mu.Lock()
+		rt, ok := s.runtimes[userID]
+		if !ok || rt == nil || rt.ActiveSessions > 0 || rt.IdleSince.IsZero() ||
+			time.Since(rt.IdleSince) <= s.cfg.ContainerTimeout {
+			s.mu.Unlock()
+			continue
+		}
+		s.mu.Unlock()
+
+		if err := s.stopAndRemoveUserContainerAndNetwork(ctx, userID); err != nil {
+			log.Printf("idle cleanup failed for %s: %v", userID, err)
+			continue
+		}
+
+		s.mu.Lock()
+		delete(s.runtimes, userID)
+		s.mu.Unlock()
+
+		log.Printf("idle container cleaned up for %s", userID)
+	}
+}
+
 func (s *Server) HandleHealthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true,
 	})
-}
-
-func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, userUpResponse{
-			OK:      false,
-			Message: "method not allowed",
-		})
-		return
-	}
-
-	var req userUpRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, userUpResponse{
-			OK:      false,
-			Message: "invalid json body",
-		})
-		return
-	}
-
-	req.UserID = strings.TrimSpace(req.UserID)
-	req.SafeID = strings.TrimSpace(req.SafeID)
-	if req.UserID == "" {
-		writeJSON(w, http.StatusBadRequest, userUpResponse{
-			OK:      false,
-			Message: "user_id is required",
-		})
-		return
-	}
-	if req.SafeID == "" {
-		req.SafeID = sanitizeName(req.UserID)
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), s.cfg.ManagerWaitTime)
-	defer cancel()
-
-	resp, err := s.ensureUserRuntimeReady(ctx, req.UserID, req.SafeID)
-	if err != nil {
-		log.Printf("user up failed user=%s safe=%s err=%v", req.UserID, req.SafeID, err)
-		writeJSON(w, http.StatusServiceUnavailable, userUpResponse{
-			OK:            false,
-			UserID:        req.UserID,
-			SafeID:        req.SafeID,
-			ContainerName: s.cfg.UserContainerNamePrefix + req.SafeID,
-			Message:       err.Error(),
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, resp)
 }

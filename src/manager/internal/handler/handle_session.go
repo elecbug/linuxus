@@ -3,9 +3,15 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
+
+	"github.com/containerd/errdefs"
+	"github.com/docker/docker/api/types/container"
+	"github.com/elecbug/linuxus/src/manager/internal/packet"
 )
 
 func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) {
@@ -21,7 +27,7 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	var req sessionStateReport
+	var req packet.SessionStateReport
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json body", http.StatusBadRequest)
 		return
@@ -76,76 +82,82 @@ func (s *Server) updateSessionState(userID string, active int, observedAt time.T
 	}
 }
 
-func (s *Server) StartIdleReaper(ctx context.Context) {
-	timeout := s.cfg.ContainerTimeout
-	if timeout <= 0 {
-		return
+func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userID string) error {
+	containerName, networkName := s.resolveUserRuntimeNames(ctx, userID)
+	stopCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	timeoutSec := 10
+	err := s.docker.ContainerStop(stopCtx, containerName, container.StopOptions{
+		Timeout: &timeoutSec,
+	})
+	if err != nil {
+		log.Printf("container stop warning for %s: %v", userID, err)
 	}
 
-	interval := time.Minute
-	if timeout < interval {
-		interval = timeout / 2
-		if interval < 5*time.Second {
-			interval = 5 * time.Second
+	removeCtx, removeCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer removeCancel()
+
+	if err := s.docker.ContainerRemove(removeCtx, containerName, container.RemoveOptions{
+		Force:         true,
+		RemoveVolumes: false,
+	}); err != nil {
+		if !errdefs.IsNotFound(err) {
+			return fmt.Errorf("container remove failed: %w", err)
 		}
+		log.Printf("container already removed for %s, continuing cleanup", userID)
 	}
 
-	ticker := time.NewTicker(interval)
+	if err := s.disconnectAuthFromUserNetwork(ctx, networkName); err != nil {
+		log.Printf("auth disconnect warning for %s: %v", userID, err)
+	}
 
-	go func() {
-		defer ticker.Stop()
+	if err := s.removeNetwork(ctx, networkName); err != nil {
+		return fmt.Errorf("network remove failed: %w", err)
+	}
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				s.reapIdleContainers(ctx)
-			}
-		}
-	}()
+	return nil
 }
 
-func (s *Server) reapIdleContainers(ctx context.Context) {
-	var candidates []string
-	now := time.Now()
+func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (string, string) {
+	containerName := s.cfg.UserContainerNamePrefix + sanitizeID(userID)
+	networkName := s.cfg.NetworkPrefix + sanitizeID(userID)
 
-	s.mu.Lock()
-	for userID, rt := range s.runtimes {
-		if rt == nil {
-			continue
-		}
-		if rt.ActiveSessions > 0 {
-			continue
-		}
-		if rt.IdleSince.IsZero() {
-			continue
-		}
-		if now.Sub(rt.IdleSince) > s.cfg.ContainerTimeout {
-			candidates = append(candidates, userID)
+	inspect, err := s.docker.ContainerInspect(ctx, containerName)
+	if err != nil {
+		return containerName, networkName
+	}
+
+	if inspect.NetworkSettings != nil {
+		for attachedNetworkName := range inspect.NetworkSettings.Networks {
+			if strings.HasPrefix(attachedNetworkName, s.cfg.NetworkPrefix) {
+				networkName = attachedNetworkName
+				break
+			}
 		}
 	}
-	s.mu.Unlock()
 
-	for _, userID := range candidates {
-		s.mu.Lock()
-		rt, ok := s.runtimes[userID]
-		if !ok || rt == nil || rt.ActiveSessions > 0 || rt.IdleSince.IsZero() ||
-			time.Since(rt.IdleSince) <= s.cfg.ContainerTimeout {
-			s.mu.Unlock()
-			continue
+	return containerName, networkName
+}
+
+func (s *Server) disconnectAuthFromUserNetwork(ctx context.Context, networkName string) error {
+	if err := s.docker.NetworkDisconnect(ctx, networkName, s.cfg.AuthContainerName, true); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "not found") ||
+			strings.Contains(strings.ToLower(err.Error()), "already disconnected") {
+			return nil
 		}
-		s.mu.Unlock()
-
-		if err := s.stopAndRemoveUserContainerAndNetwork(ctx, userID); err != nil {
-			log.Printf("idle cleanup failed for %s: %v", userID, err)
-			continue
-		}
-
-		s.mu.Lock()
-		delete(s.runtimes, userID)
-		s.mu.Unlock()
-
-		log.Printf("idle container cleaned up for %s", userID)
+		return fmt.Errorf("failed to disconnect auth container from %s: %w", networkName, err)
 	}
+
+	return nil
+}
+
+func (s *Server) removeNetwork(ctx context.Context, name string) error {
+	if err := s.docker.NetworkRemove(ctx, name); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+			return nil
+		}
+		return fmt.Errorf("network remove failed: %w", err)
+	}
+	return nil
 }
