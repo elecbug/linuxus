@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/elecbug/linuxus/src/auth/internal/handler"
 	"github.com/elecbug/linuxus/src/auth/internal/user"
 )
 
+// main loads configuration, registers routes, and starts the auth server.
 func main() {
 	config, err := parseConfig()
 	if err != nil {
@@ -24,14 +26,7 @@ func main() {
 	}
 }
 
-func getEnv(key string) (string, error) {
-	value := os.Getenv(key)
-	if value == "" {
-		return "", fmt.Errorf("environment variable %s not set", key)
-	}
-	return value, nil
-}
-
+// parseConfig loads all runtime settings from environment variables and auth list data.
 func parseConfig() (*handler.AppConfig, error) {
 	var err error
 
@@ -76,7 +71,10 @@ func parseConfig() (*handler.AppConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MANAGER_TIMEOUT: %v", err)
 	}
-	managerSecret := os.Getenv("MANAGER_SECRET")
+	managerSecret, err := getEnv("MANAGER_SECRET")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
+	}
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -91,9 +89,34 @@ func parseConfig() (*handler.AppConfig, error) {
 		ServicePath:             servicePath,
 		TerminalPath:            terminalPath,
 		UserContainerNamePrefix: userContainerNamePrefix,
-		TrustedProxies:          handler.ParseTrustedProxies(trustedProxies),
+		TrustedProxies:          trustProxiesToSlice(trustedProxies),
 		ManagerBaseURL:          managerBaseURL,
 		ManagerTimeout:          managerTimeout,
 		ManagerSecret:           managerSecret,
 	}, nil
+}
+
+// trustProxiesToSlice parses a comma-separated trusted proxy list into CIDR strings.
+func trustProxiesToSlice(trustedProxies string) []string {
+	var trustedProxyCIDRs []string
+
+	if tp := trustedProxies; tp != "" {
+		for _, cidr := range strings.Split(tp, ",") {
+			cidr = strings.TrimSpace(cidr)
+			if cidr != "" {
+				trustedProxyCIDRs = append(trustedProxyCIDRs, cidr)
+			}
+		}
+	}
+
+	return trustedProxyCIDRs
+}
+
+// getEnv returns a required environment variable or an error if it is missing.
+func getEnv(key string) (string, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		return "", fmt.Errorf("environment variable %s not set", key)
+	}
+	return value, nil
 }

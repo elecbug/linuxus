@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// LoadUsers reads user credentials from the auth list file.
 func LoadUsers(path string) (map[string]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -47,6 +48,7 @@ func LoadUsers(path string) (map[string]string, error) {
 	return users, nil
 }
 
+// AddUser adds a new user with a bcrypt-hashed password to memory and file.
 func AddUser(path string, users map[string]string, id, password string) error {
 	if _, ok := users[id]; ok {
 		return fmt.Errorf("user '%s' already exists", id)

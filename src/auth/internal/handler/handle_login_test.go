@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// TestIsBlocked_NotBlocked verifies fresh state is not blocked.
 func TestIsBlocked_NotBlocked(t *testing.T) {
 	app := newTestApp()
 	ok, _ := app.isBlocked("1.2.3.4", "user1")
@@ -13,6 +14,7 @@ func TestIsBlocked_NotBlocked(t *testing.T) {
 	}
 }
 
+// TestIsBlocked_BlockedAfterUserFailures verifies user-based lock after threshold failures.
 func TestIsBlocked_BlockedAfterUserFailures(t *testing.T) {
 	app := newTestApp()
 	for i := 0; i < 5; i++ {
@@ -27,6 +29,7 @@ func TestIsBlocked_BlockedAfterUserFailures(t *testing.T) {
 	}
 }
 
+// TestIsBlocked_BlockedAfterIPFailures verifies IP-based lock after threshold failures.
 func TestIsBlocked_BlockedAfterIPFailures(t *testing.T) {
 	app := newTestApp()
 	for i := 0; i < 20; i++ {
@@ -38,6 +41,7 @@ func TestIsBlocked_BlockedAfterIPFailures(t *testing.T) {
 	}
 }
 
+// TestRecordFail_UnknownUserSkipsUserFails verifies unknown users do not increment user-specific tracking.
 func TestRecordFail_UnknownUserSkipsUserFails(t *testing.T) {
 	app := newTestApp()
 	for i := 0; i < 10; i++ {
@@ -48,6 +52,7 @@ func TestRecordFail_UnknownUserSkipsUserFails(t *testing.T) {
 	}
 }
 
+// TestRecordFail_KnownUserTracksUserFails verifies known users increment user-specific tracking.
 func TestRecordFail_KnownUserTracksUserFails(t *testing.T) {
 	app := newTestApp()
 	app.recordFail("1.2.3.4", "knownuser", true)
@@ -56,6 +61,7 @@ func TestRecordFail_KnownUserTracksUserFails(t *testing.T) {
 	}
 }
 
+// TestLockDuration verifies lock backoff schedule by lock count.
 func TestLockDuration(t *testing.T) {
 	cases := []struct {
 		lockCount int
@@ -75,6 +81,7 @@ func TestLockDuration(t *testing.T) {
 	}
 }
 
+// TestResetWindow_FailCountAfter15Min verifies failure count reset after inactivity window.
 func TestResetWindow_FailCountAfter15Min(t *testing.T) {
 	app := newTestApp()
 	app.userFails["user1"] = &loginAttempt{
@@ -88,6 +95,7 @@ func TestResetWindow_FailCountAfter15Min(t *testing.T) {
 	}
 }
 
+// TestResetWindow_LockCountAfter30Min verifies lock escalation reset after cooldown window.
 func TestResetWindow_LockCountAfter30Min(t *testing.T) {
 	app := newTestApp()
 	app.userFails["user1"] = &loginAttempt{

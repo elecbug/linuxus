@@ -1,40 +1,39 @@
-package page_test
+package html
 
 import (
 	"testing"
-
-	"github.com/elecbug/linuxus/src/auth/internal/page"
 )
 
+// TestCSSRendering verifies CSS builder output formatting.
 func TestCSSRendering(t *testing.T) {
-	css := page.NewCSS(
-		page.NewCSSContent("body.main",
-			page.NewAttributes(
+	css := NewCSS(
+		NewCSSContent("body.main",
+			NewAttributes(
 				"background-color", "#f0f0f0",
 				"color", "#242424",
 				"font-family", "Arial, sans-serif",
 			)...,
 		),
-		page.NewCSSContent("h2.title",
-			page.NewAttributes(
+		NewCSSContent("h2.title",
+			NewAttributes(
 				"color", "#333333",
 			)...,
 		),
-		page.NewCSSContent("p.error",
-			page.NewAttributes(
+		NewCSSContent("p.error",
+			NewAttributes(
 				"color", "red",
 			)...,
 		),
-		page.NewCSSContent("form.login-form",
-			page.NewAttributes(
+		NewCSSContent("form.login-form",
+			NewAttributes(
 				"display", "flex",
 				"flex-direction", "column",
 				"width", "300px",
 				"margin", "0 auto",
 			)...,
 		),
-		page.NewCSSContent("input.input-field",
-			page.NewAttributes(
+		NewCSSContent("input.input-field",
+			NewAttributes(
 				"padding", "10px",
 				"margin", "10px 0",
 				"border", "1px solid #cccccc",
@@ -79,10 +78,11 @@ func TestCSSRendering(t *testing.T) {
 	}
 }
 
+// TestHTMLPageRendering verifies full page rendering with nested HTML elements.
 func TestHTMLPageRendering(t *testing.T) {
-	css := page.NewCSS(
-		page.NewCSSContent("body.main",
-			page.NewAttributes(
+	css := NewCSS(
+		NewCSSContent("body.main",
+			NewAttributes(
 				"background-color", "#f0f0f0",
 				"color", "#242424",
 				"font-family", "Arial, sans-serif",
@@ -90,30 +90,30 @@ func TestHTMLPageRendering(t *testing.T) {
 		),
 	)
 
-	htmlContent := page.NewHTML(
+	htmlContent := NewHTML(
 		"div",
-		page.NewAttributes("class", "container"),
+		NewAttributes("class", "container"),
 		"Hello, World!",
 	)
 
-	p := page.NewHTMLPage(
+	p := NewHTMLPage(
 		"Test Page",
-		page.NewAttributes("charset", "UTF-8"),
+		NewAttributes("charset", "UTF-8"),
 		css,
 		htmlContent,
 	)
 
 	p.AddBodyContent(
-		page.NewHTML(
+		NewHTML(
 			"div",
-			page.NewAttributes("class", "footer"),
+			NewAttributes("class", "footer"),
 			"Footer content",
 		),
 	)
 
-	htmlContent.AddContent(page.NewHTML(
+	htmlContent.AddContent(NewHTML(
 		"div",
-		page.NewAttributes("class", "section"),
+		NewAttributes("class", "section"),
 		"Section content",
 	))
 
@@ -149,23 +149,24 @@ func TestHTMLPageRendering(t *testing.T) {
 	}
 }
 
+// TestHTMLPageRemoveContent verifies body content removal behavior.
 func TestHTMLPageRemoveContent(t *testing.T) {
-	htmlContent := page.NewHTML(
+	htmlContent := NewHTML(
 		"div",
-		page.NewAttributes("class", "container"),
+		NewAttributes("class", "container"),
 		"Hello, World!",
 	)
-	p := page.NewHTMLPage("Test Page", nil, nil, htmlContent)
+	p := NewHTMLPage("Test Page", nil, nil, htmlContent)
 
 	p.AddBodyContent(
-		page.NewHTML(
+		NewHTML(
 			"div",
-			page.NewAttributes("class", "footer"),
+			NewAttributes("class", "footer"),
 			"Footer content",
 		),
 	)
 	p.RemoveBodyContent(func(x any) bool {
-		if html, ok := x.(*page.HTML); ok {
+		if html, ok := x.(*HTML); ok {
 			for _, attr := range html.Attributes() {
 				if attr.Key == "class" && attr.Value == "footer" {
 					return true

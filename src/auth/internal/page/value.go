@@ -1,4 +1,4 @@
-package handler
+package page
 
 const BOX_DISPLAY = "inline-block"
 const BOX_PADDING = "8px 12px"

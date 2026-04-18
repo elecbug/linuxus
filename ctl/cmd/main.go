@@ -9,6 +9,7 @@ import (
 	"github.com/elecbug/linuxus/src/ctl/internal/app"
 )
 
+// Option represents a runtime operation selected from CLI arguments.
 type Option int
 
 const (
@@ -19,11 +20,15 @@ const (
 	PS
 )
 
+// Options stores parsed CLI flags and execution intents.
 type Options struct {
-	Opts   []Option
+	// Opts contains the ordered list of requested operations.
+	Opts []Option
+	// IsHelp indicates whether the help text should be printed.
 	IsHelp bool
 }
 
+// main executes the CLI entrypoint and prints user-friendly errors.
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -31,6 +36,7 @@ func main() {
 	}
 }
 
+// run initializes the application and executes selected runtime operations.
 func run() error {
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -74,7 +80,7 @@ func run() error {
 	for _, v := range opts.Opts {
 		switch v {
 		case UP:
-			if err := app.LoadUsers(); err != nil {
+			if err := app.LoadUserList(); err != nil {
 				return err
 			}
 			if err := app.PrepareUserDisks(); err != nil {
@@ -90,7 +96,7 @@ func run() error {
 			}
 
 		case RESTART:
-			if err := app.LoadUsers(); err != nil {
+			if err := app.LoadUserList(); err != nil {
 				return err
 			}
 			if err := app.PrepareUserDisks(); err != nil {
@@ -115,6 +121,7 @@ func run() error {
 	return nil
 }
 
+// parseArgs converts CLI arguments into executable options.
 func parseArgs(args []string) (Options, error) {
 	opts := Options{
 		Opts: make([]Option, 0),
@@ -145,6 +152,7 @@ func parseArgs(args []string) (Options, error) {
 	return opts, nil
 }
 
+// usageText returns the formatted help text for the CLI.
 func usageText(bin string) string {
 	return fmt.Sprintf(`Usage:
   %s [OPTION]...
@@ -163,6 +171,7 @@ Examples:
   %s -r`, bin, bin, bin, bin)
 }
 
+// printUsage prints the CLI help text.
 func printUsage(bin string) {
 	fmt.Println(usageText(bin))
 }

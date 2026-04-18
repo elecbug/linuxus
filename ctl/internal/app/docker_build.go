@@ -13,6 +13,7 @@ import (
 	"github.com/moby/term"
 )
 
+// buildRuntimeImages builds all runtime images required by services.
 func (a *App) buildRuntimeImages() error {
 	fmt.Println("[+] Building runtime images...")
 
@@ -25,7 +26,7 @@ func (a *App) buildRuntimeImages() error {
 	}
 
 	if err := a.buildImage(a.Config.UserService.SourceDir, a.userImageName(), map[string]*string{
-		"CONTAINER_RUNTIME_USER": strPtr(a.Config.UserService.Container.Runtime.User),
+		"CONTAINER_RUNTIME_USER": &a.Config.UserService.Container.Runtime.User,
 	}); err != nil {
 		return fmt.Errorf("failed to build user image: %w", err)
 	}
@@ -37,6 +38,7 @@ func (a *App) buildRuntimeImages() error {
 	return nil
 }
 
+// buildImage builds a Docker image from a source directory.
 func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*string) error {
 	buildCtx, err := tarBuildContext(sourceDir)
 	if err != nil {
@@ -70,6 +72,7 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 	return nil
 }
 
+// tarBuildContext creates an in-memory tar archive for Docker build context.
 func tarBuildContext(dir string) (io.Reader, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
@@ -123,14 +126,17 @@ func tarBuildContext(dir string) (io.Reader, error) {
 	return buf, nil
 }
 
+// authImageName returns the auth runtime image tag.
 func (a *App) authImageName() string {
 	return a.Config.AuthService.Container.Name + ":runtime"
 }
 
+// userImageName returns the user base runtime image tag.
 func (a *App) userImageName() string {
 	return a.Config.UserService.Container.NamePrefix + "base:runtime"
 }
 
+// managerImageName returns the manager runtime image tag.
 func (a *App) managerImageName() string {
 	return a.Config.ManagerService.Container.Name + ":runtime"
 }

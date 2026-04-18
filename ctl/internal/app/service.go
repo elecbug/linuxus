@@ -8,8 +8,11 @@ import (
 
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/network"
+	"github.com/elecbug/linuxus/src/ctl/internal/format"
+	"github.com/elecbug/linuxus/src/ctl/internal/spec"
 )
 
+// ServiceUp builds images and starts all runtime-managed services.
 func (a *App) ServiceUp() error {
 	fmt.Println("[+] Starting runtime-managed containers...")
 
@@ -30,6 +33,7 @@ func (a *App) ServiceUp() error {
 	return nil
 }
 
+// ServiceDown stops and removes all runtime-managed services.
 func (a *App) ServiceDown() error {
 	fmt.Println("[+] Stopping runtime-managed containers...")
 	if err := a.removeManagedContainers(); err != nil {
@@ -41,6 +45,7 @@ func (a *App) ServiceDown() error {
 	return nil
 }
 
+// ServiceRestart recreates runtime-managed services.
 func (a *App) ServiceRestart() error {
 	fmt.Println("[+] Restarting runtime-managed containers...")
 	if err := a.ServiceDown(); err != nil {
@@ -49,6 +54,7 @@ func (a *App) ServiceRestart() error {
 	return a.ServiceUp()
 }
 
+// VolumeClean unmounts and removes managed volume data and loop devices.
 func (a *App) VolumeClean() error {
 	fmt.Println("[+] Cleaning volumes...")
 
@@ -118,6 +124,7 @@ func (a *App) VolumeClean() error {
 	return nil
 }
 
+// ServicePS prints runtime status for managed containers and networks.
 func (a *App) ServicePS() error {
 	fmt.Println("[+] Runtime service status:")
 
@@ -126,8 +133,8 @@ func (a *App) ServicePS() error {
 		return err
 	}
 
-	containerInfos := make([]containerInfo, 0, len(names)+1)
-	containerInfos = append(containerInfos, containerInfo{
+	containerInfos := make([]spec.ContainerInfo, 0, len(names)+1)
+	containerInfos = append(containerInfos, spec.ContainerInfo{
 		Name:   "CONTAINER NAME",
 		Status: "STATE(STATUS)",
 		Image:  "IMAGE",
@@ -139,7 +146,7 @@ func (a *App) ServicePS() error {
 		info, err := a.dockerClient.ContainerInspect(a.context, name)
 		if err != nil {
 			if errdefs.IsNotFound(err) {
-				containerInfos = append(containerInfos, containerInfo{
+				containerInfos = append(containerInfos, spec.ContainerInfo{
 					Name:   name,
 					Status: "not found",
 					Image:  "-",
@@ -157,22 +164,22 @@ func (a *App) ServicePS() error {
 		if info.State != nil {
 			hasState = true
 			state = info.State.Status
-			status = parseContainerStatusText(info)
+			status = format.ContainerInspectToStatusText(info)
 		}
 
 		image := info.Config.Image
-		ports := parsePortSummary(info)
+		ports := format.ContainerInspectToPortSummary(info)
 
-		containerInfos = append(containerInfos, containerInfo{
+		containerInfos = append(containerInfos, spec.ContainerInfo{
 			Name:   name,
-			Status: getStatusText(state, status, hasState),
+			Status: format.DisplayStatusText(state, status, hasState),
 			Image:  image,
 			Ports:  ports,
-			UserID: a.getUserID(name),
+			UserID: format.DisplayUserName(a.Config, name),
 		})
 	}
 
-	strContainerResults := parseContainerInfos(containerInfos)
+	strContainerResults := format.ContainerInfosToStrings(containerInfos)
 
 	for _, result := range strContainerResults {
 		fmt.Println(result)
@@ -180,8 +187,8 @@ func (a *App) ServicePS() error {
 
 	fmt.Println("[+] Runtime network status:")
 
-	networkInfos := make([]networkInfo, 0)
-	networkInfos = append(networkInfos, networkInfo{
+	networkInfos := make([]spec.NetworkInfo, 0)
+	networkInfos = append(networkInfos, spec.NetworkInfo{
 		Name:   "NETWORK NAME",
 		ID:     "NETWORK ID",
 		Subnet: "SUBNET",
@@ -195,52 +202,20 @@ func (a *App) ServicePS() error {
 	for _, net := range networks {
 		if strings.HasPrefix(net.Name, a.Config.UserService.Container.NetworkPrefix) ||
 			net.Name == a.Config.ManagerService.Container.Network {
-			info := networkInfo{
+			info := spec.NetworkInfo{
 				Name:   net.Name,
-				ID:     displayNetworkID(net.ID),
+				ID:     format.DisplayNetworkID(net.ID),
 				Subnet: net.IPAM.Config[0].Subnet,
 			}
 			networkInfos = append(networkInfos, info)
 		}
 	}
 
-	strNetResults := parseNetworkInfos(networkInfos)
+	strNetResults := format.NetworkInfosToStrings(networkInfos)
 
 	for _, result := range strNetResults {
 		fmt.Println(result)
 	}
 
 	return nil
-}
-
-func (a *App) getUserID(name string) string {
-	if strings.HasPrefix(name, a.Config.UserService.Container.NamePrefix) {
-		return name[len(a.Config.UserService.Container.NamePrefix):]
-	}
-	if name == a.Config.AuthService.Container.Name {
-		return "<AUTH SERVICE>"
-	}
-	if name == a.Config.ManagerService.Container.Name {
-		return "<MANAGER SERVICE>"
-	}
-	return "-"
-}
-
-func displayNetworkID(id string) string {
-	if len(id) > 12 {
-		return fmt.Sprintf("%s...", id[:12])
-	}
-	return id
-}
-
-func getStatusText(state, status string, hasState bool) string {
-	if !hasState {
-		return "-"
-	} else {
-		if state == status {
-			return state
-		} else {
-			return fmt.Sprintf("%s(%s)", state, status)
-		}
-	}
 }

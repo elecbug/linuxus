@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// handleTerminalRedirect normalizes terminal route access for authenticated users.
 func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.getSessionID(r); !ok {
 		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
@@ -18,6 +19,7 @@ func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/"+a.terminalPath+"/", http.StatusSeeOther)
 }
 
+// handleTerminalProxy validates session and proxies terminal traffic to user runtime.
 func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	id, ok := a.getSessionID(r)
 	if !ok {
@@ -80,6 +82,7 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	proxy.ServeHTTP(w, r)
 }
 
+// sanitizeID converts a user ID into a safe runtime identifier.
 func sanitizeID(id string) string {
 	id = strings.ToLower(id)
 	var b strings.Builder
@@ -110,7 +113,7 @@ func isWebSocketRequest(r *http.Request) bool {
 	return strings.Contains(connection, "upgrade") && upgrade == "websocket"
 }
 
-// ensureUserContainerReady asks the manager to prepare the user runtime and waits for it to be ready.
+// markSessionStart increments active session count and reports it to manager.
 func (a *App) markSessionStart(id string) {
 	a.sessionMu.Lock()
 	a.activeSessions[id]++
