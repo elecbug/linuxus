@@ -49,7 +49,7 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 		SecurityOpt:    []string{"no-new-privileges:true"},
 		CapDrop:        []string{"ALL"},
 		RestartPolicy: container.RestartPolicy{
-			Name: "unless-stopped",
+			Name: "no",
 		},
 	}
 
