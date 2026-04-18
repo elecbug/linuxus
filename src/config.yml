@@ -61,6 +61,7 @@ manager_service:
     timezone: Asia/Seoul
     network: linuxus_manager_net
     subnet: "10.11.0.0/24"
+  user:
     timeout: 5m
   session:
     timeout: 30s

@@ -104,8 +104,9 @@ func getReadonlyBind(userID string, cfg *config.Config) string {
 	}
 }
 
-func (s *Server) stopAndRemoveUserContainer(ctx context.Context, userID string) error {
+func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userID string) error {
 	containerName := s.cfg.UserContainerNamePrefix + sanitizeID(userID)
+	networkName := s.cfg.NetworkPrefix + sanitizeID(userID)
 
 	stopCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -126,6 +127,14 @@ func (s *Server) stopAndRemoveUserContainer(ctx context.Context, userID string) 
 		RemoveVolumes: false,
 	}); err != nil {
 		return fmt.Errorf("container remove failed: %w", err)
+	}
+
+	if err := s.disconnectAuthFromNetwork(ctx, networkName); err != nil {
+		log.Printf("auth disconnect warning for %s: %v", userID, err)
+	}
+
+	if err := s.removeNetwork(ctx, networkName); err != nil {
+		return fmt.Errorf("network remove failed: %w", err)
 	}
 
 	return nil

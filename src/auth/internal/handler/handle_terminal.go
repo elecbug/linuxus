@@ -113,7 +113,6 @@ func isWebSocketRequest(r *http.Request) bool {
 
 // ensureUserContainerReady asks the manager to prepare the user runtime and waits for it to be ready.
 func (a *App) markSessionStart(id string) {
-	fmt.Printf("Ensuring container ready for user %s\n", id)
 	a.sessionMu.Lock()
 	a.activeSessions[id]++
 	current := a.activeSessions[id]
@@ -126,7 +125,6 @@ func (a *App) markSessionStart(id string) {
 
 // markSessionEnd decrements the active session count for a user and reports the updated state to the manager.
 func (a *App) markSessionEnd(id string) {
-	fmt.Printf("Session ended for user %s\n", id)
 	a.sessionMu.Lock()
 	if a.activeSessions[id] > 0 {
 		a.activeSessions[id]--

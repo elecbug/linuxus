@@ -128,7 +128,7 @@ func (s *Server) reapIdleContainers(ctx context.Context) {
 		}
 		s.mu.Unlock()
 
-		if err := s.stopAndRemoveUserContainer(ctx, userID); err != nil {
+		if err := s.stopAndRemoveUserContainerAndNetwork(ctx, userID); err != nil {
 			log.Printf("idle cleanup failed for %s: %v", userID, err)
 			continue
 		}
