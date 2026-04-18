@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 )
 
-func (a *App) existdockerContainer(name string) (bool, error) {
+func (a *App) existDockerContainer(name string) (bool, error) {
 	cli := a.dockerClient
 	if cli == nil {
 		return false, fmt.Errorf("Docker client is not initialized")

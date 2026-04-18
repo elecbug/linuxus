@@ -148,7 +148,7 @@ func serviceBodyCSS() *page.CSSContent {
 	)
 }
 
-func serviceToorBarCSS() []*page.CSSContent {
+func serviceToolBarCSS() []*page.CSSContent {
 	return []*page.CSSContent{
 		page.NewCSSContent("div.topbar",
 			page.NewAttributes(
