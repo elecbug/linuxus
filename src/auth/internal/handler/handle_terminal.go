@@ -44,8 +44,10 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 
 	isWS := isWebSocketRequest(r)
 	if isWS {
-		a.markSessionStart(id)
-		defer a.markSessionEnd(id)
+		go a.markSessionStart(id)
+		defer func(sessionID string) {
+			go a.markSessionEnd(sessionID)
+		}(id)
 	}
 
 	originalDirector := proxy.Director
