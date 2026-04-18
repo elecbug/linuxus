@@ -4,19 +4,30 @@ import (
 	"time"
 )
 
+// UserUpRequest requests startup/validation of a user runtime from manager.
 type UserUpRequest struct {
+	// UserID is the original user identifier.
 	UserID string `json:"user_id"`
+	// SafeID is the sanitized identifier used for runtime resources.
 	SafeID string `json:"safe_id"`
 }
 
+// UserUpResponse is the manager response for a user runtime preparation request.
 type UserUpResponse struct {
-	OK            bool   `json:"ok"`
-	UserID        string `json:"user_id"`
-	SafeID        string `json:"safe_id"`
+	// OK indicates whether the runtime is ready.
+	OK bool `json:"ok"`
+	// UserID is the original user identifier.
+	UserID string `json:"user_id"`
+	// SafeID is the sanitized identifier used for runtime resources.
+	SafeID string `json:"safe_id"`
+	// ContainerName is the prepared runtime container name.
 	ContainerName string `json:"container_name"`
-	NetworkName   string `json:"network_name"`
-	Subnet        string `json:"subnet"`
-	Message       string `json:"message"`
+	// NetworkName is the prepared runtime network name.
+	NetworkName string `json:"network_name"`
+	// Subnet is the allocated runtime subnet.
+	Subnet string `json:"subnet"`
+	// Message contains human-readable status details.
+	Message string `json:"message"`
 }
 
 // SessionStateReport defines the structure of session state reports sent to the manager.

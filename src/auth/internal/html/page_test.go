@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+// TestCSSRendering verifies CSS builder output formatting.
 func TestCSSRendering(t *testing.T) {
 	css := NewCSS(
 		NewCSSContent("body.main",
@@ -77,6 +78,7 @@ func TestCSSRendering(t *testing.T) {
 	}
 }
 
+// TestHTMLPageRendering verifies full page rendering with nested HTML elements.
 func TestHTMLPageRendering(t *testing.T) {
 	css := NewCSS(
 		NewCSSContent("body.main",
@@ -147,6 +149,7 @@ func TestHTMLPageRendering(t *testing.T) {
 	}
 }
 
+// TestHTMLPageRemoveContent verifies body content removal behavior.
 func TestHTMLPageRemoveContent(t *testing.T) {
 	htmlContent := NewHTML(
 		"div",

@@ -6,6 +6,7 @@ import (
 	html "github.com/elecbug/linuxus/src/auth/internal/html"
 )
 
+// getLoginCSS builds style rules for the login page.
 func getLoginCSS() *html.CSS {
 	return html.NewCSS().AddContents(
 		loginBodyCSS(),
@@ -20,6 +21,7 @@ func getLoginCSS() *html.CSS {
 	)
 }
 
+// getErrorCSS builds style rules for the error page.
 func getErrorCSS() *html.CSS {
 	return html.NewCSS().AddContents(
 		loginBodyCSS(),
@@ -30,6 +32,7 @@ func getErrorCSS() *html.CSS {
 	)
 }
 
+// getServiceCSS builds style rules for the service page.
 func getServiceCSS() *html.CSS {
 	return html.NewCSS().AddContents(
 		serviceBodyCSS(),
@@ -45,6 +48,7 @@ func getServiceCSS() *html.CSS {
 
 }
 
+// footerCSS returns footer style rules with configurable top margin.
 func footerCSS(marginTop int) []*html.CSSContent {
 	return []*html.CSSContent{
 		html.NewCSSContent("footer",
@@ -83,6 +87,7 @@ func footerCSS(marginTop int) []*html.CSSContent {
 	}
 }
 
+// loginBodyCSS returns base body styling for login and error pages.
 func loginBodyCSS() *html.CSSContent {
 	return html.NewCSSContent("body",
 		html.NewAttributes(
@@ -95,6 +100,7 @@ func loginBodyCSS() *html.CSSContent {
 	)
 }
 
+// loginFormCSS returns styling for the login form container.
 func loginFormCSS() []*html.CSSContent {
 	return []*html.CSSContent{
 		html.NewCSSContent("form.login-form",
@@ -107,6 +113,7 @@ func loginFormCSS() []*html.CSSContent {
 	}
 }
 
+// loginErrorCSS returns styling for login error messages.
 func loginErrorCSS() *html.CSSContent {
 	return html.NewCSSContent("p.error",
 		html.NewAttributes(
@@ -115,6 +122,7 @@ func loginErrorCSS() *html.CSSContent {
 	)
 }
 
+// loginTooltipCSS returns styling for helper tooltip text.
 func loginTooltipCSS() *html.CSSContent {
 	return html.NewCSSContent("p.tooltip",
 		html.NewAttributes(
@@ -125,6 +133,7 @@ func loginTooltipCSS() *html.CSSContent {
 	)
 }
 
+// loginButtonCSS returns styling for login form inputs and button.
 func loginButtonCSS() []*html.CSSContent {
 	return []*html.CSSContent{
 		box("input", false, false),
@@ -133,6 +142,7 @@ func loginButtonCSS() []*html.CSSContent {
 	}
 }
 
+// serviceBodyCSS returns base layout styling for service page.
 func serviceBodyCSS() *html.CSSContent {
 	return html.NewCSSContent("html, body",
 		html.NewAttributes(
@@ -148,6 +158,7 @@ func serviceBodyCSS() *html.CSSContent {
 	)
 }
 
+// serviceToolBarCSS returns style rules for service top toolbar.
 func serviceToolBarCSS() []*html.CSSContent {
 	return []*html.CSSContent{
 		html.NewCSSContent("div.topbar",
@@ -177,6 +188,7 @@ func serviceToolBarCSS() []*html.CSSContent {
 	}
 }
 
+// serviceIframeCSS returns style rules for terminal iframe area.
 func serviceIframeCSS() []*html.CSSContent {
 	return []*html.CSSContent{
 		html.NewCSSContent("div.frame-wrap",
@@ -196,6 +208,7 @@ func serviceIframeCSS() []*html.CSSContent {
 	}
 }
 
+// serviceButtonCSS returns style rules for service action buttons.
 func serviceButtonCSS() []*html.CSSContent {
 	return []*html.CSSContent{
 		box("a.btn", true, false),
@@ -205,6 +218,7 @@ func serviceButtonCSS() []*html.CSSContent {
 	}
 }
 
+// box creates a reusable button/input style variant.
 func box(tag string, isDark, isDangerOpt bool) *html.CSSContent {
 	if isDark && !isDangerOpt {
 		return html.NewCSSContent(tag,
@@ -263,6 +277,7 @@ func box(tag string, isDark, isDangerOpt bool) *html.CSSContent {
 	return nil
 }
 
+// boxHoverEffect creates hover background style for a selector.
 func boxHoverEffect(tag string, isDark bool) *html.CSSContent {
 	if isDark {
 		return html.NewCSSContent(tag,

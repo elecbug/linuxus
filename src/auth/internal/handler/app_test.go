@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// newTestApp creates an App with initialized failure tracking maps for tests.
 func newTestApp() *App {
 	return &App{
 		ipFails:   make(map[string]*loginAttempt),
@@ -12,6 +13,7 @@ func newTestApp() *App {
 	}
 }
 
+// TestEvictStaleEntries verifies stale failure entries are cleaned up correctly.
 func TestEvictStaleEntries(t *testing.T) {
 	app := newTestApp()
 

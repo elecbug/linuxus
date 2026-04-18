@@ -11,6 +11,7 @@ import (
 	"github.com/elecbug/linuxus/src/auth/internal/user"
 )
 
+// main loads configuration, registers routes, and starts the auth server.
 func main() {
 	config, err := parseConfig()
 	if err != nil {
@@ -25,6 +26,7 @@ func main() {
 	}
 }
 
+// parseConfig loads all runtime settings from environment variables and auth list data.
 func parseConfig() (*handler.AppConfig, error) {
 	var err error
 
@@ -94,6 +96,7 @@ func parseConfig() (*handler.AppConfig, error) {
 	}, nil
 }
 
+// trustProxiesToSlice parses a comma-separated trusted proxy list into CIDR strings.
 func trustProxiesToSlice(trustedProxies string) []string {
 	var trustedProxyCIDRs []string
 
@@ -109,6 +112,7 @@ func trustProxiesToSlice(trustedProxies string) []string {
 	return trustedProxyCIDRs
 }
 
+// getEnv returns a required environment variable or an error if it is missing.
 func getEnv(key string) (string, error) {
 	value := os.Getenv(key)
 	if value == "" {
