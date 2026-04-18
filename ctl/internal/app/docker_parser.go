@@ -9,31 +9,20 @@ import (
 	"github.com/docker/go-connections/nat"
 )
 
-// containerInfo holds formatted container status row data.
 type containerInfo struct {
-	// Name is the container display name.
-	Name string
-	// Status is the container state/status text.
+	Name   string
 	Status string
-	// Image is the image reference used by the container.
-	Image string
-	// Ports is the formatted port binding summary.
-	Ports string
-	// UserID is the derived user identifier for the container.
+	Image  string
+	Ports  string
 	UserID string
 }
 
-// networkInfo holds formatted network status row data.
 type networkInfo struct {
-	// Name is the network display name.
-	Name string
-	// ID is the short display identifier for the network.
-	ID string
-	// Subnet is the CIDR subnet for the network.
+	Name   string
+	ID     string
 	Subnet string
 }
 
-// parseNanoCPUs converts a CPU float string into Docker NanoCPU units.
 func parseNanoCPUs(v string) (int64, error) {
 	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
 	if err != nil {
@@ -45,7 +34,6 @@ func parseNanoCPUs(v string) (int64, error) {
 	return int64(f * 1_000_000_000), nil
 }
 
-// parseMemoryBytes converts a memory string with unit suffix into bytes.
 func parseMemoryBytes(v string) (int64, error) {
 	s := strings.TrimSpace(strings.ToLower(v))
 	mult := int64(1)
@@ -84,7 +72,6 @@ func parseMemoryBytes(v string) (int64, error) {
 	return n * mult, nil
 }
 
-// parsePortBinding parses a HOST:CONTAINER mapping into Docker port structures.
 func parsePortBinding(s string) (nat.Port, nat.PortBinding, error) {
 	parts := strings.Split(s, ":")
 	if len(parts) != 2 {
@@ -105,7 +92,6 @@ func parsePortBinding(s string) (nat.Port, nat.PortBinding, error) {
 	}, nil
 }
 
-// parseContainerInfos formats container rows into an aligned table-like text block.
 func parseContainerInfos(infos []containerInfo) []string {
 	maxName := 0
 	maxStatus := 0
@@ -150,7 +136,6 @@ func parseContainerInfos(infos []containerInfo) []string {
 	return out
 }
 
-// parseNetworkInfos formats network rows into an aligned table-like text block.
 func parseNetworkInfos(infos []networkInfo) []string {
 	maxName := 0
 	maxID := 0
@@ -184,7 +169,6 @@ func parseNetworkInfos(infos []networkInfo) []string {
 	return out
 }
 
-// parseContainerStatusText derives a user-friendly status string from inspect data.
 func parseContainerStatusText(info container.InspectResponse) string {
 	if info.State == nil {
 		return "-"
@@ -203,7 +187,6 @@ func parseContainerStatusText(info container.InspectResponse) string {
 	return status
 }
 
-// parsePortSummary formats published and exposed ports from inspect response.
 func parsePortSummary(info container.InspectResponse) string {
 	if info.NetworkSettings == nil || len(info.NetworkSettings.Ports) == 0 {
 		return "-"
@@ -241,7 +224,6 @@ func parsePortSummary(info container.InspectResponse) string {
 	return out
 }
 
-// parseSliceToTmpfsMap converts tmpfs entries into Docker tmpfs map syntax.
 func parseSliceToTmpfsMap(items []string) map[string]string {
 	if len(items) == 0 {
 		return nil
@@ -264,7 +246,6 @@ func parseSliceToTmpfsMap(items []string) map[string]string {
 	return out
 }
 
-// buildAuthRuntimeSpec builds a runtime spec for the auth service container.
 func (a *App) buildAuthRuntimeSpec() RuntimeContainerSpec {
 	return RuntimeContainerSpec{
 		Image: a.authImageName(),
@@ -295,7 +276,6 @@ func (a *App) buildAuthRuntimeSpec() RuntimeContainerSpec {
 	}
 }
 
-// buildManagerRuntimeSpec builds a runtime spec for the manager service container.
 func (a *App) buildManagerRuntimeSpec() (RuntimeContainerSpec, error) {
 	userCPUStr := fmt.Sprintf("%v", a.Config.UserService.Container.User.Limits.CPU)
 	userNanoCPUs, err := parseNanoCPUs(userCPUStr)

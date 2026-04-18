@@ -9,7 +9,6 @@ import (
 	"strings"
 )
 
-// handleTerminalRedirect validates session and normalizes terminal route path.
 func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.getSessionID(r); !ok {
 		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
@@ -19,7 +18,6 @@ func (a *App) handleTerminalRedirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/"+a.terminalPath+"/", http.StatusSeeOther)
 }
 
-// handleTerminalProxy ensures runtime readiness and proxies traffic to the user shell.
 func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	id, ok := a.getSessionID(r)
 	if !ok {
@@ -80,7 +78,6 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	proxy.ServeHTTP(w, r)
 }
 
-// sanitizeID converts user IDs into safe backend hostname fragments.
 func sanitizeID(id string) string {
 	id = strings.ToLower(id)
 	var b strings.Builder

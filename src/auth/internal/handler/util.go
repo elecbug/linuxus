@@ -2,7 +2,6 @@ package handler
 
 import "strings"
 
-// ParseTrustedProxies parses a comma-separated trusted proxy CIDR list.
 func ParseTrustedProxies(trustedProxies string) []string {
 	var trustedProxyCIDRs []string
 

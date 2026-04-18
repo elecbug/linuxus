@@ -15,12 +15,9 @@ import (
 	"github.com/elecbug/linuxus/src/manager/internal/config"
 )
 
-// reInvalid matches characters disallowed in sanitized resource names.
 var reInvalid = regexp.MustCompile(`[^a-z0-9]+`)
 
-// Server encapsulates Docker-backed handlers for manager API endpoints.
 type Server struct {
-	// docker is the Docker API client used for runtime orchestration.
 	docker *client.Client
 	// cfg is the active runtime configuration.
 	cfg *config.Config
@@ -38,7 +35,6 @@ type RuntimeState struct {
 	IdleSince      time.Time
 }
 
-// NewServer creates a manager server with an initialized Docker client.
 func NewServer(cfg *config.Config) (*Server, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -54,7 +50,6 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}, nil
 }
 
-// Close releases Docker client resources.
 func (s *Server) Close() error {
 	if s == nil || s.docker == nil {
 		return nil
@@ -63,14 +58,12 @@ func (s *Server) Close() error {
 	return s.docker.Close()
 }
 
-// HandleHealthz returns a simple readiness response.
 func (s *Server) HandleHealthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true,
 	})
 }
 
-// HandleUserUp validates input and ensures a user runtime container is ready.
 func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, userUpResponse{

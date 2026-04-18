@@ -13,7 +13,6 @@ import (
 	"strings"
 )
 
-// PrepareUserDisks ensures shared and per-user disk images are created and mounted.
 func (a *App) PrepareUserDisks() error {
 	if err := os.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
 		return err
@@ -37,7 +36,6 @@ func (a *App) PrepareUserDisks() error {
 	return nil
 }
 
-// createSharedDisk creates and mounts a shared ext4 disk image at the target path.
 func (a *App) createSharedDisk(path string) error {
 	size := a.Config.Volumes.DiskLimit
 	if size <= 0 {
@@ -113,7 +111,6 @@ func (a *App) createSharedDisk(path string) error {
 	return nil
 }
 
-// createUserDisk creates and mounts a per-user ext4 disk image.
 func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	size := a.Config.UserService.Container.User.Limits.Disk
 	if isAdmin {
@@ -186,7 +183,6 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	return nil
 }
 
-// listMountedDirsDeepestFirst returns mounted directories under root sorted deepest-first.
 func listMountedDirsDeepestFirst(root string) ([]string, error) {
 	var dirs []string
 
@@ -226,7 +222,6 @@ func listMountedDirsDeepestFirst(root string) ([]string, error) {
 	return dirs, nil
 }
 
-// isMountPoint reports whether the given path is currently mounted.
 func isMountPoint(path string) (bool, error) {
 	cmd := exec.Command("mountpoint", "-q", path)
 	err := cmd.Run()
@@ -243,7 +238,6 @@ func isMountPoint(path string) (bool, error) {
 	return false, fmt.Errorf("failed to check mountpoint %s: %w", path, err)
 }
 
-// findLoopDevicesForImages finds loop devices backed by .img files in homesDir.
 func findLoopDevicesForImages(homesDir string) ([]string, error) {
 	entries, err := os.ReadDir(homesDir)
 	if err != nil {
