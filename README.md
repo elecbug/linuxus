@@ -18,9 +18,9 @@
 
 ## ✨ Overview
 
-Linuxus enables instructors to provide per-user Linux environments without requiring local setup.
+![](./doc/fig/04-arch.png)
 
-The current architecture flows from **auth** → **manager** → **user runtime**: users authenticate first, the manager coordinates session and container access, and each user is connected to an isolated runtime environment.
+Linuxus enables instructors to provide per-user Linux environments without requiring local setup.
 
 🐳 Container-based user isolation (Docker)  
 🌐 Web-based shell access (no SSH required)  
