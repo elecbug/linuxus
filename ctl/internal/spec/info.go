@@ -10,7 +10,7 @@ type ContainerInfo struct {
 	Image string
 	// Ports is the summarized port mapping text.
 	Ports string
-	// Role is the associated logical user identifier.
+	// Role is the display role or label shown for the container.
 	Role string
 }
 
