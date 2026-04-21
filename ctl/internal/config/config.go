@@ -146,7 +146,7 @@ type Config struct {
 			Readonly string `yaml:"readonly"`
 		} `yaml:"container"`
 
-		// DiskLimit is the default disk image size in MB.
+		// DiskLimit is the default disk image size string (e.g., 1G, 512M).
 		DiskLimit string `yaml:"disk_limit"`
 	} `yaml:"volumes"`
 }
@@ -159,7 +159,7 @@ type Limits struct {
 	Memory string `yaml:"memory"`
 	// PID is the process count limit.
 	PID int `yaml:"pid"`
-	// Disk is the per-user disk size in MB.
+	// Disk is the per-user disk size string (e.g., 1G, 512M).
 	Disk string `yaml:"disk"`
 	// Ulimits contains configurable Unix resource limits.
 	Ulimits struct {
