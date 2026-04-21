@@ -56,10 +56,10 @@ func (a *App) ValidateConfig() error {
 	if a.Config.ManagerService.Container.Network == "" {
 		return errors.New("manager_service.container.network must not be empty")
 	}
-	if a.Config.ManagerService.Session.Timeout == "" {
+	if a.Config.ManagerService.AuthService.ConnectionTimeout == "" {
 		return errors.New("manager_service.session.timeout must not be empty")
 	}
-	if _, err := time.ParseDuration(a.Config.ManagerService.Session.Timeout); err != nil {
+	if _, err := time.ParseDuration(a.Config.ManagerService.AuthService.ConnectionTimeout); err != nil {
 		return fmt.Errorf("manager_service.session.timeout is not a valid duration: %w", err)
 	}
 	if a.Config.ManagerService.Container.Subnet == "" {
@@ -83,7 +83,7 @@ func (a *App) normalizeConfigPaths() {
 	a.Config.AuthService.SourceDir = a.absFromSource(a.Config.AuthService.SourceDir)
 	a.Config.ManagerService.SourceDir = a.absFromSource(a.Config.ManagerService.SourceDir)
 
-	a.Config.AuthService.AuthListFile.HostPath = a.absFromSource(a.Config.AuthService.AuthListFile.HostPath)
+	a.Config.AuthService.Mounts.HostAuthListPath = a.absFromSource(a.Config.AuthService.Mounts.HostAuthListPath)
 
 	a.Config.Volumes.Host.Homes = a.absFromSource(a.Config.Volumes.Host.Homes)
 	a.Config.Volumes.Host.Share = a.absFromSource(a.Config.Volumes.Host.Share)

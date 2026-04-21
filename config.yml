@@ -38,16 +38,17 @@ auth_service:
   source_dir: ./auth
   container:
     name: linuxus_auth
-    timezone: Asia/Seoul
     external_port: 8080
-  url_path:
+  runtime:
+    timezone: Asia/Seoul
+  service_url:
     login: login
     logout: logout
     service: service
     terminal: terminal
-  auth_list_file:
-    host_path: ./data/AUTH_LIST
-    container_path: /data/AUTH_LIST
+  mounts:
+    host_auth_list_path: ./data/AUTH_LIST
+    container_auth_list_path: /data/AUTH_LIST
   security:
     session_secret: change-this-secret-before-production
     trusted_proxies: ""
@@ -59,10 +60,10 @@ manager_service:
     name: linuxus_manager
     network: linuxus_manager_net
     subnet: "10.11.0.0/24"
-  user:
-    timeout: 5m
-  session:
-    timeout: 30s
+  user_management:
+    cleanup_timeout: 5m
+  auth_service:
+    connection_timeout: 30s
   security:
     manager_secret: change-this-secret-before-production
 

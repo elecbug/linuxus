@@ -48,14 +48,18 @@ type Config struct {
 		Container struct {
 			// Name is the auth container name.
 			Name string `yaml:"name"`
-			// Timezone is the timezone inside the auth container.
-			Timezone string `yaml:"timezone"`
 			// ExternalPort is the host port exposed by auth service.
 			ExternalPort int `yaml:"external_port"`
 		} `yaml:"container"`
 
-		// URLPath defines auth endpoint paths.
-		URLPath struct {
+		// Runtime defines execution identity and timezone inside auth container.
+		Runtime struct {
+			// Timezone is the timezone inside the auth container.
+			Timezone string `yaml:"timezone"`
+		} `yaml:"runtime"`
+
+		// ServiceURL defines auth endpoint paths.
+		ServiceURL struct {
 			// Login is the login route path.
 			Login string `yaml:"login"`
 			// Logout is the logout route path.
@@ -64,15 +68,15 @@ type Config struct {
 			Service string `yaml:"service"`
 			// Terminal is the terminal route path.
 			Terminal string `yaml:"terminal"`
-		} `yaml:"url_path"`
+		} `yaml:"service_url"`
 
-		// AuthListFile defines host/container paths for auth list data.
-		AuthListFile struct {
-			// HostPath is the auth list path on the host.
-			HostPath string `yaml:"host_path"`
-			// ContainerPath is the mounted auth list path in container.
-			ContainerPath string `yaml:"container_path"`
-		} `yaml:"auth_list_file"`
+		// Mounts defines host/container paths for auth list data.
+		Mounts struct {
+			// HostAuthListPath is the auth list path on the host.
+			HostAuthListPath string `yaml:"host_auth_list_path"`
+			// ContainerAuthListPath is the mounted auth list path in container.
+			ContainerAuthListPath string `yaml:"container_auth_list_path"`
+		} `yaml:"mounts"`
 
 		// Security defines auth security settings.
 		Security struct {
@@ -101,17 +105,17 @@ type Config struct {
 			Subnet string `yaml:"subnet"`
 		} `yaml:"container"`
 
-		// User defines session timeout settings for managed users.
-		User struct {
-			// Timeout is the idle timeout for user sessions.
-			Timeout string `yaml:"timeout"`
-		} `yaml:"user"`
+		// UserManagement defines session timeout settings for managed users.
+		UserManagement struct {
+			// CleanupTimeout is the idle timeout for user sessions.
+			CleanupTimeout string `yaml:"cleanup_timeout"`
+		} `yaml:"user_management"`
 
-		// Session defines manager request/session timing behavior.
-		Session struct {
-			// Timeout is the manager request/session timeout duration.
-			Timeout string `yaml:"timeout"`
-		} `yaml:"session"`
+		// AuthService defines manager request/session timing behavior.
+		AuthService struct {
+			// ConnectionTimeout is the manager request/session timeout duration.
+			ConnectionTimeout string `yaml:"connection_timeout"`
+		} `yaml:"auth_service"`
 
 		// Security defines authentication settings for manager endpoints.
 		Security struct {

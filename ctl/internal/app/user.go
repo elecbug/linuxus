@@ -10,7 +10,7 @@ import (
 
 // LoadUserList parses user IDs from the auth list file.
 func (a *App) LoadUserList() error {
-	authList := a.Config.AuthService.AuthListFile.HostPath
+	authList := a.Config.AuthService.Mounts.HostAuthListPath
 
 	f, err := os.Open(authList)
 	if err != nil {
