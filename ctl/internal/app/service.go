@@ -65,14 +65,18 @@ func (a *App) VolumeClean() error {
 		return err
 	}
 	for _, dir := range homeMounts {
-		fmt.Printf("[+] Unmounting: %s\n", dir)
-		_ = runCmdAllowFail("sudo", "umount", dir)
+		err = umountDisk(dir)
+		if err != nil {
+			fmt.Printf("[-] Failed to unmount home disk at %s: %v\n", dir, err)
+			continue
+		}
 	}
 
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
-		if mounted, err := isMountPoint(mountPoint); err == nil && mounted {
-			fmt.Printf("[+] Unmounting: %s\n", mountPoint)
-			_ = runCmdAllowFail("sudo", "umount", mountPoint)
+		err = umountDisk(mountPoint)
+		if err != nil {
+			fmt.Printf("[-] Failed to unmount shared disk at %s: %v\n", mountPoint, err)
+			continue
 		}
 	}
 
@@ -104,7 +108,11 @@ func (a *App) VolumeClean() error {
 
 	for _, dev := range loopDevs {
 		fmt.Printf("[+] Detaching loop device: %s\n", dev)
-		_ = runCmdAllowFail("sudo", "losetup", "-d", dev)
+		err = detachLoopDevice(dev)
+		if err != nil {
+			fmt.Printf("[-] Failed to detach loop device %s: %v\n", dev, err)
+			continue
+		}
 	}
 
 	if err := os.RemoveAll(a.Config.Volumes.Host.Homes); err != nil && !os.IsNotExist(err) {
@@ -139,7 +147,7 @@ func (a *App) ServicePS() error {
 		Status: "STATE(STATUS)",
 		Image:  "IMAGE",
 		Ports:  "PORTS",
-		UserID: "USER ID",
+		Role:   "ROLE",
 	})
 
 	for _, name := range names {
@@ -151,7 +159,7 @@ func (a *App) ServicePS() error {
 					Status: "not found",
 					Image:  "-",
 					Ports:  "-",
-					UserID: "-",
+					Role:   "-",
 				})
 				continue
 			}
@@ -175,7 +183,7 @@ func (a *App) ServicePS() error {
 			Status: format.DisplayStatusText(state, status, hasState),
 			Image:  image,
 			Ports:  ports,
-			UserID: format.DisplayUserName(a.Config, name),
+			Role:   format.DisplayUserName(a.Config, name),
 		})
 	}
 
@@ -200,7 +208,7 @@ func (a *App) ServicePS() error {
 	}
 
 	for _, net := range networks {
-		if strings.HasPrefix(net.Name, a.Config.UserService.Container.NetworkPrefix) ||
+		if strings.HasPrefix(net.Name, a.Config.UserService.Container.NetworkNamePrefix) ||
 			net.Name == a.Config.ManagerService.Container.Network {
 			info := spec.NetworkInfo{
 				Name:   net.Name,

@@ -22,8 +22,8 @@ func StringToNanoCPUs(v string) (int64, error) {
 	return int64(f * 1_000_000_000), nil
 }
 
-// StringToMemoryBytes converts a memory string to bytes.
-func StringToMemoryBytes(v string) (int64, error) {
+// StringToBytes converts a memory string to bytes.
+func StringToBytes(v string) (int64, error) {
 	s := strings.TrimSpace(strings.ToLower(v))
 	mult := int64(1)
 
@@ -88,7 +88,7 @@ func ContainerInfosToStrings(infos []spec.ContainerInfo) []string {
 	maxStatus := 0
 	maxImage := 0
 	maxPorts := 0
-	maxUserID := 0
+	maxRole := 0
 
 	for _, info := range infos {
 		if len(info.Name) > maxName {
@@ -103,8 +103,8 @@ func ContainerInfosToStrings(infos []spec.ContainerInfo) []string {
 		if len(info.Ports) > maxPorts {
 			maxPorts = len(info.Ports)
 		}
-		if len(info.UserID) > maxUserID {
-			maxUserID = len(info.UserID)
+		if len(info.Role) > maxRole {
+			maxRole = len(info.Role)
 		}
 	}
 
@@ -112,14 +112,14 @@ func ContainerInfosToStrings(infos []spec.ContainerInfo) []string {
 	for i, info := range infos {
 		out[i] = fmt.Sprintf("| %-*s | %-*s | %-*s | %-*s | %-*s |",
 			maxName, info.Name,
-			maxUserID, info.UserID,
+			maxRole, info.Role,
 			maxStatus, info.Status,
 			maxImage, info.Image,
 			maxPorts, info.Ports,
 		)
 		if i == 0 {
 			out[i] += "\n|-" + strings.Repeat("-", maxName) + "-|-" +
-				strings.Repeat("-", maxUserID) + "-|-" + strings.Repeat("-", maxStatus) + "-|-" +
+				strings.Repeat("-", maxRole) + "-|-" + strings.Repeat("-", maxStatus) + "-|-" +
 				strings.Repeat("-", maxImage) + "-|-" + strings.Repeat("-", maxPorts) + "-|"
 		}
 	}

@@ -11,39 +11,32 @@ type Config struct {
 		Container struct {
 			// NamePrefix is prefixed to generated user container names.
 			NamePrefix string `yaml:"name_prefix"`
-			// NetworkPrefix is prefixed to generated user network names.
-			NetworkPrefix string `yaml:"network_prefix"`
-			// BaseIP is the base IP range used for user networking.
-			BaseIP string `yaml:"base_ip"`
-
-			// Runtime defines execution identity inside user containers.
-			Runtime struct {
-				// UID is the runtime user ID.
-				UID int `yaml:"uid"`
-				// GID is the runtime group ID.
-				GID int `yaml:"gid"`
-				// User is the runtime username.
-				User string `yaml:"user"`
-				// Hostname is the default container hostname.
-				Hostname string `yaml:"hostname"`
-				// Timezone is the timezone inside the container.
-				Timezone string `yaml:"timezone"`
-			} `yaml:"runtime"`
-
-			// User stores limits for regular users.
-			User struct {
-				// Limits are resource limits for regular users.
-				Limits Limits `yaml:"limits"`
-			} `yaml:"user"`
-
-			// Admin stores identity and limits for the admin user.
-			Admin struct {
-				// UserID is the admin user ID.
-				UserID string `yaml:"user_id"`
-				// Limits are resource limits for the admin user.
-				Limits Limits `yaml:"limits"`
-			} `yaml:"admin"`
+			// NetworkNamePrefix is prefixed to generated user network names.
+			NetworkNamePrefix string `yaml:"network_name_prefix"`
+			// BaseSubnet16 is the base subnet used for user networking.
+			BaseSubnet16 string `yaml:"base_subnet_16"`
 		} `yaml:"container"`
+
+		// Runtime defines execution identity inside user containers.
+		Runtime struct {
+			// UID is the runtime user ID.
+			UID int `yaml:"uid"`
+			// GID is the runtime group ID.
+			GID int `yaml:"gid"`
+			// LinuxUsername is the runtime username.
+			LinuxUsername string `yaml:"linux_username"`
+			// LinuxHostname is the default container hostname.
+			LinuxHostname string `yaml:"linux_hostname"`
+			// Timezone is the timezone inside the container.
+			Timezone string `yaml:"timezone"`
+		} `yaml:"runtime"`
+
+		Limits struct {
+			// User contains resource limits for user containers.
+			User Limits `yaml:"user"`
+			// Admin contains resource limits for the admin user.
+			Admin Limits `yaml:"admin"`
+		} `yaml:"limits"`
 	} `yaml:"user_service"`
 
 	// AuthService configures the authentication gateway service.
@@ -55,14 +48,18 @@ type Config struct {
 		Container struct {
 			// Name is the auth container name.
 			Name string `yaml:"name"`
-			// Timezone is the timezone inside the auth container.
-			Timezone string `yaml:"timezone"`
 			// ExternalPort is the host port exposed by auth service.
 			ExternalPort int `yaml:"external_port"`
 		} `yaml:"container"`
 
-		// URLPath defines auth endpoint paths.
-		URLPath struct {
+		// Runtime defines execution identity and timezone inside auth container.
+		Runtime struct {
+			// Timezone is the timezone inside the auth container.
+			Timezone string `yaml:"timezone"`
+		} `yaml:"runtime"`
+
+		// ServiceURL defines auth endpoint paths.
+		ServiceURL struct {
 			// Login is the login route path.
 			Login string `yaml:"login"`
 			// Logout is the logout route path.
@@ -71,15 +68,15 @@ type Config struct {
 			Service string `yaml:"service"`
 			// Terminal is the terminal route path.
 			Terminal string `yaml:"terminal"`
-		} `yaml:"url_path"`
+		} `yaml:"service_url"`
 
-		// AuthListFile defines host/container paths for auth list data.
-		AuthListFile struct {
-			// HostPath is the auth list path on the host.
-			HostPath string `yaml:"host_path"`
-			// ContainerPath is the mounted auth list path in container.
-			ContainerPath string `yaml:"container_path"`
-		} `yaml:"auth_list_file"`
+		// Mounts defines host/container paths for auth list data.
+		Mounts struct {
+			// HostAuthListPath is the auth list path on the host.
+			HostAuthListPath string `yaml:"host_auth_list_path"`
+			// ContainerAuthListPath is the mounted auth list path in container.
+			ContainerAuthListPath string `yaml:"container_auth_list_path"`
+		} `yaml:"mounts"`
 
 		// Security defines auth security settings.
 		Security struct {
@@ -88,6 +85,9 @@ type Config struct {
 			// TrustedProxies is the trusted proxy CIDR list.
 			TrustedProxies string `yaml:"trusted_proxies"`
 		} `yaml:"security"`
+
+		// AdminID is the admin user ID.
+		AdminID string `yaml:"admin_id"`
 	} `yaml:"auth_service"`
 
 	// ManagerService configures manager runtime and session behavior.
@@ -99,25 +99,23 @@ type Config struct {
 		Container struct {
 			// Name is the manager container name.
 			Name string `yaml:"name"`
-			// Timezone is the timezone inside manager container.
-			Timezone string `yaml:"timezone"`
 			// Network is the primary manager runtime network name.
 			Network string `yaml:"network"`
 			// Subnet is the subnet CIDR for manager runtime network.
 			Subnet string `yaml:"subnet"`
 		} `yaml:"container"`
 
-		// User defines session timeout settings for managed users.
-		User struct {
-			// Timeout is the idle timeout for user sessions.
-			Timeout string `yaml:"timeout"`
-		} `yaml:"user"`
+		// UserManagement defines session timeout settings for managed users.
+		UserManagement struct {
+			// CleanupTimeout is the idle timeout for user sessions.
+			CleanupTimeout string `yaml:"cleanup_timeout"`
+		} `yaml:"user_management"`
 
-		// Session defines manager request/session timing behavior.
-		Session struct {
-			// Timeout is the manager request/session timeout duration.
-			Timeout string `yaml:"timeout"`
-		} `yaml:"session"`
+		// AuthService defines manager request/session timing behavior.
+		AuthService struct {
+			// ConnectionTimeout is the manager request/session timeout duration.
+			ConnectionTimeout string `yaml:"connection_timeout"`
+		} `yaml:"auth_service"`
 
 		// Security defines authentication settings for manager endpoints.
 		Security struct {
@@ -148,8 +146,8 @@ type Config struct {
 			Readonly string `yaml:"readonly"`
 		} `yaml:"container"`
 
-		// DiskLimit is the default disk image size in MB.
-		DiskLimit int `yaml:"disk_limit"`
+		// DiskLimit is the default disk image size string (e.g., 1G, 512M).
+		DiskLimit string `yaml:"disk_limit"`
 	} `yaml:"volumes"`
 }
 
@@ -161,8 +159,8 @@ type Limits struct {
 	Memory string `yaml:"memory"`
 	// PID is the process count limit.
 	PID int `yaml:"pid"`
-	// Disk is the per-user disk size in MB.
-	Disk int `yaml:"disk"`
+	// Disk is the per-user disk size string (e.g., 1G, 512M).
+	Disk string `yaml:"disk"`
 	// Ulimits contains configurable Unix resource limits.
 	Ulimits struct {
 		Nofile struct {

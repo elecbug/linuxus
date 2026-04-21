@@ -26,7 +26,7 @@ func (a *App) buildRuntimeImages() error {
 	}
 
 	if err := a.buildImage(a.Config.UserService.SourceDir, a.userImageName(), map[string]*string{
-		"CONTAINER_RUNTIME_USER": &a.Config.UserService.Container.Runtime.User,
+		"CONTAINER_RUNTIME_USER": &a.Config.UserService.Runtime.LinuxUsername,
 	}); err != nil {
 		return fmt.Errorf("failed to build user image: %w", err)
 	}

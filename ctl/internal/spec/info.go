@@ -10,8 +10,8 @@ type ContainerInfo struct {
 	Image string
 	// Ports is the summarized port mapping text.
 	Ports string
-	// UserID is the associated logical user identifier.
-	UserID string
+	// Role is the display role or label shown for the container.
+	Role string
 }
 
 // NetworkInfo is a display model for runtime network status output.

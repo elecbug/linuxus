@@ -18,9 +18,9 @@
 
 ## ✨ Overview
 
-Linuxus enables instructors to provide per-user Linux environments without requiring local setup.
+![](./doc/fig/04-arch.png)
 
-The current architecture flows from **auth** → **manager** → **user runtime**: users authenticate first, the manager coordinates session and container access, and each user is connected to an isolated runtime environment.
+Linuxus enables instructors to provide per-user Linux environments without requiring local setup.
 
 🐳 Container-based user isolation (Docker)  
 🌐 Web-based shell access (no SSH required)  
@@ -80,12 +80,13 @@ The current architecture flows from **auth** → **manager** → **user runtime*
    ```
 
    > ⚠️ The default admin account ID is `alpha`.
-   > You can change it by modifying `admin.user_id` in `src/config.yml`.
+   > You can change it by modifying `auth_service.admin_id` in `config.yml`.
 
    ```yml
    ...
-   admin:
-     user_id: alpha
+   auth_service:
+     ...
+     admin_id: alpha
    ...
    ```
 

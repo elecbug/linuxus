@@ -54,7 +54,7 @@ func run() error {
 
 	repoDir := filepath.Dir(execPath)
 	sourceDir := filepath.Join(repoDir, "src")
-	configFile := filepath.Join(sourceDir, "config.yml")
+	configFile := filepath.Join(repoDir, "config.yml")
 
 	opts, err := parseArgs(os.Args[1:])
 	if err != nil {

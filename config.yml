@@ -1,0 +1,79 @@
+user_service:
+  source_dir: ./service
+  container:
+    name_prefix: linuxus_user_
+    network_name_prefix: linuxus_user_net_
+    base_subnet_16: "10.10.0.0"
+  runtime:
+    uid: 1000
+    gid: 1000
+    linux_username: user
+    linux_hostname: linuxus
+    timezone: Asia/Seoul
+  limits:
+    user:
+      cpu: 1.5
+      memory: 512m
+      pid: 128
+      ulimits:
+        nofile:
+          soft: 1024
+          hard: 2048
+      disk: 512M
+      # network_bandwidth: 10mbit
+      # session_timeout: 3600
+    admin:
+      cpu: 1.5
+      memory: 512M
+      pid: 128
+      ulimits:
+        nofile:
+          soft: 1024
+          hard: 2048
+      disk: 512M
+      # network_bandwidth: 10mbit
+      # session_timeout: 3600
+
+auth_service:
+  source_dir: ./auth
+  container:
+    name: linuxus_auth
+    external_port: 8080
+  runtime:
+    timezone: Asia/Seoul
+  service_url:
+    login: login
+    logout: logout
+    service: service
+    terminal: terminal
+  mounts:
+    host_auth_list_path: ./data/AUTH_LIST
+    container_auth_list_path: /data/AUTH_LIST
+  security:
+    session_secret: change-this-secret-before-production
+    trusted_proxies: ""
+  admin_id: alpha
+
+manager_service:
+  source_dir: ./manager
+  container:
+    name: linuxus_manager
+    network: linuxus_manager_net
+    subnet: "10.11.0.0/24"
+  user_management:
+    cleanup_timeout: 5m
+  auth_service:
+    connection_timeout: 30s
+  security:
+    manager_secret: change-this-secret-before-production
+
+volumes:
+  host:
+    volumes: ./volumes
+    homes: ./volumes/homes
+    share: ./volumes/share
+    readonly: ./volumes/readonly
+  container:
+    share: /home/share
+    readonly: /home/readonly
+  disk_limit: 1G

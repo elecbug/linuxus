@@ -29,8 +29,8 @@ func (a *App) ValidateConfig() error {
 	if a.Config.AuthService.Container.ExternalPort <= 0 {
 		return errors.New("auth_service.external_port must be a positive integer")
 	}
-	if a.Config.UserService.Container.Admin.UserID == "" {
-		return errors.New("admin.user_id must not be empty")
+	if a.Config.AuthService.AdminID == "" {
+		return errors.New("auth_service.admin_id must not be empty")
 	}
 	if a.Config.Volumes.Host.Volumes == "" {
 		return errors.New("volumes.host.volumes must not be empty")
@@ -38,8 +38,8 @@ func (a *App) ValidateConfig() error {
 	if a.Config.Volumes.Host.Homes == "" || a.Config.Volumes.Host.Share == "" || a.Config.Volumes.Host.Readonly == "" {
 		return errors.New("volume host paths must not be empty")
 	}
-	if a.Config.Volumes.DiskLimit <= 0 {
-		return errors.New("volumes.disk_limit must be a positive integer")
+	if a.Config.Volumes.DiskLimit == "" {
+		return errors.New("volumes.disk_limit must not be empty")
 	}
 	if a.Config.UserService.SourceDir == "" {
 		return errors.New("user_service.source_dir must not be empty")
@@ -56,23 +56,23 @@ func (a *App) ValidateConfig() error {
 	if a.Config.ManagerService.Container.Network == "" {
 		return errors.New("manager_service.container.network must not be empty")
 	}
-	if a.Config.ManagerService.Session.Timeout == "" {
-		return errors.New("manager_service.session.timeout must not be empty")
+	if a.Config.ManagerService.AuthService.ConnectionTimeout == "" {
+		return errors.New("manager_service.auth_service.connection_timeout must not be empty")
 	}
-	if _, err := time.ParseDuration(a.Config.ManagerService.Session.Timeout); err != nil {
-		return fmt.Errorf("manager_service.session.timeout is not a valid duration: %w", err)
+	if _, err := time.ParseDuration(a.Config.ManagerService.AuthService.ConnectionTimeout); err != nil {
+		return fmt.Errorf("manager_service.auth_service.connection_timeout is not a valid duration: %w", err)
 	}
 	if a.Config.ManagerService.Container.Subnet == "" {
-		return errors.New("manager_service.container.base_ip must not be empty")
+		return errors.New("manager_service.container.subnet must not be empty")
 	}
 	if a.Config.UserService.Container.NamePrefix == "" {
 		return errors.New("user_service.container.name_prefix must not be empty")
 	}
-	if a.Config.UserService.Container.NetworkPrefix == "" {
-		return errors.New("user_service.container.network_prefix must not be empty")
+	if a.Config.UserService.Container.NetworkNamePrefix == "" {
+		return errors.New("user_service.container.network_name_prefix must not be empty")
 	}
-	if a.Config.UserService.Container.BaseIP == "" {
-		return errors.New("user_service.container.base_ip must not be empty")
+	if a.Config.UserService.Container.BaseSubnet16 == "" {
+		return errors.New("user_service.container.base_subnet_16 must not be empty")
 	}
 	return nil
 }
@@ -83,7 +83,7 @@ func (a *App) normalizeConfigPaths() {
 	a.Config.AuthService.SourceDir = a.absFromSource(a.Config.AuthService.SourceDir)
 	a.Config.ManagerService.SourceDir = a.absFromSource(a.Config.ManagerService.SourceDir)
 
-	a.Config.AuthService.AuthListFile.HostPath = a.absFromSource(a.Config.AuthService.AuthListFile.HostPath)
+	a.Config.AuthService.Mounts.HostAuthListPath = a.absFromSource(a.Config.AuthService.Mounts.HostAuthListPath)
 
 	a.Config.Volumes.Host.Homes = a.absFromSource(a.Config.Volumes.Host.Homes)
 	a.Config.Volumes.Host.Share = a.absFromSource(a.Config.Volumes.Host.Share)

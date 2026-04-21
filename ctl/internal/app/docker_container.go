@@ -87,7 +87,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 	}
 
 	if spec.Limits.Memory != "" {
-		memBytes, err := format.StringToMemoryBytes(spec.Limits.Memory)
+		memBytes, err := format.StringToBytes(spec.Limits.Memory)
 		if err != nil {
 			return fmt.Errorf("invalid memory limit %q: %w", spec.Limits.Memory, err)
 		}
