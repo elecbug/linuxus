@@ -75,9 +75,9 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if workingDir == "" {
 		return nil, fmt.Errorf("WORKING_DIR is required")
 	}
-	timezone := os.Getenv("TZ")
+	timezone := os.Getenv("USER_TZ")
 	if timezone == "" {
-		return nil, fmt.Errorf("TZ is required")
+		return nil, fmt.Errorf("USER_TZ is required")
 	}
 	readonlyRootFS := true
 

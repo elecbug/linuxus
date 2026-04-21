@@ -19,7 +19,7 @@ user_service:
           nofile:
             soft: 1024
             hard: 2048
-        disk: 512  # MB
+        disk: 512m  # MB
         # network_bandwidth: 10mbit
         # session_timeout: 3600
     admin:
@@ -32,7 +32,7 @@ user_service:
           nofile:
             soft: 1024
             hard: 2048
-        disk: 512  # MB
+        disk: 512m  # MB
         # network_bandwidth: 10mbit
         # session_timeout: 3600
 
@@ -58,7 +58,6 @@ manager_service:
   source_dir: ./manager
   container:
     name: linuxus_manager
-    timezone: Asia/Seoul
     network: linuxus_manager_net
     subnet: "10.11.0.0/24"
   user:

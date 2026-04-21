@@ -46,7 +46,7 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid user cpu limit: %w", err)
 	}
-	userMemBytes, err := format.StringToMemoryBytes(a.Config.UserService.Container.User.Limits.Memory)
+	userMemBytes, err := format.StringToBytes(a.Config.UserService.Container.User.Limits.Memory)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid user memory limit: %w", err)
 	}
@@ -56,7 +56,7 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid admin cpu limit: %w", err)
 	}
-	adminMemBytes, err := format.StringToMemoryBytes(a.Config.UserService.Container.Admin.Limits.Memory)
+	adminMemBytes, err := format.StringToBytes(a.Config.UserService.Container.Admin.Limits.Memory)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid admin memory limit: %w", err)
 	}
@@ -65,7 +65,7 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 		Image: a.managerImageName(),
 		Name:  a.Config.ManagerService.Container.Name,
 		Environment: []string{
-			"TZ=" + a.Config.ManagerService.Container.Timezone,
+			"USER_TZ=" + a.Config.UserService.Container.Runtime.Timezone,
 			"USER_IMAGE=" + a.userImageName(),
 			"USER_CONTAINER_NAME_PREFIX=" + a.Config.UserService.Container.NamePrefix,
 			"NETWORK_PREFIX=" + a.Config.UserService.Container.NetworkPrefix,

@@ -99,8 +99,6 @@ type Config struct {
 		Container struct {
 			// Name is the manager container name.
 			Name string `yaml:"name"`
-			// Timezone is the timezone inside manager container.
-			Timezone string `yaml:"timezone"`
 			// Network is the primary manager runtime network name.
 			Network string `yaml:"network"`
 			// Subnet is the subnet CIDR for manager runtime network.
@@ -162,7 +160,7 @@ type Limits struct {
 	// PID is the process count limit.
 	PID int `yaml:"pid"`
 	// Disk is the per-user disk size in MB.
-	Disk int `yaml:"disk"`
+	Disk string `yaml:"disk"`
 	// Ulimits contains configurable Unix resource limits.
 	Ulimits struct {
 		Nofile struct {

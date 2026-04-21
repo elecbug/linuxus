@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/elecbug/linuxus/src/ctl/internal/format"
 )
 
 // PrepareUserDisks creates and mounts shared/admin/user disk images.
@@ -115,9 +117,14 @@ func (a *App) createSharedDisk(path string) error {
 
 // createUserDisk creates and mounts a per-user loopback disk.
 func (a *App) createUserDisk(userID string, isAdmin bool) error {
-	size := a.Config.UserService.Container.User.Limits.Disk
+	sizeStr := a.Config.UserService.Container.User.Limits.Disk
 	if isAdmin {
-		size = a.Config.UserService.Container.Admin.Limits.Disk
+		sizeStr = a.Config.UserService.Container.Admin.Limits.Disk
+	}
+
+	size, err := format.StringToBytes(sizeStr)
+	if err != nil {
+		return fmt.Errorf("invalid disk size for %s: %w", userID, err)
 	}
 
 	if size <= 0 {
@@ -140,7 +147,7 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 
 	if _, err := os.Stat(img); os.IsNotExist(err) {
 		fmt.Printf("[+] Creating disk for %s (%dMB)\n", userID, size)
-		if err := runCmd("sudo", "dd", "if=/dev/zero", "of="+img, "bs=1M", "count="+strconv.Itoa(size)); err != nil {
+		if err := runCmd("sudo", "dd", "if=/dev/zero", "of="+img, "bs=1M", "count="+strconv.FormatInt(size, 10)); err != nil {
 			return err
 		}
 		if err := runCmd("sudo", "mkfs.ext4", "-F", img); err != nil {

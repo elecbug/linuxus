@@ -22,8 +22,8 @@ func StringToNanoCPUs(v string) (int64, error) {
 	return int64(f * 1_000_000_000), nil
 }
 
-// StringToMemoryBytes converts a memory string to bytes.
-func StringToMemoryBytes(v string) (int64, error) {
+// StringToBytes converts a memory string to bytes.
+func StringToBytes(v string) (int64, error) {
 	s := strings.TrimSpace(strings.ToLower(v))
 	mult := int64(1)
 
