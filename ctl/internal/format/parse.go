@@ -103,8 +103,8 @@ func ContainerInfosToStrings(infos []spec.ContainerInfo) []string {
 		if len(info.Ports) > maxPorts {
 			maxPorts = len(info.Ports)
 		}
-		if len(info.UserID) > maxUserID {
-			maxUserID = len(info.UserID)
+		if len(info.Role) > maxUserID {
+			maxUserID = len(info.Role)
 		}
 	}
 
@@ -112,7 +112,7 @@ func ContainerInfosToStrings(infos []spec.ContainerInfo) []string {
 	for i, info := range infos {
 		out[i] = fmt.Sprintf("| %-*s | %-*s | %-*s | %-*s | %-*s |",
 			maxName, info.Name,
-			maxUserID, info.UserID,
+			maxUserID, info.Role,
 			maxStatus, info.Status,
 			maxImage, info.Image,
 			maxPorts, info.Ports,

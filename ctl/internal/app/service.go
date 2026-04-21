@@ -139,7 +139,7 @@ func (a *App) ServicePS() error {
 		Status: "STATE(STATUS)",
 		Image:  "IMAGE",
 		Ports:  "PORTS",
-		UserID: "USER ID",
+		Role:   "ROLE",
 	})
 
 	for _, name := range names {
@@ -151,7 +151,7 @@ func (a *App) ServicePS() error {
 					Status: "not found",
 					Image:  "-",
 					Ports:  "-",
-					UserID: "-",
+					Role:   "-",
 				})
 				continue
 			}
@@ -175,7 +175,7 @@ func (a *App) ServicePS() error {
 			Status: format.DisplayStatusText(state, status, hasState),
 			Image:  image,
 			Ports:  ports,
-			UserID: format.DisplayUserName(a.Config, name),
+			Role:   format.DisplayUserName(a.Config, name),
 		})
 	}
 

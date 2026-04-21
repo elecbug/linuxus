@@ -31,7 +31,7 @@ func DisplayStatusText(state, status string, hasState bool) string {
 // DisplayUserName maps managed container names to display user identifiers.
 func DisplayUserName(cfg config.Config, name string) string {
 	if strings.HasPrefix(name, cfg.UserService.Container.NamePrefix) {
-		return name[len(cfg.UserService.Container.NamePrefix):]
+		return fmt.Sprintf("<USER:%s>", name[len(cfg.UserService.Container.NamePrefix):])
 	}
 	if name == cfg.AuthService.Container.Name {
 		return "<AUTH SERVICE>"
