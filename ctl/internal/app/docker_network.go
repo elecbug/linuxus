@@ -99,7 +99,7 @@ func (a *App) managedNetworkNames() ([]string, error) {
 	}
 
 	for _, nw := range networks {
-		if strings.HasPrefix(nw.Name, a.Config.UserService.Container.NetworkPrefix) {
+		if strings.HasPrefix(nw.Name, a.Config.UserService.Container.NetworkNamePrefix) {
 			if _, ok := seen[nw.Name]; !ok {
 				seen[nw.Name] = struct{}{}
 				out = append(out, nw.Name)

@@ -33,7 +33,7 @@ func (a *App) PrepareUserDisks() error {
 			return err
 		}
 	}
-	if err := a.createUserDisk(a.Config.UserService.Container.Admin.UserID, true); err != nil {
+	if err := a.createUserDisk(a.Config.AuthService.AdminID, true); err != nil {
 		return err
 	}
 	return nil
@@ -103,7 +103,7 @@ func (a *App) createSharedDisk(path string) error {
 	mounted = true
 
 	if err = runCmd("sudo", "chown",
-		fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
+		fmt.Sprintf("%d:%d", a.Config.UserService.Runtime.UID, a.Config.UserService.Runtime.GID),
 		mountPoint); err != nil {
 		return err
 	}
@@ -117,9 +117,9 @@ func (a *App) createSharedDisk(path string) error {
 
 // createUserDisk creates and mounts a per-user loopback disk.
 func (a *App) createUserDisk(userID string, isAdmin bool) error {
-	sizeStr := a.Config.UserService.Container.User.Limits.Disk
+	sizeStr := a.Config.UserService.Limits.User.Disk
 	if isAdmin {
-		sizeStr = a.Config.UserService.Container.Admin.Limits.Disk
+		sizeStr = a.Config.UserService.Limits.Admin.Disk
 	}
 
 	size, err := format.StringToBytes(sizeStr)
@@ -182,7 +182,7 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	mounted = true
 
 	if err = runCmd("sudo", "chown",
-		fmt.Sprintf("%d:%d", a.Config.UserService.Container.Runtime.UID, a.Config.UserService.Container.Runtime.GID),
+		fmt.Sprintf("%d:%d", a.Config.UserService.Runtime.UID, a.Config.UserService.Runtime.GID),
 		mountPoint); err != nil {
 		return err
 	}

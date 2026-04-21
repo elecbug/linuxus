@@ -200,7 +200,7 @@ func (a *App) ServicePS() error {
 	}
 
 	for _, net := range networks {
-		if strings.HasPrefix(net.Name, a.Config.UserService.Container.NetworkPrefix) ||
+		if strings.HasPrefix(net.Name, a.Config.UserService.Container.NetworkNamePrefix) ||
 			net.Name == a.Config.ManagerService.Container.Network {
 			info := spec.NetworkInfo{
 				Name:   net.Name,

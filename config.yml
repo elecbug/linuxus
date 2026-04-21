@@ -2,39 +2,37 @@ user_service:
   source_dir: ./service
   container:
     name_prefix: linuxus_user_
-    network_prefix: linuxus_user_net_
-    base_ip: "10.10.0.0"
-    runtime:
-      uid: 1000
-      gid: 1000
-      user: user
-      hostname: linuxus
-      timezone: Asia/Seoul
+    network_name_prefix: linuxus_user_net_
+    base_subnet_16: "10.10.0.0"
+  runtime:
+    uid: 1000
+    gid: 1000
+    linux_username: user
+    linux_hostname: linuxus
+    timezone: Asia/Seoul
+  limits:
     user:
-      limits:
-        cpu: 1.5
-        memory: 512m
-        pid: 128
-        ulimits:
-          nofile:
-            soft: 1024
-            hard: 2048
-        disk: 512m  # MB
-        # network_bandwidth: 10mbit
-        # session_timeout: 3600
+      cpu: 1.5
+      memory: 512m
+      pid: 128
+      ulimits:
+        nofile:
+          soft: 1024
+          hard: 2048
+      disk: 512m  # MB
+      # network_bandwidth: 10mbit
+      # session_timeout: 3600
     admin:
-      user_id: alpha
-      limits:
-        cpu: 1.5
-        memory: 512m
-        pid: 128
-        ulimits:
-          nofile:
-            soft: 1024
-            hard: 2048
-        disk: 512m  # MB
-        # network_bandwidth: 10mbit
-        # session_timeout: 3600
+      cpu: 1.5
+      memory: 512m
+      pid: 128
+      ulimits:
+        nofile:
+          soft: 1024
+          hard: 2048
+      disk: 512m  # MB
+      # network_bandwidth: 10mbit
+      # session_timeout: 3600
 
 auth_service:
   source_dir: ./auth
@@ -53,6 +51,7 @@ auth_service:
   security:
     session_secret: change-this-secret-before-production
     trusted_proxies: ""
+  admin_id: alpha
 
 manager_service:
   source_dir: ./manager

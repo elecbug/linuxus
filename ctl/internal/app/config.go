@@ -29,8 +29,8 @@ func (a *App) ValidateConfig() error {
 	if a.Config.AuthService.Container.ExternalPort <= 0 {
 		return errors.New("auth_service.external_port must be a positive integer")
 	}
-	if a.Config.UserService.Container.Admin.UserID == "" {
-		return errors.New("admin.user_id must not be empty")
+	if a.Config.AuthService.AdminID == "" {
+		return errors.New("auth_service.admin_id must not be empty")
 	}
 	if a.Config.Volumes.Host.Volumes == "" {
 		return errors.New("volumes.host.volumes must not be empty")
@@ -68,10 +68,10 @@ func (a *App) ValidateConfig() error {
 	if a.Config.UserService.Container.NamePrefix == "" {
 		return errors.New("user_service.container.name_prefix must not be empty")
 	}
-	if a.Config.UserService.Container.NetworkPrefix == "" {
+	if a.Config.UserService.Container.NetworkNamePrefix == "" {
 		return errors.New("user_service.container.network_prefix must not be empty")
 	}
-	if a.Config.UserService.Container.BaseIP == "" {
+	if a.Config.UserService.Container.BaseSubnet16 == "" {
 		return errors.New("user_service.container.base_ip must not be empty")
 	}
 	return nil

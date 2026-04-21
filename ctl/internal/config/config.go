@@ -11,39 +11,32 @@ type Config struct {
 		Container struct {
 			// NamePrefix is prefixed to generated user container names.
 			NamePrefix string `yaml:"name_prefix"`
-			// NetworkPrefix is prefixed to generated user network names.
-			NetworkPrefix string `yaml:"network_prefix"`
-			// BaseIP is the base IP range used for user networking.
-			BaseIP string `yaml:"base_ip"`
-
-			// Runtime defines execution identity inside user containers.
-			Runtime struct {
-				// UID is the runtime user ID.
-				UID int `yaml:"uid"`
-				// GID is the runtime group ID.
-				GID int `yaml:"gid"`
-				// User is the runtime username.
-				User string `yaml:"user"`
-				// Hostname is the default container hostname.
-				Hostname string `yaml:"hostname"`
-				// Timezone is the timezone inside the container.
-				Timezone string `yaml:"timezone"`
-			} `yaml:"runtime"`
-
-			// User stores limits for regular users.
-			User struct {
-				// Limits are resource limits for regular users.
-				Limits Limits `yaml:"limits"`
-			} `yaml:"user"`
-
-			// Admin stores identity and limits for the admin user.
-			Admin struct {
-				// UserID is the admin user ID.
-				UserID string `yaml:"user_id"`
-				// Limits are resource limits for the admin user.
-				Limits Limits `yaml:"limits"`
-			} `yaml:"admin"`
+			// NetworkNamePrefix is prefixed to generated user network names.
+			NetworkNamePrefix string `yaml:"network_name_prefix"`
+			// BaseSubnet16 is the base subnet used for user networking.
+			BaseSubnet16 string `yaml:"base_subnet_16"`
 		} `yaml:"container"`
+
+		// Runtime defines execution identity inside user containers.
+		Runtime struct {
+			// UID is the runtime user ID.
+			UID int `yaml:"uid"`
+			// GID is the runtime group ID.
+			GID int `yaml:"gid"`
+			// LinuxUsername is the runtime username.
+			LinuxUsername string `yaml:"linux_username"`
+			// LinuxHostname is the default container hostname.
+			LinuxHostname string `yaml:"linux_hostname"`
+			// Timezone is the timezone inside the container.
+			Timezone string `yaml:"timezone"`
+		} `yaml:"runtime"`
+
+		Limits struct {
+			// User contains resource limits for user containers.
+			User Limits `yaml:"user"`
+			// Admin contains resource limits for the admin user.
+			Admin Limits `yaml:"admin"`
+		} `yaml:"limits"`
 	} `yaml:"user_service"`
 
 	// AuthService configures the authentication gateway service.
@@ -88,6 +81,9 @@ type Config struct {
 			// TrustedProxies is the trusted proxy CIDR list.
 			TrustedProxies string `yaml:"trusted_proxies"`
 		} `yaml:"security"`
+
+		// AdminID is the admin user ID.
+		AdminID string `yaml:"admin_id"`
 	} `yaml:"auth_service"`
 
 	// ManagerService configures manager runtime and session behavior.
