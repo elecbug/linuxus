@@ -38,8 +38,8 @@ func (a *App) ValidateConfig() error {
 	if a.Config.Volumes.Host.Homes == "" || a.Config.Volumes.Host.Share == "" || a.Config.Volumes.Host.Readonly == "" {
 		return errors.New("volume host paths must not be empty")
 	}
-	if a.Config.Volumes.DiskLimit <= 0 {
-		return errors.New("volumes.disk_limit must be a positive integer")
+	if a.Config.Volumes.DiskLimit == "" {
+		return errors.New("volumes.disk_limit must not be empty")
 	}
 	if a.Config.UserService.SourceDir == "" {
 		return errors.New("user_service.source_dir must not be empty")

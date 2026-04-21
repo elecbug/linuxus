@@ -147,7 +147,7 @@ type Config struct {
 		} `yaml:"container"`
 
 		// DiskLimit is the default disk image size in MB.
-		DiskLimit int `yaml:"disk_limit"`
+		DiskLimit string `yaml:"disk_limit"`
 	} `yaml:"volumes"`
 }
 

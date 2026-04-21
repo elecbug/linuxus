@@ -41,9 +41,13 @@ func (a *App) PrepareUserDisks() error {
 
 // createSharedDisk creates and mounts a shared loopback disk at the target path.
 func (a *App) createSharedDisk(path string) error {
-	size := a.Config.Volumes.DiskLimit
-	if size <= 0 {
-		return fmt.Errorf("volumes.disk_limit must be a positive integer, got %d", size)
+	sizeStr := a.Config.Volumes.DiskLimit
+	size, err := format.StringToBytes(sizeStr)
+	if err != nil {
+		return fmt.Errorf("invalid disk size for shared disk: %w", err)
+	}
+	if size <= (1024 * 1024) {
+		return fmt.Errorf("volumes.disk_limit must be at least 1MB, got %d", size)
 	}
 
 	parentDir := filepath.Dir(path)
@@ -67,8 +71,8 @@ func (a *App) createSharedDisk(path string) error {
 		if !os.IsNotExist(err) {
 			return fmt.Errorf("failed to stat image file %s: %w", img, err)
 		}
-		fmt.Printf("[+] Creating shared disk for %s (%dMB)\n", mountPoint, size)
-		if err := runCmd("sudo", "dd", "if=/dev/zero", "of="+img, "bs=1M", "count="+strconv.Itoa(size)); err != nil {
+		fmt.Printf("[+] Creating shared disk for %s (%s)\n", mountPoint, sizeStr)
+		if err := runCmd("sudo", "dd", "if=/dev/zero", "of="+img, "bs=1M", "count="+strconv.FormatInt(size/(1024*1024), 10)); err != nil {
 			return err
 		}
 		if err := runCmd("sudo", "mkfs.ext4", "-F", img); err != nil {
@@ -127,12 +131,12 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 		return fmt.Errorf("invalid disk size for %s: %w", userID, err)
 	}
 
-	if size <= 0 {
+	if size <= (1024 * 1024) {
 		userMode := "user"
 		if isAdmin {
 			userMode = "admin"
 		}
-		return fmt.Errorf("disk limit for %s must be a positive integer, got %d", userMode, size)
+		return fmt.Errorf("disk limit for %s must be at least 1MB, got %d", userMode, size)
 	}
 
 	img := filepath.Join(a.Config.Volumes.Host.Homes, userID+".img")
@@ -146,8 +150,8 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	}
 
 	if _, err := os.Stat(img); os.IsNotExist(err) {
-		fmt.Printf("[+] Creating disk for %s (%dMB)\n", userID, size)
-		if err := runCmd("sudo", "dd", "if=/dev/zero", "of="+img, "bs=1M", "count="+strconv.FormatInt(size, 10)); err != nil {
+		fmt.Printf("[+] Creating disk for %s (%s)\n", userID, sizeStr)
+		if err := runCmd("sudo", "dd", "if=/dev/zero", "of="+img, "bs=1M", "count="+strconv.FormatInt(size/(1024*1024), 10)); err != nil {
 			return err
 		}
 		if err := runCmd("sudo", "mkfs.ext4", "-F", img); err != nil {
@@ -331,4 +335,21 @@ func findLoopDevicesForImages(homesDir string) ([]string, error) {
 
 	sort.Strings(loopDevs)
 	return loopDevs, nil
+}
+
+func umountDisk(mountPoint string) error {
+	if mounted, err := isMountPoint(mountPoint); err != nil {
+		return err
+	} else if mounted {
+		fmt.Printf("[+] Unmounting: %s\n", mountPoint)
+		if err := runCmdAllowFail("sudo", "umount", mountPoint); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func detachLoopDevice(dev string) error {
+	return runCmdAllowFail("sudo", "losetup", "-d", dev)
 }

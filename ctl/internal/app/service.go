@@ -65,14 +65,18 @@ func (a *App) VolumeClean() error {
 		return err
 	}
 	for _, dir := range homeMounts {
-		fmt.Printf("[+] Unmounting: %s\n", dir)
-		_ = runCmdAllowFail("sudo", "umount", dir)
+		err = umountDisk(dir)
+		if err != nil {
+			fmt.Printf("[-] Failed to unmount home disk at %s: %v\n", dir, err)
+			continue
+		}
 	}
 
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
-		if mounted, err := isMountPoint(mountPoint); err == nil && mounted {
-			fmt.Printf("[+] Unmounting: %s\n", mountPoint)
-			_ = runCmdAllowFail("sudo", "umount", mountPoint)
+		err = umountDisk(mountPoint)
+		if err != nil {
+			fmt.Printf("[-] Failed to unmount shared disk at %s: %v\n", mountPoint, err)
+			continue
 		}
 	}
 
@@ -104,7 +108,11 @@ func (a *App) VolumeClean() error {
 
 	for _, dev := range loopDevs {
 		fmt.Printf("[+] Detaching loop device: %s\n", dev)
-		_ = runCmdAllowFail("sudo", "losetup", "-d", dev)
+		err = detachLoopDevice(dev)
+		if err != nil {
+			fmt.Printf("[-] Failed to detach loop device %s: %v\n", dev, err)
+			continue
+		}
 	}
 
 	if err := os.RemoveAll(a.Config.Volumes.Host.Homes); err != nil && !os.IsNotExist(err) {
