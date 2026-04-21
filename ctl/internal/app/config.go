@@ -57,22 +57,22 @@ func (a *App) ValidateConfig() error {
 		return errors.New("manager_service.container.network must not be empty")
 	}
 	if a.Config.ManagerService.AuthService.ConnectionTimeout == "" {
-		return errors.New("manager_service.session.timeout must not be empty")
+		return errors.New("manager_service.auth_service.connection_timeout must not be empty")
 	}
 	if _, err := time.ParseDuration(a.Config.ManagerService.AuthService.ConnectionTimeout); err != nil {
-		return fmt.Errorf("manager_service.session.timeout is not a valid duration: %w", err)
+		return fmt.Errorf("manager_service.auth_service.connection_timeout is not a valid duration: %w", err)
 	}
 	if a.Config.ManagerService.Container.Subnet == "" {
-		return errors.New("manager_service.container.base_ip must not be empty")
+		return errors.New("manager_service.container.subnet must not be empty")
 	}
 	if a.Config.UserService.Container.NamePrefix == "" {
 		return errors.New("user_service.container.name_prefix must not be empty")
 	}
 	if a.Config.UserService.Container.NetworkNamePrefix == "" {
-		return errors.New("user_service.container.network_prefix must not be empty")
+		return errors.New("user_service.container.network_name_prefix must not be empty")
 	}
 	if a.Config.UserService.Container.BaseSubnet16 == "" {
-		return errors.New("user_service.container.base_ip must not be empty")
+		return errors.New("user_service.container.base_subnet_16 must not be empty")
 	}
 	return nil
 }
