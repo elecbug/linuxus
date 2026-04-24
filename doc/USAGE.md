@@ -179,15 +179,19 @@ volumes/
 ## 🌐 APPENDIX - Preview Image
 
 > ![](./fig/04-arch.png)
+>
 > Architecture Diagram
 
 > ![](./fig/01-login.png)
+>
 > Login Page
 
 > ![](./fig/02-shell_1.png)
+>
 > Shell Page - Access
 
 > ![](./fig/03-shell_2.png)
+>
 > Shell Page - Test GCC
 
 ---

@@ -1,6 +1,7 @@
 # LINUXUS
 
 > ![](./doc/fig/logo.png)
+>
 > Linuxus, a Docker-based service that provides Ubuntu shell environments via a web browser for Linux education
 
 ---
