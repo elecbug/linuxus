@@ -180,7 +180,7 @@ volumes/
 
 > ![](./fig/04-arch.png)
 >
-> Architecture Diagram
+> Linuxus Architecture Diagram
 
 > ![](./fig/01-login.png)
 >
