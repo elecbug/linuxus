@@ -60,12 +60,12 @@ func (a *App) VolumeClean() error {
 
 	_ = a.ServiceDown()
 
-	homeMounts, err := listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
+	homeMounts, err := a.listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
 	if err != nil {
 		return err
 	}
 	for _, dir := range homeMounts {
-		err = umountDisk(dir)
+		err = a.umountDisk(dir)
 		if err != nil {
 			fmt.Printf("[-] Failed to unmount home disk at %s: %v\n", dir, err)
 			continue
@@ -73,14 +73,14 @@ func (a *App) VolumeClean() error {
 	}
 
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
-		err = umountDisk(mountPoint)
+		err = a.umountDisk(mountPoint)
 		if err != nil {
 			fmt.Printf("[-] Failed to unmount shared disk at %s: %v\n", mountPoint, err)
 			continue
 		}
 	}
 
-	homeDevs, err := findLoopDevicesForImages(a.Config.Volumes.Host.Homes)
+	homeDevs, err := a.findLoopDevicesForImages(a.Config.Volumes.Host.Homes)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (a *App) VolumeClean() error {
 		}
 	}
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
-		devs, err := findLoopDevicesForImages(filepath.Dir(mountPoint))
+		devs, err := a.findLoopDevicesForImages(filepath.Dir(mountPoint))
 		if err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ func (a *App) VolumeClean() error {
 
 	for _, dev := range loopDevs {
 		fmt.Printf("[+] Detaching loop device: %s\n", dev)
-		err = detachLoopDevice(dev)
+		err = a.detachLoopDevice(dev)
 		if err != nil {
 			fmt.Printf("[-] Failed to detach loop device %s: %v\n", dev, err)
 			continue

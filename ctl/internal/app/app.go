@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/ctl/internal/config"
+	"github.com/elecbug/linuxus/src/ctl/internal/system"
 )
 
 // App stores runtime state, config, and Docker dependencies for linuxusctl.
@@ -14,6 +15,8 @@ type App struct {
 	dockerClient *client.Client
 	// context is passed to Docker API calls.
 	context context.Context
+	// systemAPI abstracts OS-specific operations for better testability and error handling.
+	systemAPI system.API
 
 	// currentDir is the directory where the CLI command was executed.
 	currentDir string
@@ -46,6 +49,7 @@ func CreateApp(currentDir, execDir, repoDir, sourceDir, configFile string) (*App
 	app := &App{
 		dockerClient: cli,
 		context:      context.Background(),
+		systemAPI:    system.NewSystemAPI(),
 		currentDir:   currentDir,
 		execPath:     execDir,
 		repoDir:      repoDir,
