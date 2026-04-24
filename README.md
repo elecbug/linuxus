@@ -1,24 +1,11 @@
 # LINUXUS
 
+> ![](./doc/fig/logo.png)
 > Linuxus, a Docker-based service that provides Ubuntu shell environments via a web browser for Linux education
 
 ---
 
-## 🌐 Preview Images
-
-<table>
-  <tr>
-    <td><img src="./doc/fig/01-login.png"></td>
-    <td><img src="./doc/fig/02-shell_1.png"></td>
-    <td><img src="./doc/fig/03-shell_2.png"></td>
-  </tr>
-</table>
-
----
-
 ## ✨ Overview
-
-![](./doc/fig/04-arch.png)
 
 Linuxus enables instructors to provide per-user Linux environments without requiring local setup.
 
@@ -32,146 +19,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
 ## 🚀 Usage
 
-0. Clone repository:
-
-   ```bash
-   git clone https://github.com/elecbug/linuxus
-   cd linuxus
-   ```
-
-1. Install required dependencies:
-
-   * Go
-   * Docker
-
-   ```bash
-   # Install Go
-   sudo snap install go --classic
-   ```
-
-   ```bash
-   # Install Docker
-   sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-   ```
-
-2. Build the hash generator:
-
-   ```bash
-   ./util/make_hash/build.sh
-   ```
-
-   This will generate the following executable:
-
-   ```bash
-   ./util/make_hash.out --help
-   ```
-
-3. Add the authentication file:
-
-   ```bash
-   mkdir -p data
-   touch data/AUTH_LIST
-   ```
-
-4. Create user accounts by appending credentials using:
-
-   ```bash
-   ./util/make_hash.out <ID> <PASSWORD> >> data/AUTH_LIST
-   ```
-
-   > ⚠️ The default admin account ID is `alpha`.
-   > You can change it by modifying `auth_service.admin_id` in `config.yml`.
-
-   ```yml
-   ...
-   auth_service:
-     ...
-     admin_id: alpha
-   ...
-   ```
-
-5. Build the Linuxus-ctl generator:
-
-   ```bash
-   ./ctl/build.sh
-   ```
-
-   This will generate the following executable:
-
-   ```bash
-   ./linuxusctl --help
-   ```
-
-6. Start the services (containers) for each user:
-
-   ```bash
-   ./linuxusctl <OPTION>
-   ```
-
-   **⚙️ Options**
-
-   The following options control container behavior:
-
-   | Option                 | Description                                 |
-   |------------------------|---------------------------------------------|
-   | `help`, `-h`           | Show this help message                      |
-   | `up`, `-u`             | Build images and start runtime services     |
-   | `down`, `-d`           | Stop and remove all runtime services        |
-   | `restart`, `-r`        | Restart runtime services                    |
-   | `volume-clean`, `-v`   | Reset all user directories                  |
-   | `ps`, `-p`             | Show the status of all runtime services     |
-
-   **Example**
-
-   ```bash
-   # Build and run
-   ./linuxusctl -u
-
-   # Restart everything
-   ./linuxusctl -r
-
-   # Full reset (⚠️ deletes user data)
-   ./linuxusctl -v
-   ```
-
-7. After running the services, a `volumes` directory will be created automatically.
-
-   Inside this directory (automatically managed by Linuxus):
-
-   * User directories are located under the `homes` folder.
-   * A shared directory (`share`) will be created.
-   * A read-only directory (`readonly`) will be created.
-
-   **Directory Structure**
-
-   ```
-   volumes/
-   ├── homes/
-   │   ├── <USER1>/
-   │   ├── <USER2>/
-   │   └── ...
-   ├── share/
-   └── readonly/
-   ```
-
-   **Directory Permissions**
-
-   * **User directories (`homes/<USER>`)**
-
-     * Accessible only by the corresponding user.
-     * Mounted to `/home/<USER>` inside each container.
-
-   * **`share` directory**
-
-     * Accessible by all users.
-     * Read, write, and execute permissions are allowed.
-     * Mounted to `/home/share` inside each container.
-
-   * **`readonly` directory**
-
-     * Read and execute permissions for all users.
-     * **Write access is restricted to the admin account only**.
-     * Mounted to `/home/readonly` inside each container.
+Refer to the [Usage documentation](./doc/USAGE.md) for instructions on how to use this program.
 
 ---
 
