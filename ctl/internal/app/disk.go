@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/elecbug/linuxus/src/ctl/internal/format"
+	"github.com/elecbug/linuxus/ctl/internal/format"
 )
 
 // PrepareUserDisks creates and mounts shared/admin/user disk images.

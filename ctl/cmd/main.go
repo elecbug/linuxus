@@ -6,9 +6,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/elecbug/linuxus/src/ctl/internal/app"
-	"github.com/elecbug/linuxus/src/ctl/internal/format"
+	"github.com/elecbug/linuxus/ctl/internal/app"
+	"github.com/elecbug/linuxus/ctl/internal/format"
 )
+
+// main executes the CLI entrypoint and prints user-friendly errors.
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
 
 // Option represents a runtime operation selected from CLI arguments.
 type Option int
@@ -29,14 +37,6 @@ type Options struct {
 	IsHelp bool
 }
 
-// main executes the CLI entrypoint and prints user-friendly errors.
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-}
-
 // run initializes the application and executes selected runtime operations.
 func run() error {
 	currentDir, err := os.Getwd()
@@ -55,7 +55,7 @@ func run() error {
 
 	repoDir := filepath.Dir(execPath)
 	sourceDir := filepath.Join(repoDir, "src")
-	configFile := filepath.Join(repoDir, "config.yml")
+	configFile := filepath.Join(repoDir, "cfg", "config.yml")
 
 	opts, err := parseArgs(os.Args[1:])
 	if err != nil {
