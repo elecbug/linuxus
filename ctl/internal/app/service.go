@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -14,7 +13,7 @@ import (
 
 // ServiceUp builds images and starts all runtime-managed services.
 func (a *App) ServiceUp() error {
-	fmt.Println("[+] Starting runtime-managed containers...")
+	format.Log(format.HEADER_PREFIX, "Starting runtime-managed containers...")
 
 	if err := a.buildRuntimeImages(); err != nil {
 		return err
@@ -29,25 +28,27 @@ func (a *App) ServiceUp() error {
 		return err
 	}
 
-	fmt.Println("[+] Runtime services started.")
+	format.Log(format.INFO_PREFIX, "Runtime services started.")
 	return nil
 }
 
 // ServiceDown stops and removes all runtime-managed services.
 func (a *App) ServiceDown() error {
-	fmt.Println("[+] Stopping runtime-managed containers...")
+	format.Log(format.HEADER_PREFIX, "Stopping runtime-managed containers...")
 	if err := a.removeManagedContainers(); err != nil {
 		return err
 	}
 	if err := a.removeManagedNetworks(); err != nil {
 		return err
 	}
+
+	format.Log(format.INFO_PREFIX, "Runtime services stopped.")
 	return nil
 }
 
 // ServiceRestart recreates runtime-managed services.
 func (a *App) ServiceRestart() error {
-	fmt.Println("[+] Restarting runtime-managed containers...")
+	format.Log(format.HEADER_PREFIX, "Restarting runtime-managed containers...")
 	if err := a.ServiceDown(); err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func (a *App) ServiceRestart() error {
 
 // VolumeClean unmounts and removes managed volume data and loop devices.
 func (a *App) VolumeClean() error {
-	fmt.Println("[+] Cleaning volumes...")
+	format.Log(format.HEADER_PREFIX, "Cleaning volumes...")
 
 	_ = a.ServiceDown()
 
@@ -67,7 +68,7 @@ func (a *App) VolumeClean() error {
 	for _, dir := range homeMounts {
 		err = a.umountDisk(dir)
 		if err != nil {
-			fmt.Printf("[-] Failed to unmount home disk at %s: %v\n", dir, err)
+			format.Log(format.ERROR_PREFIX, "Failed to unmount home disk at %s: %v", dir, err)
 			continue
 		}
 	}
@@ -75,7 +76,7 @@ func (a *App) VolumeClean() error {
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
 		err = a.umountDisk(mountPoint)
 		if err != nil {
-			fmt.Printf("[-] Failed to unmount shared disk at %s: %v\n", mountPoint, err)
+			format.Log(format.ERROR_PREFIX, "Failed to unmount shared disk at %s: %v", mountPoint, err)
 			continue
 		}
 	}
@@ -107,34 +108,35 @@ func (a *App) VolumeClean() error {
 	}
 
 	for _, dev := range loopDevs {
-		fmt.Printf("[+] Detaching loop device: %s\n", dev)
+		format.Log(format.RUN_PREFIX, "Detaching loop device: %s", dev)
 		err = a.detachLoopDevice(dev)
 		if err != nil {
-			fmt.Printf("[-] Failed to detach loop device %s: %v\n", dev, err)
+			format.Log(format.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
 			continue
 		}
 	}
 
-	if err := os.RemoveAll(a.Config.Volumes.Host.Homes); err != nil && !os.IsNotExist(err) {
+	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Homes); err != nil {
 		return fmt.Errorf("failed to remove homes dir: %w", err)
 	}
-	if err := os.RemoveAll(a.Config.Volumes.Host.Share); err != nil && !os.IsNotExist(err) {
+	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Share); err != nil {
 		return fmt.Errorf("failed to remove share dir: %w", err)
 	}
-	if err := os.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil && !os.IsNotExist(err) {
+	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil {
 		return fmt.Errorf("failed to remove readonly dir: %w", err)
 	}
-	if err := os.RemoveAll(a.Config.Volumes.Host.Volumes); err != nil && !os.IsNotExist(err) {
+	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Volumes); err != nil {
 		return fmt.Errorf("failed to remove volumes dir: %w", err)
 	}
 
-	fmt.Println("[+] Volume clean completed.")
+	format.Log(format.INFO_PREFIX, "Volume clean completed.")
 	return nil
 }
 
 // ServicePS prints runtime status for managed containers and networks.
 func (a *App) ServicePS() error {
-	fmt.Println("[+] Runtime service status:")
+	format.Log(format.HEADER_PREFIX, "Gathering runtime status...")
+	format.Log(format.INFO_PREFIX, "Runtime service status:")
 
 	names, err := a.managedContainerNames()
 	if err != nil {
@@ -193,7 +195,7 @@ func (a *App) ServicePS() error {
 		fmt.Println(result)
 	}
 
-	fmt.Println("[+] Runtime network status:")
+	format.Log(format.INFO_PREFIX, "Runtime network status:")
 
 	networkInfos := make([]spec.NetworkInfo, 0)
 	networkInfos = append(networkInfos, spec.NetworkInfo{

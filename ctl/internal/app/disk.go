@@ -60,14 +60,14 @@ func (a *App) createSharedDisk(path string) error {
 	if mounted, err := a.systemAPI.IsMountPoint(mountPoint); err != nil {
 		return err
 	} else if mounted {
-		fmt.Printf("[=] Already mounted: %s\n", mountPoint)
+		format.Log(format.INFO_PREFIX, "Already mounted: %s", mountPoint)
 		return nil
 	}
 
 	if exists, err := a.systemAPI.Exists(img); err != nil {
 		return fmt.Errorf("failed to stat image file %s: %w", img, err)
 	} else if !exists {
-		fmt.Printf("[+] Creating shared disk for %s (%s)\n", mountPoint, sizeStr)
+		format.Log(format.RUN_PREFIX, "Creating shared disk for %s (%s)", mountPoint, sizeStr)
 
 		if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
 			return err
@@ -142,14 +142,14 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	if mounted, err := a.systemAPI.IsMountPoint(mountPoint); err != nil {
 		return err
 	} else if mounted {
-		fmt.Printf("[=] Already mounted: %s\n", mountPoint)
+		format.Log(format.INFO_PREFIX, "Already mounted: %s", mountPoint)
 		return nil
 	}
 
 	if exists, err := a.systemAPI.Exists(img); err != nil {
 		return fmt.Errorf("failed to stat image file %s: %w", img, err)
 	} else if !exists {
-		fmt.Printf("[+] Creating disk for %s (%s)\n", userID, sizeStr)
+		format.Log(format.RUN_PREFIX, "Creating disk for %s (%s)", userID, sizeStr)
 
 		if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
 			return err
@@ -254,7 +254,7 @@ func (a *App) umountDisk(mountPoint string) error {
 	}
 
 	if mounted {
-		fmt.Printf("[+] Unmounting: %s\n", mountPoint)
+		format.Log(format.RUN_PREFIX, "Unmounting: %s", mountPoint)
 		return a.systemAPI.Unmount(mountPoint)
 	}
 

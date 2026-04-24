@@ -10,12 +10,12 @@ import (
 
 	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/moby/term"
+	"github.com/elecbug/linuxus/src/ctl/internal/format"
 )
 
 // buildRuntimeImages builds all runtime images required by services.
 func (a *App) buildRuntimeImages() error {
-	fmt.Println("[+] Building runtime images...")
+	format.Log(format.RUN_PREFIX, "Building runtime images...")
 
 	if a.dockerClient == nil {
 		return fmt.Errorf("Docker client is not initialized")
@@ -39,6 +39,7 @@ func (a *App) buildRuntimeImages() error {
 }
 
 // buildImage builds a Docker image from a source directory.
+// Build logs are printed only when the build fails.
 func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*string) error {
 	buildCtx, err := tarBuildContext(sourceDir)
 	if err != nil {
@@ -56,16 +57,18 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 	}
 	defer resp.Body.Close()
 
-	fd, isTerm := term.GetFdInfo(os.Stdout)
+	var logBuf bytes.Buffer
 
 	err = jsonmessage.DisplayJSONMessagesStream(
 		resp.Body,
-		os.Stdout,
-		fd,
-		isTerm,
+		&logBuf,
+		0,
+		false,
 		nil,
 	)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "\n[!] Docker image build failed: %s\n\n", tag)
+		fmt.Fprint(os.Stderr, logBuf.String())
 		return err
 	}
 

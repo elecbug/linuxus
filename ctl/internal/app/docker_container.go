@@ -38,7 +38,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 		return err
 	}
 	if exists {
-		fmt.Printf("[+] Recreating container: %s\n", spec.Name)
+		format.Log(format.RUN_PREFIX, "Recreating container: %s", spec.Name)
 		if err := cli.ContainerRemove(a.context, spec.Name, container.RemoveOptions{
 			Force: true,
 		}); err != nil {
@@ -167,7 +167,7 @@ func (a *App) removeManagedContainers() error {
 			return fmt.Errorf("Docker client is not initialized")
 		}
 
-		fmt.Printf("[+] Removing container: %s\n", name)
+		format.Log(format.RUN_PREFIX, "Removing container: %s", name)
 
 		if err := cli.ContainerRemove(a.context, name, container.RemoveOptions{Force: true}); err != nil {
 			return fmt.Errorf("failed to remove container %s: %w", name, err)

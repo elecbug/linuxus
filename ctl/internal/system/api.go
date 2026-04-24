@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +19,7 @@ type API interface {
 
 	Exists(path string) (bool, error)
 	CreateEmptyFile(path string, sizeBytes int64) error
+	RemoveAll(path string) error
 	FormatExt4(path string) error
 
 	IsMountPoint(path string) (bool, error)
@@ -91,28 +93,24 @@ func (LinuxSystemAPI) CreateEmptyFile(path string, sizeBytes int64) error {
 	return nil
 }
 
+// RemoveAll removes the specified path and all its contents.
+func (LinuxSystemAPI) RemoveAll(path string) error {
+	if err := os.RemoveAll(path); err != nil {
+		return fmt.Errorf("failed to remove path: %s: %w", path, err)
+	}
+	return nil
+}
+
 // FormatExt4 formats the specified file as an ext4 filesystem using mkfs.ext4.
 func (LinuxSystemAPI) FormatExt4(path string) error {
-	cmd := exec.Command("mkfs.ext4", "-F", path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd := exec.Command("mkfs.ext4", "-F", "-q", path)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("mkfs.ext4 failed: %s: %w", path, err)
 	}
 
-	return nil
-}
-
-// MountLoop mounts an image file to a mount point using a loop device.
-func (LinuxSystemAPI) MountLoop(imagePath, mountPoint string) error {
-	flags := uintptr(0)
-
-	data := "loop"
-
-	if err := syscall.Mount(imagePath, mountPoint, "ext4", flags, data); err != nil {
-		return fmt.Errorf("mount loop failed: %s -> %s: %w", imagePath, mountPoint, err)
-	}
 	return nil
 }
 
@@ -285,6 +283,18 @@ func (u UnsupportedSystemAPI) CreateEmptyFile(path string, sizeBytes int64) erro
 
 	if err := f.Truncate(sizeBytes); err != nil {
 		return fmt.Errorf("failed to set file size: %s: %w", path, err)
+	}
+	return nil
+}
+
+// RemoveAll removes the specified path and all its contents.
+func (u UnsupportedSystemAPI) RemoveAll(path string) error {
+	if err := os.RemoveAll(path); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return fmt.Errorf("failed to remove path: %s: %w", path, err)
 	}
 	return nil
 }
