@@ -6,8 +6,8 @@ import (
 
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
-	"github.com/elecbug/linuxus/src/ctl/internal/format"
-	"github.com/elecbug/linuxus/src/ctl/internal/spec"
+	"github.com/elecbug/linuxus/ctl/internal/format"
+	"github.com/elecbug/linuxus/ctl/internal/spec"
 )
 
 // ensureRuntimeNetworks creates required runtime networks.

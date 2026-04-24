@@ -7,7 +7,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/elecbug/linuxus/src/ctl/internal/spec"
+	"github.com/elecbug/linuxus/ctl/internal/spec"
 )
 
 // StringToNanoCPUs converts a CPU value to Docker NanoCPUs.

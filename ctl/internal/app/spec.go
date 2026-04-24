@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 
-	"github.com/elecbug/linuxus/src/ctl/internal/format"
-	"github.com/elecbug/linuxus/src/ctl/internal/spec"
+	"github.com/elecbug/linuxus/ctl/internal/format"
+	"github.com/elecbug/linuxus/ctl/internal/spec"
 )
 
 // buildAuthRuntimeSpec builds the auth service container runtime specification.

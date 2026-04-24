@@ -1,5 +1,5 @@
 user_service:
-  source_dir: ./service
+  source_dir: ./src/service
   container:
     name_prefix: linuxus_user_
     network_name_prefix: linuxus_user_net_
@@ -35,7 +35,7 @@ user_service:
       # session_timeout: 3600
 
 auth_service:
-  source_dir: ./auth
+  source_dir: ./src/auth
   container:
     name: linuxus_auth
     external_port: 8080
@@ -55,7 +55,7 @@ auth_service:
   admin_id: alpha
 
 manager_service:
-  source_dir: ./manager
+  source_dir: ./src/manager
   container:
     name: linuxus_manager
     network: linuxus_manager_net

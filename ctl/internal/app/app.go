@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/client"
-	"github.com/elecbug/linuxus/src/ctl/internal/config"
-	"github.com/elecbug/linuxus/src/ctl/internal/system"
+	"github.com/elecbug/linuxus/ctl/internal/config"
+	"github.com/elecbug/linuxus/ctl/internal/system"
 )
 
 // App stores runtime state, config, and Docker dependencies for linuxusctl.

@@ -99,5 +99,9 @@ func (a *App) absFromSource(path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
-	return filepath.Clean(filepath.Join(a.sourceDir, path))
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	return filepath.Clean(absPath)
 }

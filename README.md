@@ -69,14 +69,14 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 3. Add the authentication file:
 
    ```bash
-   mkdir -p src/data
-   touch src/data/AUTH_LIST
+   mkdir -p data
+   touch data/AUTH_LIST
    ```
 
 4. Create user accounts by appending credentials using:
 
    ```bash
-   ./util/make_hash.out <ID> <PASSWORD> >> src/data/AUTH_LIST
+   ./util/make_hash.out <ID> <PASSWORD> >> data/AUTH_LIST
    ```
 
    > ⚠️ The default admin account ID is `alpha`.
@@ -134,7 +134,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
    ./linuxusctl -v
    ```
 
-7. After running the services, a `src/volumes` directory will be created automatically.
+7. After running the services, a `volumes` directory will be created automatically.
 
    Inside this directory (automatically managed by Linuxus):
 
@@ -145,7 +145,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
    **Directory Structure**
 
    ```
-   src/volumes/
+   volumes/
    ├── homes/
    │   ├── <USER1>/
    │   ├── <USER2>/

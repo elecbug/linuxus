@@ -10,7 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/elecbug/linuxus/src/ctl/internal/format"
+	"github.com/elecbug/linuxus/ctl/internal/format"
 )
 
 // buildRuntimeImages builds all runtime images required by services.

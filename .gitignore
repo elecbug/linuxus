@@ -1,4 +1,17 @@
-# Ignore build artifacts and temporary files.
+# linuxusctl is the CLI tool for managing Linuxus services and runtime operations.
 linuxusctl
-temp
+
+# Debugging artifacts, e.g., build outputs, temporary files, etc.
 debug/
+
+# Data file directory likely authentication info, user data, etc.
+data/
+
+# User volumes for services, e.g., home directories, shared directories, etc.
+volumes/
+
+# Logs and temporary files.
+logs/
+tmp/
+*.log
+*.tmp

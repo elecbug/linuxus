@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/elecbug/linuxus/src/ctl/internal/config"
+	"github.com/elecbug/linuxus/ctl/internal/config"
 )
 
 // DisplayNetworkID shortens network IDs for compact table output.
