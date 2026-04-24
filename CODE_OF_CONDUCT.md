@@ -60,4 +60,4 @@ If you experience unacceptable behavior, contact:
 
 We welcome contributors of all backgrounds.
 
-Let’s keep the project focused, efficient, and respectful.
+Let's keep the project focused, efficient, and respectful.
