@@ -155,30 +155,27 @@ func parseArgs(args []string) (Options, error) {
 
 // usageText returns the formatted help text for the CLI.
 func usageText(bin string) string {
-	return fmt.Sprintf(``+
-		`Usage:
-  %s [OPTION]...
-
-Options:
-  -h, help          Show this help message
-  -u, up            Build images and start runtime services
-  -d, down          Stop and remove all runtime services
-  -r, restart       Restart runtime services
-  -v, volume-clean  Reset all user directories
-  -p, ps            Show the status of all runtime services
-
-Examples:
-  %s -u
-  %s -d
-  %s -r
-
-Log Format:
-  %s: Header messages indicating the start of major operations
-  %s: Messages indicating the execution of specific steps
-  %s: Informational messages about the progress and status of operations
-  %s: Warning messages indicating potential issues that do not stop execution
-  %s: Error messages indicating failures that may require user attention
-`, bin, bin, bin, bin, format.HEADER_PREFIX, format.RUN_PREFIX, format.INFO_PREFIX, format.WARNING_PREFIX, format.ERROR_PREFIX)
+	result := ""
+	result += "Usage:\n"
+	result += fmt.Sprintf("  %s [OPTION]...\n\n", bin)
+	result += "Options:\n"
+	result += fmt.Sprintf("  %-25s# Show help message\n", "-h, help")
+	result += fmt.Sprintf("  %-25s# Build images and start services\n", "-u, up")
+	result += fmt.Sprintf("  %-25s# Stop and remove services\n", "-d, down")
+	result += fmt.Sprintf("  %-25s# Restart services\n", "-r, restart")
+	result += fmt.Sprintf("  %-25s# Reset all user directories\n", "-v, volume-clean")
+	result += fmt.Sprintf("  %-25s# Show service status\n\n", "-p, ps")
+	result += "Examples:\n"
+	result += fmt.Sprintf("  %-25s# Build and start\n", fmt.Sprintf("%s -u", bin))
+	result += fmt.Sprintf("  %-25s# Restart and show status\n", fmt.Sprintf("%s -r -p", bin))
+	result += fmt.Sprintf("  %-25s# Reset all user data\n\n", fmt.Sprintf("%s -v", bin))
+	result += "Log Format:\n"
+	result += fmt.Sprintf("  %s: Header messages indicating the start of major operations\n", format.HEADER_PREFIX)
+	result += fmt.Sprintf("  %s: Messages indicating the execution of specific steps\n", format.RUN_PREFIX)
+	result += fmt.Sprintf("  %s: Informational messages about the progress and status of operations\n", format.INFO_PREFIX)
+	result += fmt.Sprintf("  %s: Warning messages indicating potential issues that do not stop execution\n", format.WARNING_PREFIX)
+	result += fmt.Sprintf("  %s: Error messages indicating failures that may require user attention\n", format.ERROR_PREFIX)
+	return result
 }
 
 // printUsage prints the CLI help text.
