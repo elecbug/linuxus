@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/elecbug/linuxus/src/ctl/internal/app"
+	"github.com/elecbug/linuxus/src/ctl/internal/format"
 )
 
 // Option represents a runtime operation selected from CLI arguments.
@@ -154,7 +155,8 @@ func parseArgs(args []string) (Options, error) {
 
 // usageText returns the formatted help text for the CLI.
 func usageText(bin string) string {
-	return fmt.Sprintf(`Usage:
+	return fmt.Sprintf(``+
+		`Usage:
   %s [OPTION]...
 
 Options:
@@ -168,7 +170,15 @@ Options:
 Examples:
   %s -u
   %s -d
-  %s -r`, bin, bin, bin, bin)
+  %s -r
+
+Log Format:
+  %s: Header messages indicating the start of major operations
+  %s: Messages indicating the execution of specific steps
+  %s: Informational messages about the progress and status of operations
+  %s: Warning messages indicating potential issues that do not stop execution
+  %s: Error messages indicating failures that may require user attention
+`, bin, bin, bin, bin, format.HEADER_PREFIX, format.RUN_PREFIX, format.INFO_PREFIX, format.WARNING_PREFIX, format.ERROR_PREFIX)
 }
 
 // printUsage prints the CLI help text.

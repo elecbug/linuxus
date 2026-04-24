@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
+	"github.com/elecbug/linuxus/src/ctl/internal/format"
 	"github.com/elecbug/linuxus/src/ctl/internal/spec"
 )
 
@@ -24,7 +25,7 @@ func (a *App) ensureNetwork(spec spec.RuntimeNetworkSpec) error {
 		return err
 	}
 	if exists {
-		fmt.Printf("[=] Network already exists: %s\n", spec.Name)
+		format.Log(format.INFO_PREFIX, "Network already exists: %s", spec.Name)
 		return nil
 	}
 
@@ -33,7 +34,7 @@ func (a *App) ensureNetwork(spec spec.RuntimeNetworkSpec) error {
 		return fmt.Errorf("Docker client is not initialized")
 	}
 
-	fmt.Printf("[+] Creating network: %s\n", spec.Name)
+	format.Log(format.RUN_PREFIX, "Creating network: %s", spec.Name)
 
 	_, err = cli.NetworkCreate(a.context, spec.Name, network.CreateOptions{
 		Driver: "bridge",
@@ -71,7 +72,7 @@ func (a *App) removeManagedNetworks() error {
 			return fmt.Errorf("Docker client is not initialized")
 		}
 
-		fmt.Printf("[+] Removing network: %s\n", name)
+		format.Log(format.RUN_PREFIX, "Removing network: %s", name)
 
 		if err := cli.NetworkRemove(a.context, name); err != nil {
 			return fmt.Errorf("failed to remove network %s: %w", name, err)
