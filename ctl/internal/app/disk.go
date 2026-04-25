@@ -29,7 +29,7 @@ func (a *App) PrepareUserDisks() error {
 		}
 	}
 
-	if err := a.createUserDisk(a.Config.AuthService.AdminID, true); err != nil {
+	if err := a.createUserDisk(a.Config.ManagerService.AdminID, true); err != nil {
 		return err
 	}
 

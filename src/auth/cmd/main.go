@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -75,6 +76,17 @@ func parseConfig() (*handler.AppConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
+	allowSignupStr, err := getEnv("ALLOW_SIGNUP")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
+	}
+	allowSignup := false
+	if allowSignupStr != "" {
+		allowSignup, err = strconv.ParseBool(allowSignupStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse ALLOW_SIGNUP: %v", err)
+		}
+	}
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -93,6 +105,7 @@ func parseConfig() (*handler.AppConfig, error) {
 		ManagerBaseURL:          managerBaseURL,
 		ManagerTimeout:          managerTimeout,
 		ManagerSecret:           managerSecret,
+		AllowSignup:             allowSignup,
 	}, nil
 }
 

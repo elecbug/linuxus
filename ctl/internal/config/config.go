@@ -86,8 +86,8 @@ type Config struct {
 			TrustedProxies string `yaml:"trusted_proxies"`
 		} `yaml:"security"`
 
-		// AdminID is the admin user ID.
-		AdminID string `yaml:"admin_id"`
+		// AllowSignup enables or disables user self-registration.
+		AllowSignup bool `yaml:"allow_signup"`
 	} `yaml:"auth_service"`
 
 	// ManagerService configures manager runtime and session behavior.
@@ -122,6 +122,9 @@ type Config struct {
 			// ManagerSecret authenticates privileged manager operations.
 			ManagerSecret string `yaml:"manager_secret"`
 		} `yaml:"security"`
+
+		// AdminID is the admin user ID.
+		AdminID string `yaml:"admin_id"`
 	} `yaml:"manager_service"`
 
 	// Volumes configures host/container volume paths and default disk size.

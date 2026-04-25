@@ -93,6 +93,8 @@ type AppConfig struct {
 	ManagerTimeout time.Duration
 	// ManagerSecret is an optional shared secret for manager requests.
 	ManagerSecret string
+	// AllowSignup indicates whether new user signups are allowed.
+	AllowSignup bool
 }
 
 // loginAttempt stores rolling failure counters and lock metadata.

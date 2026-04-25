@@ -25,6 +25,7 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 			"MANAGER_BASE_URL=" + fmt.Sprintf("http://%s:5959", a.Config.ManagerService.Container.Name),
 			"MANAGER_TIMEOUT=" + a.Config.ManagerService.AuthService.ConnectionTimeout,
 			"MANAGER_SECRET=" + a.Config.ManagerService.Security.ManagerSecret,
+			"ALLOW_SIGNUP=" + fmt.Sprintf("%v", a.Config.AuthService.AllowSignup),
 		},
 		Volumes: []string{
 			fmt.Sprintf("%s:%s:rw", a.Config.AuthService.Mounts.HostAuthListPath, a.Config.AuthService.Mounts.ContainerAuthListPath),
@@ -72,7 +73,7 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 			"BASE_IP=" + a.Config.UserService.Container.BaseSubnet16,
 			"AUTH_CONTAINER_NAME=" + a.Config.AuthService.Container.Name,
 			"MANAGER_CONTAINER_NAME=" + a.Config.ManagerService.Container.Name,
-			"ADMIN_USER_ID=" + a.Config.AuthService.AdminID,
+			"ADMIN_USER_ID=" + a.Config.ManagerService.AdminID,
 
 			"RUNTIME_USER=" + fmt.Sprintf("%d:%d", a.Config.UserService.Runtime.UID, a.Config.UserService.Runtime.GID),
 			"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Runtime.LinuxUsername,
