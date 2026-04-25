@@ -81,6 +81,8 @@ func tarBuildContext(dir string) (io.Reader, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 
+	visited := make(map[string]bool)
+
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -94,30 +96,44 @@ func tarBuildContext(dir string) (io.Reader, error) {
 			return nil
 		}
 
-		header, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return err
-		}
-		header.Name = filepath.ToSlash(relPath)
-
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-
-		if info.Mode().IsRegular() {
-			f, err := os.Open(path)
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := filepath.EvalSymlinks(path)
 			if err != nil {
 				return err
 			}
-			defer f.Close()
 
-			if _, err := io.Copy(tw, f); err != nil {
+			if visited[target] {
+				return nil
+			}
+			visited[target] = true
+
+			targetInfo, err := os.Stat(target)
+			if err != nil {
 				return err
 			}
+
+			if targetInfo.IsDir() {
+				return filepath.Walk(target, func(p string, ti os.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+
+					relSub, err := filepath.Rel(target, p)
+					if err != nil {
+						return err
+					}
+
+					newPath := filepath.Join(relPath, relSub)
+					return addFileToTar(tw, p, newPath, ti)
+				})
+			}
+
+			return addFileToTar(tw, target, relPath, targetInfo)
 		}
 
-		return nil
+		return addFileToTar(tw, path, relPath, info)
 	})
+
 	if err != nil {
 		_ = tw.Close()
 		return nil, err
@@ -128,6 +144,32 @@ func tarBuildContext(dir string) (io.Reader, error) {
 	}
 
 	return buf, nil
+}
+
+func addFileToTar(tw *tar.Writer, realPath, tarPath string, info os.FileInfo) error {
+	header, err := tar.FileInfoHeader(info, "")
+	if err != nil {
+		return err
+	}
+	header.Name = filepath.ToSlash(tarPath)
+
+	if err := tw.WriteHeader(header); err != nil {
+		return err
+	}
+
+	if info.Mode().IsRegular() {
+		f, err := os.Open(realPath)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		if _, err := io.Copy(tw, f); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // authImageName returns the auth runtime image tag.

@@ -38,6 +38,7 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 		Networks: []string{
 			a.Config.ManagerService.Container.Network,
 		},
+		Privileged: false,
 	}
 }
 
@@ -103,9 +104,9 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 			"ADMIN_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Soft),
 			"ADMIN_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Hard),
 
-			"USER_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
-			"ADMIN_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
 			"SHARE_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
+			"USER_DISK_LIMIT=" + a.Config.UserService.Limits.User.Disk,
+			"ADMIN_DISK_LIMIT=" + a.Config.UserService.Limits.Admin.Disk,
 		},
 		Volumes: []string{
 			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Homes, a.Config.Volumes.Host.Homes),
@@ -117,5 +118,6 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 		Networks: []string{
 			a.Config.ManagerService.Container.Network,
 		},
+		Privileged: true,
 	}, nil
 }

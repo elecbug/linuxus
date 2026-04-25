@@ -81,6 +81,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 		ReadonlyRootfs: spec.ReadOnly,
 		SecurityOpt:    spec.SecurityOpt,
 		CapDrop:        spec.CapDrop,
+		Privileged:     spec.Privileged,
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyMode(spec.Restart),
 		},
