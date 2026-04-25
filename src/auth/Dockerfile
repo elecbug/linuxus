@@ -20,6 +20,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
 WORKDIR /app
 
 COPY --from=builder /app/auth-server /app/auth-server
+COPY static ./static
 
 EXPOSE 8080
 

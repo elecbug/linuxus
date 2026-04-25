@@ -259,6 +259,8 @@ func (a *App) RegisterRoutes() {
 	a.mux.HandleFunc("/"+a.servicePath+"/", a.handleServicePage)
 	a.mux.HandleFunc("/"+a.terminalPath, a.handleTerminalRedirect)
 	a.mux.HandleFunc("/"+a.terminalPath+"/", a.handleTerminalProxy)
+
+	a.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 }
 
 // evictStaleEntries removes old failure tracking entries that are no longer active.

@@ -9,6 +9,7 @@ func GetLoginPage(loginPath string, allowSignup bool, signupPath string) string 
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | Login",
 		getBaseMeta(),
+		getFaviconLink(),
 		getLoginCSS(),
 		html.NewHTML(
 			"h2",
@@ -90,6 +91,7 @@ func GetServicePage(terminalPath, logoutPath string) string {
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | {{.ID}}",
 		getBaseMeta(),
+		getFaviconLink(),
 		getServiceCSS(),
 		html.NewHTML(
 			"div",
@@ -147,6 +149,7 @@ func GetErrorPage() string {
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | Error",
 		getBaseMeta(),
+		getFaviconLink(),
 		getErrorCSS(),
 		html.NewHTML(
 			"h2",
@@ -174,6 +177,7 @@ func GetSignupPage(signupPath, loginPath string) string {
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | Sign Up",
 		getBaseMeta(),
+		getFaviconLink(),
 		getLoginCSS(),
 		html.NewHTML(
 			"h2",
@@ -250,6 +254,17 @@ func getBaseMeta() []html.Attribute {
 		"name", "viewport",
 		"content", "width=device-width, initial-scale=1.0",
 	)
+}
+
+// getFaviconLink returns the link tag for the favicon.
+func getFaviconLink() map[string][]html.Attribute {
+	return map[string][]html.Attribute{
+		"icon": html.NewAttributes(
+			"rel", "icon",
+			"type", "image/png",
+			"href", "/static/favicon.png",
+		),
+	}
 }
 
 // linuxusFooterHTML builds the shared footer element.
