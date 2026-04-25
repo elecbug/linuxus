@@ -85,9 +85,8 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 			"HOST_HOMES_DIR=" + a.Config.Volumes.Host.Homes,
 			"HOST_SHARE_DIR=" + a.Config.Volumes.Host.Share,
 			"HOST_READONLY_DIR=" + a.Config.Volumes.Host.Readonly,
-			"CONTAINER_HOMES_DIR=" + a.Config.ManagerService.Container.HomesDir,
-			"CONTAINER_SHARE_DIR=" + a.Config.ManagerService.Container.ShareDir,
-			"CONTAINER_READONLY_DIR=" + a.Config.ManagerService.Container.ReadonlyDir,
+			"CONTAINER_SHARE_DIR=" + a.Config.Volumes.Container.Share,
+			"CONTAINER_READONLY_DIR=" + a.Config.Volumes.Container.Readonly,
 
 			"CONTAINER_USER_TIMEOUT=" + a.Config.ManagerService.UserManagement.CleanupTimeout,
 			"MANAGER_WAIT_TIME=" + a.Config.ManagerService.AuthService.ConnectionTimeout,

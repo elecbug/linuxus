@@ -52,8 +52,4 @@ Please refer to [SECURITY.md](./SECURITY.md) for responsible disclosure instruct
 
 ## 🚧 Upcoming Features
 
-The following features are currently under development:
-
-- Runtime sign-up system (account creation without service restart)
-
-More updates will be added in future releases.
+Nothing TODO.

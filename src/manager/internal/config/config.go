@@ -58,8 +58,6 @@ type Config struct {
 	HostShareDir string
 	// HostReadonlyDir is the host shared read-only directory path.
 	HostReadonlyDir string
-	// ContainerHomesDir is the in-container mount point for user home directories.
-	ContainerHomesDir string
 	// ContainerShareDir is the in-container mount point for writable shared data.
 	ContainerShareDir string
 	// ContainerReadonlyDir is the in-container mount point for read-only shared data.
