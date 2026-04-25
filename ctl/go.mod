@@ -6,9 +6,11 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.7.0
-	github.com/elecbug/linuxus/pkg/system_api v0.0.0-20260425095908-dd81fc75f64b
+	github.com/elecbug/linuxus/pkg/system_api v0.0.0-20260425114155-32f51b9f61ec
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/elecbug/linuxus/pkg/system_api => ../pkg/system_api
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect

@@ -81,14 +81,22 @@ func (LinuxSystemAPI) Exists(path string) (bool, error) {
 
 // CreateEmptyFile creates an empty file at the specified path with the given size in bytes.
 func (LinuxSystemAPI) CreateEmptyFile(path string, sizeBytes int64) error {
+	path = filepath.Clean(path)
+	di := filepath.Dir(path)
+	if err := os.MkdirAll(di, 0755); err != nil {
+		return fmt.Errorf("failed to create parent directories for %s: %w", path, err)
+	}
+
 	f, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %s: %w", path, err)
 	}
 	defer f.Close()
 
-	if err := f.Truncate(sizeBytes); err != nil {
-		return fmt.Errorf("failed to set file size: %s: %w", path, err)
+	if sizeBytes != 0 {
+		if err := f.Truncate(sizeBytes); err != nil {
+			return fmt.Errorf("failed to set file size: %s: %w", path, err)
+		}
 	}
 	return nil
 }

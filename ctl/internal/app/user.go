@@ -13,8 +13,16 @@ func (a *App) LoadUserList() error {
 	authList := a.Config.AuthService.Mounts.HostAuthListPath
 
 	f, err := os.Open(authList)
-	if err != nil {
-		return fmt.Errorf("AUTH_LIST_FILE not found: %s", authList)
+	if err != nil && os.IsNotExist(err) {
+		err = a.systemAPI.CreateEmptyFile(authList, 0)
+		if err != nil {
+			return fmt.Errorf("failed to create auth list file: %w", err)
+		}
+
+		f, err = os.Open(authList)
+		if err != nil {
+			return fmt.Errorf("failed to open auth list file: %w", err)
+		}
 	}
 	defer f.Close()
 

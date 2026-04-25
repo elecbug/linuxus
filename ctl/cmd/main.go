@@ -26,6 +26,7 @@ const (
 	DOWN
 	RESTART
 	VOLUME_CLEAN
+	ENSURE_DISK
 	PS
 )
 
@@ -112,6 +113,15 @@ func run() error {
 				return err
 			}
 
+		case ENSURE_DISK:
+			if err := app.LoadUserList(); err != nil {
+				return err
+			}
+
+			if err := app.PrepareUserDisks(); err != nil {
+				return err
+			}
+
 		case PS:
 			if err := app.ServicePS(); err != nil {
 				return err
@@ -141,6 +151,8 @@ func parseArgs(args []string) (Options, error) {
 			opts.Opts = append(opts.Opts, RESTART)
 		case "-v", "volume-clean":
 			opts.Opts = append(opts.Opts, VOLUME_CLEAN)
+		case "-e", "ensure-disk":
+			opts.Opts = append(opts.Opts, ENSURE_DISK)
 		case "-p", "ps":
 			opts.Opts = append(opts.Opts, PS)
 		case "-h", "help":
@@ -164,6 +176,7 @@ func usageText(bin string) string {
 	result += fmt.Sprintf("  %-25s# Stop and remove services\n", "-d, down")
 	result += fmt.Sprintf("  %-25s# Restart services\n", "-r, restart")
 	result += fmt.Sprintf("  %-25s# Reset all user directories\n", "-v, volume-clean")
+	result += fmt.Sprintf("  %-25s# Create missing user directories and activate signed-up users\n", "-e, ensure-disk")
 	result += fmt.Sprintf("  %-25s# Show service status\n\n", "-p, ps")
 	result += "Examples:\n"
 	result += fmt.Sprintf("  %-25s# Build and start\n", fmt.Sprintf("%s -u", bin))

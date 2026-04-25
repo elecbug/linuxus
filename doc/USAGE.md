@@ -2,8 +2,6 @@
 
 ## 0. Clone Repository
 
-Clone the repository from GitHub:
-
 ```bash
 git clone https://github.com/elecbug/linuxus
 cd linuxus
@@ -12,8 +10,6 @@ cd linuxus
 ---
 
 ## 1. Install Dependencies
-
-Install required packages:
 
 ### Go
 
@@ -29,52 +25,7 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 
 ---
 
-## 2. Setup Authentication
-
-### 2.1 Build Hash Generator
-
-```bash
-./util/make_hash/build.sh
-```
-
-Generated executable:
-
-```bash
-./util/make_hash.out --help
-```
-
----
-
-### 2.2 Create Authentication File
-
-```bash
-mkdir -p data
-touch data/AUTH_LIST
-```
-
----
-
-### 2.3 Add Users
-
-```bash
-./util/make_hash.out <ID> <PASSWORD> >> data/AUTH_LIST
-```
-
----
-
-### 2.4 Admin Account
-
-* Default admin ID: `alpha`
-* Can be changed in `config.yml`:
-
-```yml
-auth_service:
-  admin_id: alpha
-```
-
----
-
-## 3. Build Controller
+## 2. Build Controller
 
 Build the control CLI:
 
@@ -90,9 +41,9 @@ Generated executable:
 
 ---
 
-## 4. Run Service
+## 3. Run Service
 
-### 4.1 Start / Manage Services
+### 3.1 Start / Manage Services
 
 ```bash
 ./linuxusctl <OPTION>
@@ -100,18 +51,19 @@ Generated executable:
 
 ### ⚙️ Available Options
 
-| Option               | Description                           |
-| -------------------- | ------------------------------------- |
-| `-h`, `help`         | Show help message                     |
-| `-u`, `up`           | Build images and start services       |
-| `-d`, `down`         | Stop and remove services              |
-| `-r`, `restart`      | Restart services                      |
-| `-v`, `volume-clean` | Reset all user directories            |
-| `-p`, `ps`           | Show service status                   |
+| Option               | Description                                                  |
+| -------------------- | ------------------------------------------------------------ |
+| `-h`, `help`         | Show help message                                            |
+| `-u`, `up`           | Build images and start services                              |
+| `-d`, `down`         | Stop and remove services                                     |
+| `-r`, `restart`      | Restart services                                             |
+| `-v`, `volume-clean` | Reset all user directories                                   |
+| `-e`, `ensure-disk`  | Create missing user directories and activate signed-up users |
+| `-p`, `ps`           | Show service status                                          |
 
 ---
 
-### 4.2 Example Usage
+### 3.2 Example Usage
 
 ```bash
 ./linuxusctl -u          # Build and start
@@ -121,18 +73,77 @@ Generated executable:
 
 ---
 
+## 4. Setup Authentication (Signup-based)
+
+> [!NOTE]
+> Linuxus provides a built-in signup system via the web interface.
+
+---
+
+### 4.1 Enable Signup
+
+Edit `cfg/config.yml`:
+
+```yml
+auth_service:
+  allow_signup: true
+```
+
+A **Signup** link will appear on the login page.
+
+---
+
+### 4.2 User Registration Flow
+
+1. User opens the login page
+2. Clicks **Signup**
+3. Enters ID and password
+4. Account is registered
+
+> [!IMPORTANT]
+> Newly registered users are **not immediately usable**
+
+---
+
+### 4.3 Activate User Environment
+
+After signup, the host must initialize user environments:
+
+```bash
+./linuxusctl -e
+```
+
+or:
+
+```bash
+./linuxusctl ensure-disk
+```
+
+This step:
+
+* Creates home directories
+* Mounts volumes
+* Activates user accounts
+
+---
+
+### 4.4 Admin Account
+
+* Default admin ID: `alpha`
+* Configurable in:
+
+```yml
+manager_service:
+  admin_id: alpha
+```
+
+---
+
 ## 5. Volume Structure
-
-When the service starts, a `volumes/` directory is automatically created.
-
-### Directory Layout
 
 ```
 volumes/
 ├── homes/
-│   ├── <USER1>/
-│   ├── <USER2>/
-│   └── ...
 ├── share/
 └── readonly/
 ```
@@ -141,57 +152,63 @@ volumes/
 
 ## 6. Directory Permissions
 
-### 👤 User Directories (`homes/<USER>`)
+### 👤 User (`homes/<USER>`)
 
-* Private to each user
-* Mounted to:
+* Private
+* Mounted to `/home/<USER>`
 
-  ```
-  /home/<USER>
-  ```
+### 📂 Share
 
----
+* RWX for all users
+* `/home/share`
 
-### 📂 Shared Directory (`share`)
+### 🔒 Readonly
 
-* Accessible by all users
-* Permissions: read / write / execute
-* Mounted to:
-
-  ```
-  /home/share
-  ```
-
----
-
-### 🔒 Read-only Directory (`readonly`)
-
-* All users: read / execute
-* Admin only: write access
-* Mounted to:
-
-  ```
-  /home/readonly
-  ```
+* Read/execute for users
+* Write for admin only
+* `/home/readonly`
 
 ---
 
 ## 🌐 APPENDIX - Preview Image
 
 > ![](./fig/04-arch.png)
->
 > Linuxus Architecture Diagram
 
 > ![](./fig/01-login.png)
->
 > Login Page
 
 > ![](./fig/02-shell_1.png)
->
 > Shell Page - Access
 
 > ![](./fig/03-shell_2.png)
->
 > Shell Page - Test GCC
 
 ---
+
+## 📎 APPENDIX - Manual User Setup (Legacy)
+
+### Build Hash Generator
+
+```bash
+./util/make_hash/build.sh
+```
+
+### Create Authentication File
+
+```bash
+mkdir -p data
+touch data/AUTH_LIST
+```
+
+### Add Users
+
+```bash
+./util/make_hash.out <ID> <PASSWORD> >> data/AUTH_LIST
+```
+
+Recommended for:
+
+* Initial admin bootstrap
+* Bulk provisioning
+* Signup-disabled environments
