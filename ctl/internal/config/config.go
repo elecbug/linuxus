@@ -105,6 +105,12 @@ type Config struct {
 			Network string `yaml:"network"`
 			// Subnet is the subnet CIDR for manager runtime network.
 			Subnet string `yaml:"subnet"`
+			// HomesDir is the in-container mount point for user home directories.
+			HomesDir string `yaml:"homes_dir"`
+			// ShareDir is the in-container mount point for writable shared data.
+			ShareDir string `yaml:"share_dir"`
+			// ReadonlyDir is the in-container mount point for read-only shared data.
+			ReadonlyDir string `yaml:"readonly_dir"`
 		} `yaml:"container"`
 
 		// UserManagement defines session timeout settings for managed users.

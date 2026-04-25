@@ -61,6 +61,9 @@ manager_service:
     name: linuxus_manager
     network: linuxus_manager_net
     subnet: "10.11.0.0/24"
+    homes_dir: /vol/homes
+    share_dir: /vol/share
+    readonly_dir: /vol/readonly
   user_management:
     cleanup_timeout: 5m
   auth_service:

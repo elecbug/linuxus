@@ -110,6 +110,10 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if hostReadonlyDir == "" {
 		return nil, fmt.Errorf("HOST_READONLY_DIR is required")
 	}
+	containerHomesDir := os.Getenv("CONTAINER_HOMES_DIR")
+	if containerHomesDir == "" {
+		return nil, fmt.Errorf("CONTAINER_HOMES_DIR is required")
+	}
 	containerShareDir := os.Getenv("CONTAINER_SHARE_DIR")
 	if containerShareDir == "" {
 		return nil, fmt.Errorf("CONTAINER_SHARE_DIR is required")
@@ -195,6 +199,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 		HostHomesDir:         hostHomesDir,
 		HostShareDir:         hostShareDir,
 		HostReadonlyDir:      hostReadonlyDir,
+		ContainerHomesDir:    containerHomesDir,
 		ContainerShareDir:    containerShareDir,
 		ContainerReadonlyDir: containerReadonlyDir,
 

@@ -54,19 +54,6 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), s.cfg.ManagerWaitTime)
 	defer cancel()
 
-	err := s.PrepareUserDisks(req.UserID)
-	if err != nil {
-		log.Printf("prepare user disks failed user=%s err=%v", req.UserID, err)
-		writeJSON(w, http.StatusInternalServerError, packet.UserUpResponse{
-			OK:            false,
-			UserID:        req.UserID,
-			SafeID:        req.SafeID,
-			ContainerName: s.cfg.UserContainerNamePrefix + req.SafeID,
-			Message:       err.Error(),
-		})
-		return
-	}
-
 	resp, err := s.ensureUserRuntimeReady(ctx, req.UserID, req.SafeID)
 	if err != nil {
 		log.Printf("user up failed user=%s safe=%s err=%v", req.UserID, req.SafeID, err)
