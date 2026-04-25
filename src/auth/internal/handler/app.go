@@ -52,8 +52,8 @@ type App struct {
 	managerBaseURL string
 	// managerClient is the HTTP client used to call manager endpoints.
 	managerClient *http.Client
-	// managerSecret is an optional secret used for manager-authenticated requests.
-	managerSecret string
+	// managerSessionSecret is an optional secret used for manager-authenticated requests.
+	managerSessionSecret string
 
 	// mu protects login failure tracking maps.
 	mu sync.Mutex
@@ -107,8 +107,8 @@ type AppConfig struct {
 	ManagerBaseURL string
 	// ManagerTimeout is the HTTP timeout for manager requests.
 	ManagerTimeout time.Duration
-	// ManagerSecret is an optional shared secret for manager requests.
-	ManagerSecret string
+	// ManagerSessionSecret is an optional shared secret for manager requests.
+	ManagerSessionSecret string
 	// AllowSignup indicates whether new user signups are allowed.
 	AllowSignup bool
 }
@@ -158,8 +158,8 @@ func NewApp(config *AppConfig) *App {
 		managerClient: &http.Client{
 			Timeout: timeout,
 		},
-		managerSecret: config.ManagerSecret,
-		mux:           http.NewServeMux(),
+		managerSessionSecret: config.ManagerSessionSecret,
+		mux:                  http.NewServeMux(),
 
 		mu:        sync.Mutex{},
 		ipFails:   make(map[string]*loginAttempt),

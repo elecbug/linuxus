@@ -113,8 +113,8 @@ func (a *App) reportSessionState(id string, active int) error {
 		return fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if a.managerSecret != "" {
-		req.Header.Set("X-Manager-Secret", a.managerSecret)
+	if a.managerSessionSecret != "" {
+		req.Header.Set("X-Manager-Session-Secret", a.managerSessionSecret)
 	}
 
 	resp, err := a.managerClient.Do(req)

@@ -21,8 +21,8 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if s.cfg.ManagerSecret != "" {
-		if r.Header.Get("X-Manager-Secret") != s.cfg.ManagerSecret {
+	if s.cfg.ManagerSessionSecret != "" {
+		if r.Header.Get("X-Manager-Session-Secret") != s.cfg.ManagerSessionSecret {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
