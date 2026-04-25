@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/docker v28.5.2+incompatible
+	github.com/elecbug/linuxus/pkg/system_api v0.0.0
 )
 
 require (

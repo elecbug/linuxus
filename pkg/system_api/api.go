@@ -1,4 +1,4 @@
-package system
+package system_api
 
 import (
 	"fmt"

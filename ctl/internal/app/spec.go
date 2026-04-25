@@ -102,6 +102,10 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 			"ADMIN_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.PID),
 			"ADMIN_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Soft),
 			"ADMIN_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Hard),
+
+			"USER_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
+			"ADMIN_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
+			"SHARE_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
 		},
 		Volumes: []string{
 			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Homes, a.Config.Volumes.Host.Homes),

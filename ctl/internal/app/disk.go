@@ -243,10 +243,12 @@ func (a *App) listMountedDirsDeepestFirst(root string) ([]string, error) {
 	return dirs, nil
 }
 
+// findLoopDevicesForImages finds loop devices associated with image files under the specified directory.
 func (a *App) findLoopDevicesForImages(homesDir string) ([]string, error) {
 	return a.systemAPI.FindLoopDevicesForImages(homesDir)
 }
 
+// umountDisk unmounts the specified mount point if it is currently mounted.
 func (a *App) umountDisk(mountPoint string) error {
 	mounted, err := a.systemAPI.IsMountPoint(mountPoint)
 	if err != nil {
@@ -261,6 +263,7 @@ func (a *App) umountDisk(mountPoint string) error {
 	return nil
 }
 
+// detachLoopDevice detaches the specified loop device.
 func (a *App) detachLoopDevice(dev string) error {
 	return a.systemAPI.DetachLoopDevice(dev)
 }
