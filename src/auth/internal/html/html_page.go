@@ -1,5 +1,7 @@
 package html
 
+import "sort"
+
 // HTMLPage represents a full HTML document with head and body data.
 type HTMLPage struct {
 	// title is the page title rendered in head.
@@ -78,7 +80,7 @@ func (p *HTMLPage) RemoveLink(predicate func(x Attribute) bool) *HTMLPage {
 		for i, kv := range attrs {
 			if predicate(kv) {
 				p.links[tag] = append(attrs[:i], attrs[i+1:]...)
-				break
+				return p
 			}
 		}
 	}
@@ -142,7 +144,13 @@ func (p *HTMLPage) Render() string {
 	for _, kv := range p.meta {
 		pageStr += getIndentStr(1) + "<meta " + kv.Key + "=\"" + kv.Value + "\">\n"
 	}
-	for _, links := range p.links {
+	linkKeys := make([]string, 0, len(p.links))
+	for tag := range p.links {
+		linkKeys = append(linkKeys, tag)
+	}
+	sort.Strings(linkKeys)
+	for _, tag := range linkKeys {
+		links := p.links[tag]
 		linkStr := "<link "
 		for _, kv := range links {
 			linkStr += kv.Key + "=\"" + kv.Value + "\" "
