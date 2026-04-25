@@ -52,7 +52,7 @@ auth_service:
   security:
     session_secret: change-this-secret-before-production
     trusted_proxies: ""
-  allow_signup: false
+  allow_signup: true
 
 manager_service:
   source_dir: ./src/manager

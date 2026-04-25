@@ -5,7 +5,7 @@ import (
 )
 
 // GetLoginPage renders the login HTML template.
-func GetLoginPage(loginPath string) string {
+func GetLoginPage(loginPath string, allowSignup bool) string {
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | Login",
 		getBaseMeta(),
@@ -51,15 +51,38 @@ func GetLoginPage(loginPath string) string {
 				"Login",
 			),
 		),
-		html.NewHTML(
-			"p",
-			html.NewAttributes("class", "tooltip"),
-			"Don't have an account? Contact the administrator.",
-		),
+		getAllowSignupHTML(allowSignup),
 		linuxusFooterHTML(),
 	)
 
 	return htmlpage.Render()
+}
+
+func getAllowSignupHTML(allowSignup bool) *html.HTML {
+	if allowSignup {
+		return html.NewHTML(
+			"p",
+			html.NewAttributes(
+				"class", "tooltip",
+			),
+			html.NewHTML(
+				"a",
+				html.NewAttributes(
+					"class", "signup-link",
+					"href", "/signup",
+				),
+				"Don't have an account? Sign up here.",
+			),
+		)
+	} else {
+		return html.NewHTML(
+			"p",
+			html.NewAttributes(
+				"class", "tooltip",
+			),
+			"New user signups are currently disabled.",
+		)
+	}
 }
 
 // GetServicePage renders the post-login service HTML template.

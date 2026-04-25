@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -82,9 +81,8 @@ func parseConfig() (*handler.AppConfig, error) {
 	}
 	allowSignup := false
 	if allowSignupStr != "" {
-		allowSignup, err = strconv.ParseBool(allowSignupStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse ALLOW_SIGNUP: %v", err)
+		if allowSignupStr == fmt.Sprintf("%v", true) {
+			allowSignup = true
 		}
 	}
 

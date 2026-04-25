@@ -66,6 +66,9 @@ type App struct {
 
 	// sessionReportTimeout limits manager reporting request duration.
 	sessionReportTimeout time.Duration
+
+	// AllowSignup indicates whether new user signups are allowed.
+	allowSignup bool
 }
 
 // AppConfig defines all configuration values required to initialize an App.
@@ -152,6 +155,7 @@ func NewApp(config *AppConfig) *App {
 		sessionMu:            sync.Mutex{},
 		activeSessions:       make(map[string]int),
 		sessionReportTimeout: 5 * time.Second,
+		allowSignup:          config.AllowSignup,
 	}
 
 	go func() {
@@ -203,7 +207,7 @@ func (a *App) Stop() {
 
 // RegisterRoutes compiles templates and binds HTTP handlers.
 func (a *App) RegisterRoutes() {
-	loginTmpl, err := template.New(a.loginPath).Parse(page.GetLoginPage(a.loginPath))
+	loginTmpl, err := template.New(a.loginPath).Parse(page.GetLoginPage(a.loginPath, a.allowSignup))
 	if err != nil {
 		log.Fatalf("failed to parse login template: %v", err)
 	}

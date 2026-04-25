@@ -67,8 +67,9 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 		nil,
 	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n[!] Docker image build failed: %s\n\n", tag)
-		fmt.Fprint(os.Stderr, logBuf.String())
+		format.Log(format.ERROR_PREFIX, "Docker image build failed: %s", tag)
+		format.Log(format.ERROR_PREFIX, "Build logs:\n%s", logBuf.String())
+
 		return err
 	}
 

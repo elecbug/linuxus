@@ -28,7 +28,7 @@ func (a *App) ServiceUp() error {
 		return err
 	}
 
-	format.Log(format.INFO_PREFIX, "Runtime services started.")
+	format.Log(format.RUN_PREFIX, "Runtime services started.")
 	return nil
 }
 
@@ -42,7 +42,7 @@ func (a *App) ServiceDown() error {
 		return err
 	}
 
-	format.Log(format.INFO_PREFIX, "Runtime services stopped.")
+	format.Log(format.RUN_PREFIX, "Runtime services stopped.")
 	return nil
 }
 
@@ -129,14 +129,14 @@ func (a *App) VolumeClean() error {
 		return fmt.Errorf("failed to remove volumes dir: %w", err)
 	}
 
-	format.Log(format.INFO_PREFIX, "Volume clean completed.")
+	format.Log(format.RUN_PREFIX, "Volume clean completed.")
 	return nil
 }
 
 // ServicePS prints runtime status for managed containers and networks.
 func (a *App) ServicePS() error {
 	format.Log(format.HEADER_PREFIX, "Gathering runtime status...")
-	format.Log(format.INFO_PREFIX, "Runtime service status:")
+	format.Log(format.RUN_PREFIX, "Runtime service status:")
 
 	names, err := a.managedContainerNames()
 	if err != nil {
@@ -195,7 +195,7 @@ func (a *App) ServicePS() error {
 		fmt.Println(result)
 	}
 
-	format.Log(format.INFO_PREFIX, "Runtime network status:")
+	format.Log(format.RUN_PREFIX, "Runtime network status:")
 
 	networkInfos := make([]spec.NetworkInfo, 0)
 	networkInfos = append(networkInfos, spec.NetworkInfo{

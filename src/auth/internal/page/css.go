@@ -10,8 +10,9 @@ import (
 func getLoginCSS() *html.CSS {
 	return html.NewCSS().AddContents(
 		loginBodyCSS(),
-		loginTooltipCSS(),
 		loginErrorCSS(),
+	).AddContents(
+		loginTooltipCSS()...,
 	).AddContents(
 		footerCSS(40)...,
 	).AddContents(
@@ -25,8 +26,9 @@ func getLoginCSS() *html.CSS {
 func getErrorCSS() *html.CSS {
 	return html.NewCSS().AddContents(
 		loginBodyCSS(),
-		loginTooltipCSS(),
 		loginErrorCSS(),
+	).AddContents(
+		loginTooltipCSS()...,
 	).AddContents(
 		footerCSS(40)...,
 	)
@@ -123,14 +125,40 @@ func loginErrorCSS() *html.CSSContent {
 }
 
 // loginTooltipCSS returns styling for helper tooltip text.
-func loginTooltipCSS() *html.CSSContent {
-	return html.NewCSSContent("p.tooltip",
-		html.NewAttributes(
-			"color", TOOLTIP_COLOR,
-			"font-size", "0.9em",
-			"font-style", "italic",
-		)...,
-	)
+func loginTooltipCSS() []*html.CSSContent {
+	return []*html.CSSContent{
+		html.NewCSSContent("p.tooltip",
+			html.NewAttributes(
+				"color", TOOLTIP_COLOR,
+				"font-size", "0.9em",
+				"font-style", "italic",
+			)...,
+		),
+		html.NewCSSContent("a.signup-link",
+			html.NewAttributes(
+				"color", FOOTER_LINK_COLOR,
+				"text-decoration", "none",
+			)...,
+		),
+		html.NewCSSContent("a.signup-link:hover",
+			html.NewAttributes(
+				"color", FOOTER_LINK_HOVER_COLOR,
+				"text-decoration", "underline",
+			)...,
+		),
+		html.NewCSSContent("a.signup-link:active",
+			html.NewAttributes(
+				"color", FOOTER_LINK_ACTIVE_COLOR,
+				"text-decoration", "underline",
+			)...,
+		),
+		html.NewCSSContent("a.signup-link:visited",
+			html.NewAttributes(
+				"color", FOOTER_LINK_VISITED_COLOR,
+				"text-decoration", "underline",
+			)...,
+		),
+	}
 }
 
 // loginButtonCSS returns styling for login form inputs and button.
