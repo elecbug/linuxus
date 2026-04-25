@@ -66,38 +66,27 @@ func subnetToIndex(baseIP, subnet string) (int, bool) {
 	return index, true
 }
 
-// sanitizeName normalizes a string for safe Docker resource naming.
-func sanitizeName(s string) string {
-	s = strings.ToLower(strings.TrimSpace(s))
-	s = reInvalid.ReplaceAllString(s, "_")
-	s = strings.Trim(s, "_")
-	if s == "" {
-		return "invalid"
+// allowID checks if the provided ID is valid according to defined rules.
+func allowID(id string) bool {
+	if id == "" {
+		return false
 	}
-	return s
-}
-
-// sanitizeID converts user IDs into safe backend hostname fragments.
-func sanitizeID(id string) string {
-	id = strings.ToLower(id)
-	var b strings.Builder
-
-	for _, ch := range id {
-		if (ch >= 'a' && ch <= 'z') ||
-			(ch >= '0' && ch <= '9') ||
-			ch == '_' || ch == '-' || ch == '.' {
-			b.WriteRune(ch)
-		} else {
-			b.WriteRune('_')
+	for i, ch := range id {
+		if i == 0 && (ch == '_' || ch == '-') {
+			return false
 		}
+		if i == len(id)-1 && (ch == '_' || ch == '-') {
+			return false
+		}
+		if (ch >= 'A' && ch <= 'Z') ||
+			(ch >= 'a' && ch <= 'z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '_' || ch == '-' {
+			continue
+		}
+		return false
 	}
-
-	result := b.String()
-	result = strings.TrimLeft(result, "._-")
-	if result == "" {
-		return "invalid"
-	}
-	return result
+	return true
 }
 
 // writeJSON writes a JSON response with the given HTTP status code.

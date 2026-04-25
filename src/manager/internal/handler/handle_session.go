@@ -122,8 +122,12 @@ func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userI
 
 // resolveUserRuntimeNames resolves managed container/network names for a user.
 func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (string, string) {
-	containerName := s.cfg.UserContainerNamePrefix + sanitizeID(userID)
-	networkName := s.cfg.NetworkPrefix + sanitizeID(userID)
+	if !allowID(userID) {
+		return "", ""
+	}
+
+	containerName := s.cfg.UserContainerNamePrefix + userID
+	networkName := s.cfg.NetworkPrefix + userID
 
 	inspect, err := s.docker.ContainerInspect(ctx, containerName)
 	if err != nil {
