@@ -66,14 +66,16 @@ func getAllowSignupHTML(allowSignup bool, signupPath string) *html.HTML {
 			html.NewAttributes(
 				"class", "tooltip",
 			),
+			"Don't have an account? ",
 			html.NewHTML(
 				"a",
 				html.NewAttributes(
 					"class", "signup-link",
 					"href", "/"+signupPath,
 				),
-				"Don't have an account? Sign up here.",
+				"Sign up",
 			),
+			" here.",
 		)
 	} else {
 		return html.NewHTML(
@@ -81,7 +83,7 @@ func getAllowSignupHTML(allowSignup bool, signupPath string) *html.HTML {
 			html.NewAttributes(
 				"class", "tooltip",
 			),
-			"New user signups are currently disabled.",
+			"New user sign ups are currently disabled.",
 		)
 	}
 }
@@ -232,14 +234,16 @@ func GetSignupPage(signupPath, loginPath string) string {
 		html.NewHTML(
 			"p",
 			html.NewAttributes("class", "tooltip"),
+			"Already have an account? ",
 			html.NewHTML(
 				"a",
 				html.NewAttributes(
 					"class", "signup-link",
 					"href", "/"+loginPath,
 				),
-				"Already have an account? Login here.",
+				"Login",
 			),
+			" here.",
 		),
 		linuxusFooterHTML(),
 	)
