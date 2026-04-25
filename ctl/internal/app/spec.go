@@ -20,6 +20,7 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 			"LOGOUT_PATH=" + a.Config.AuthService.ServiceURL.Logout,
 			"SERVICE_PATH=" + a.Config.AuthService.ServiceURL.Service,
 			"TERMINAL_PATH=" + a.Config.AuthService.ServiceURL.Terminal,
+			"SIGNUP_PATH=" + a.Config.AuthService.ServiceURL.Signup,
 			"USER_CONTAINER_NAME_PREFIX=" + a.Config.UserService.Container.NamePrefix,
 			"TRUSTED_PROXIES=" + a.Config.AuthService.Security.TrustedProxies,
 			"MANAGER_BASE_URL=" + fmt.Sprintf("http://%s:5959", a.Config.ManagerService.Container.Name),

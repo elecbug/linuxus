@@ -18,6 +18,8 @@ import (
 type App struct {
 	// users maps user IDs to bcrypt password hashes.
 	users map[string]string
+	// authListFile is the path to the auth list file in container.
+	authListFile string
 	// sessionKey is used to sign session cookie payloads.
 	sessionKey []byte
 	// loginTmpl renders the login page.
@@ -26,6 +28,9 @@ type App struct {
 	serviceTmpl *template.Template
 	// errorTmpl renders error pages.
 	errorTmpl *template.Template
+	// signupTmpl renders the user registration page.
+	signupTmpl *template.Template
+
 	// loginPath is the configured login endpoint path.
 	loginPath string
 	// logoutPath is the configured logout endpoint path.
@@ -34,6 +39,8 @@ type App struct {
 	servicePath string
 	// terminalPath is the configured terminal endpoint path.
 	terminalPath string
+	// signupPath is the configured signup endpoint path.
+	signupPath string
 	// userContainerNamePrefix is prefixed to user runtime container names.
 	userContainerNamePrefix string
 	// trustedProxies contains CIDR networks allowed to forward client IP headers.
@@ -75,6 +82,8 @@ type App struct {
 type AppConfig struct {
 	// Users maps user IDs to bcrypt password hashes.
 	Users map[string]string
+	// AuthListFile is the path to the auth list file in container.
+	AuthListFile string
 	// SessionKey is used to sign session cookie payloads.
 	SessionKey []byte
 	// LoginPath is the route path for login.
@@ -85,6 +94,8 @@ type AppConfig struct {
 	ServicePath string
 	// TerminalPath is the route path for terminal proxy.
 	TerminalPath string
+	// SignupPath is the route path for user registration.
+	SignupPath string
 	// UserContainerNamePrefix is prefixed to user runtime container names.
 	UserContainerNamePrefix string
 	// TrustedProxies contains CIDR ranges trusted as reverse proxies.
@@ -132,11 +143,13 @@ func NewApp(config *AppConfig) *App {
 
 	app := &App{
 		users:                   config.Users,
+		authListFile:            config.AuthListFile,
 		sessionKey:              config.SessionKey,
 		loginPath:               config.LoginPath,
 		logoutPath:              config.LogoutPath,
 		servicePath:             config.ServicePath,
 		terminalPath:            config.TerminalPath,
+		signupPath:              config.SignupPath,
 		userContainerNamePrefix: config.UserContainerNamePrefix,
 		trustedProxies:          trustedProxies,
 		managerBaseURL:          strings.TrimRight(config.ManagerBaseURL, "/"),
@@ -194,6 +207,11 @@ func (a *App) TerminalPath() string {
 	return a.terminalPath
 }
 
+// SignupPath returns the configured signup path.
+func (a *App) SignupPath() string {
+	return a.signupPath
+}
+
 // Start launches the HTTP server using the configured route multiplexer.
 func (a *App) Start(addr string) error {
 	log.Printf("Auth server listening on %s", addr)
@@ -207,7 +225,7 @@ func (a *App) Stop() {
 
 // RegisterRoutes compiles templates and binds HTTP handlers.
 func (a *App) RegisterRoutes() {
-	loginTmpl, err := template.New(a.loginPath).Parse(page.GetLoginPage(a.loginPath, a.allowSignup))
+	loginTmpl, err := template.New(a.loginPath).Parse(page.GetLoginPage(a.loginPath, a.allowSignup, a.signupPath))
 	if err != nil {
 		log.Fatalf("failed to parse login template: %v", err)
 	}
@@ -222,13 +240,20 @@ func (a *App) RegisterRoutes() {
 		log.Fatalf("failed to parse error template: %v", err)
 	}
 
+	signupTmpl, err := template.New(a.signupPath).Parse(page.GetSignupPage(a.signupPath, a.loginPath))
+	if err != nil {
+		log.Fatalf("failed to parse signup template: %v", err)
+	}
+
 	a.loginTmpl = loginTmpl
 	a.serviceTmpl = serviceTmpl
 	a.errorTmpl = errorTmpl
+	a.signupTmpl = signupTmpl
 
 	a.mux.HandleFunc("/", a.handleRoot)
 	a.mux.HandleFunc("/"+a.loginPath, a.handleLogin)
 	a.mux.HandleFunc("/"+a.logoutPath, a.handleLogout)
+	a.mux.HandleFunc("/"+a.signupPath, a.handleSignup)
 
 	a.mux.HandleFunc("/"+a.servicePath, a.handleServiceRedirect)
 	a.mux.HandleFunc("/"+a.servicePath+"/", a.handleServicePage)

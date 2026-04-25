@@ -46,6 +46,7 @@ auth_service:
     logout: logout
     service: service
     terminal: terminal
+    signup: signup
   mounts:
     host_auth_list_path: ./data/AUTH_LIST
     container_auth_list_path: /data/AUTH_LIST

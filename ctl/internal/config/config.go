@@ -68,6 +68,8 @@ type Config struct {
 			Service string `yaml:"service"`
 			// Terminal is the terminal route path.
 			Terminal string `yaml:"terminal"`
+			// Signup is the user registration route path.
+			Signup string `yaml:"signup"`
 		} `yaml:"service_url"`
 
 		// Mounts defines host/container paths for auth list data.

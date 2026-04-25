@@ -5,7 +5,7 @@ import (
 )
 
 // GetLoginPage renders the login HTML template.
-func GetLoginPage(loginPath string, allowSignup bool) string {
+func GetLoginPage(loginPath string, allowSignup bool, signupPath string) string {
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | Login",
 		getBaseMeta(),
@@ -51,14 +51,14 @@ func GetLoginPage(loginPath string, allowSignup bool) string {
 				"Login",
 			),
 		),
-		getAllowSignupHTML(allowSignup),
+		getAllowSignupHTML(allowSignup, signupPath),
 		linuxusFooterHTML(),
 	)
 
 	return htmlpage.Render()
 }
 
-func getAllowSignupHTML(allowSignup bool) *html.HTML {
+func getAllowSignupHTML(allowSignup bool, signupPath string) *html.HTML {
 	if allowSignup {
 		return html.NewHTML(
 			"p",
@@ -69,7 +69,7 @@ func getAllowSignupHTML(allowSignup bool) *html.HTML {
 				"a",
 				html.NewAttributes(
 					"class", "signup-link",
-					"href", "/signup",
+					"href", "/"+signupPath,
 				),
 				"Don't have an account? Sign up here.",
 			),
@@ -162,6 +162,80 @@ func GetErrorPage() string {
 			"p",
 			html.NewAttributes("class", "tooltip"),
 			"Please try again or contact the administrator.",
+		),
+		linuxusFooterHTML(),
+	)
+
+	return htmlpage.Render()
+}
+
+// GetSignupPage renders the user registration HTML template.
+func GetSignupPage(signupPath, loginPath string) string {
+	htmlpage := html.NewHTMLPage(
+		"Linuxus | Sign Up",
+		getBaseMeta(),
+		getLoginCSS(),
+		html.NewHTML(
+			"h2",
+			html.NewAttributes(),
+			"Linuxus Sign Up",
+		),
+		html.NewHTML(
+			"p",
+			html.NewAttributes("class", "error"),
+			"{{.Error}}",
+		).AddPrefix("{{if .Error}}").AddSuffix("{{end}}"),
+		html.NewHTML(
+			"form",
+			html.NewAttributes(
+				"class", "login-form",
+				"method", "post",
+				"action", "/"+signupPath,
+			),
+			html.NewHTML(
+				"input",
+				html.NewAttributes(
+					"type", "text",
+					"name", "id",
+					"placeholder", "ID",
+					"required", "true",
+				),
+			),
+			html.NewHTML(
+				"input",
+				html.NewAttributes(
+					"type", "password",
+					"name", "password",
+					"placeholder", "Password",
+					"required", "true",
+				),
+			),
+			html.NewHTML(
+				"input",
+				html.NewAttributes(
+					"type", "password",
+					"name", "confirm_password",
+					"placeholder", "Confirm Password",
+					"required", "true",
+				),
+			),
+			html.NewHTML(
+				"button",
+				html.NewAttributes("type", "submit"),
+				"Sign Up",
+			),
+		),
+		html.NewHTML(
+			"p",
+			html.NewAttributes("class", "tooltip"),
+			html.NewHTML(
+				"a",
+				html.NewAttributes(
+					"class", "signup-link",
+					"href", "/"+loginPath,
+				),
+				"Already have an account? Login here.",
+			),
 		),
 		linuxusFooterHTML(),
 	)
