@@ -29,8 +29,8 @@ func (a *App) ValidateConfig() error {
 	if a.Config.AuthService.Container.ExternalPort <= 0 {
 		return errors.New("auth_service.external_port must be a positive integer")
 	}
-	if a.Config.AuthService.AdminID == "" {
-		return errors.New("auth_service.admin_id must not be empty")
+	if a.Config.ManagerService.AdminID == "" {
+		return errors.New("manager_service.admin_id must not be empty")
 	}
 	if a.Config.Volumes.Host.Volumes == "" {
 		return errors.New("volumes.host.volumes must not be empty")

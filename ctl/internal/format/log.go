@@ -9,10 +9,10 @@ type LogLevel string
 
 const (
 	HEADER_PREFIX  LogLevel = "[+]"
-	RUN_PREFIX     LogLevel = "[>]"
-	ERROR_PREFIX   LogLevel = "[!]"
-	WARNING_PREFIX LogLevel = "[?]"
-	INFO_PREFIX    LogLevel = "[i]"
+	RUN_PREFIX     LogLevel = "[-]"
+	ERROR_PREFIX   LogLevel = "[E]"
+	WARNING_PREFIX LogLevel = "[W]"
+	INFO_PREFIX    LogLevel = "[I]"
 )
 
 func Log(level LogLevel, format string, a ...interface{}) {

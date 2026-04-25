@@ -160,6 +160,18 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid ADMIN_NOFILE_HARD: %w", err)
 	}
+	shareDiskLimit := os.Getenv("SHARE_DISK_LIMIT")
+	if shareDiskLimit == "" {
+		return nil, fmt.Errorf("SHARE_DISK_LIMIT is required")
+	}
+	userDiskLimit := os.Getenv("USER_DISK_LIMIT")
+	if userDiskLimit == "" {
+		return nil, fmt.Errorf("USER_DISK_LIMIT is required")
+	}
+	adminDiskLimit := os.Getenv("ADMIN_DISK_LIMIT")
+	if adminDiskLimit == "" {
+		return nil, fmt.Errorf("ADMIN_DISK_LIMIT is required")
+	}
 
 	return &config.Config{
 		ListenAddr:              listenAddr,
@@ -200,6 +212,10 @@ func parseConfigFromEnv() (*config.Config, error) {
 			NofileSoft:  adminNofileSoft,
 			NofileHard:  adminNofileHard,
 		},
+
+		ShareDiskLimit: shareDiskLimit,
+		UserDiskLimit:  userDiskLimit,
+		AdminDiskLimit: adminDiskLimit,
 	}, nil
 }
 

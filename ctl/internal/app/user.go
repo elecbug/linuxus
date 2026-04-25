@@ -33,7 +33,7 @@ func (a *App) LoadUserList() error {
 		if userID == "" {
 			continue
 		}
-		if userID == a.Config.AuthService.AdminID {
+		if userID == a.Config.ManagerService.AdminID {
 			continue
 		}
 		if _, exists := a.seen[userID]; exists {

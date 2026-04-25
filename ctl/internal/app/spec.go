@@ -20,11 +20,13 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 			"LOGOUT_PATH=" + a.Config.AuthService.ServiceURL.Logout,
 			"SERVICE_PATH=" + a.Config.AuthService.ServiceURL.Service,
 			"TERMINAL_PATH=" + a.Config.AuthService.ServiceURL.Terminal,
+			"SIGNUP_PATH=" + a.Config.AuthService.ServiceURL.Signup,
 			"USER_CONTAINER_NAME_PREFIX=" + a.Config.UserService.Container.NamePrefix,
 			"TRUSTED_PROXIES=" + a.Config.AuthService.Security.TrustedProxies,
 			"MANAGER_BASE_URL=" + fmt.Sprintf("http://%s:5959", a.Config.ManagerService.Container.Name),
 			"MANAGER_TIMEOUT=" + a.Config.ManagerService.AuthService.ConnectionTimeout,
 			"MANAGER_SECRET=" + a.Config.ManagerService.Security.ManagerSecret,
+			"ALLOW_SIGNUP=" + fmt.Sprintf("%v", a.Config.AuthService.AllowSignup),
 		},
 		Volumes: []string{
 			fmt.Sprintf("%s:%s:rw", a.Config.AuthService.Mounts.HostAuthListPath, a.Config.AuthService.Mounts.ContainerAuthListPath),
@@ -72,7 +74,7 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 			"BASE_IP=" + a.Config.UserService.Container.BaseSubnet16,
 			"AUTH_CONTAINER_NAME=" + a.Config.AuthService.Container.Name,
 			"MANAGER_CONTAINER_NAME=" + a.Config.ManagerService.Container.Name,
-			"ADMIN_USER_ID=" + a.Config.AuthService.AdminID,
+			"ADMIN_USER_ID=" + a.Config.ManagerService.AdminID,
 
 			"RUNTIME_USER=" + fmt.Sprintf("%d:%d", a.Config.UserService.Runtime.UID, a.Config.UserService.Runtime.GID),
 			"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Runtime.LinuxUsername,
@@ -100,6 +102,10 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 			"ADMIN_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.PID),
 			"ADMIN_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Soft),
 			"ADMIN_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Hard),
+
+			"USER_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
+			"ADMIN_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
+			"SHARE_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
 		},
 		Volumes: []string{
 			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Homes, a.Config.Volumes.Host.Homes),

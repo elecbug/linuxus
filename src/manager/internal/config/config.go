@@ -67,4 +67,10 @@ type Config struct {
 	UserLimits ResourceLimits
 	// AdminLimits are runtime limits for admin user runtime containers.
 	AdminLimits ResourceLimits
+	// ShareDiskLimit is the size of loopback disk for shared and user volumes.
+	ShareDiskLimit string
+	// UserDiskLimit is the size of loopback disk for user volumes.
+	UserDiskLimit string
+	// AdminDiskLimit is the size of loopback disk for admin volumes.
+	AdminDiskLimit string
 }

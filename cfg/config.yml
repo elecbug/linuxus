@@ -13,7 +13,7 @@ user_service:
   limits:
     user:
       cpu: 1.5
-      memory: 512m
+      memory: 512M
       pid: 128
       ulimits:
         nofile:
@@ -46,13 +46,14 @@ auth_service:
     logout: logout
     service: service
     terminal: terminal
+    signup: signup
   mounts:
     host_auth_list_path: ./data/AUTH_LIST
     container_auth_list_path: /data/AUTH_LIST
   security:
     session_secret: change-this-secret-before-production
     trusted_proxies: ""
-  admin_id: alpha
+  allow_signup: true
 
 manager_service:
   source_dir: ./src/manager
@@ -66,6 +67,7 @@ manager_service:
     connection_timeout: 30s
   security:
     manager_secret: change-this-secret-before-production
+  admin_id: alpha
 
 volumes:
   host:

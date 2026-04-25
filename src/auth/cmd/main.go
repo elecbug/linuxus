@@ -54,6 +54,10 @@ func parseConfig() (*handler.AppConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
+	signupPath, err := getEnv("SIGNUP_PATH")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
+	}
 	userContainerNamePrefix, err := getEnv("USER_CONTAINER_NAME_PREFIX")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
@@ -75,6 +79,16 @@ func parseConfig() (*handler.AppConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
+	allowSignupStr, err := getEnv("ALLOW_SIGNUP")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment variable: %v", err)
+	}
+	allowSignup := false
+	if allowSignupStr != "" {
+		if allowSignupStr == fmt.Sprintf("%v", true) {
+			allowSignup = true
+		}
+	}
 
 	users, err := user.LoadUsers(authListFile)
 	if err != nil {
@@ -83,16 +97,19 @@ func parseConfig() (*handler.AppConfig, error) {
 
 	return &handler.AppConfig{
 		Users:                   users,
+		AuthListFile:            authListFile,
 		SessionKey:              []byte(sessionSecret),
 		LoginPath:               loginPath,
 		LogoutPath:              logoutPath,
 		ServicePath:             servicePath,
 		TerminalPath:            terminalPath,
+		SignupPath:              signupPath,
 		UserContainerNamePrefix: userContainerNamePrefix,
 		TrustedProxies:          trustProxiesToSlice(trustedProxies),
 		ManagerBaseURL:          managerBaseURL,
 		ManagerTimeout:          managerTimeout,
 		ManagerSecret:           managerSecret,
+		AllowSignup:             allowSignup,
 	}, nil
 }
 
