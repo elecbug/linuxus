@@ -25,7 +25,7 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 			"TRUSTED_PROXIES=" + a.Config.AuthService.Security.TrustedProxies,
 			"MANAGER_BASE_URL=" + fmt.Sprintf("http://%s:5959", a.Config.ManagerService.Container.Name),
 			"MANAGER_TIMEOUT=" + a.Config.ManagerService.AuthService.ConnectionTimeout,
-			"MANAGER_SECRET=" + a.Config.ManagerService.Security.ManagerSecret,
+			"MANAGER_SESSION_SECRET=" + a.Config.ManagerService.Security.SessionSecret,
 			"ALLOW_SIGNUP=" + fmt.Sprintf("%v", a.Config.AuthService.AllowSignup),
 		},
 		Volumes: []string{
@@ -90,7 +90,7 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 
 			"CONTAINER_USER_TIMEOUT=" + a.Config.ManagerService.UserManagement.CleanupTimeout,
 			"MANAGER_WAIT_TIME=" + a.Config.ManagerService.AuthService.ConnectionTimeout,
-			"MANAGER_SECRET=" + a.Config.ManagerService.Security.ManagerSecret,
+			"MANAGER_SESSION_SECRET=" + a.Config.ManagerService.Security.SessionSecret,
 			"LISTEN_ADDR=:5959",
 
 			"USER_NANO_CPUS=" + fmt.Sprintf("%d", userNanoCPUs),

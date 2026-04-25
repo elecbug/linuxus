@@ -57,7 +57,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 	if adminUserID == "" {
 		return nil, fmt.Errorf("ADMIN_USER_ID is required")
 	}
-	managerSecret := os.Getenv("MANAGER_SECRET")
+	managerSessionSecret := os.Getenv("MANAGER_SESSION_SECRET")
 
 	runtimeUser := os.Getenv("RUNTIME_USER")
 	if runtimeUser == "" {
@@ -182,7 +182,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 		BaseIP:                  baseIP,
 		AuthContainerName:       authContainerName,
 		AdminUserID:             adminUserID,
-		ManagerSecret:           managerSecret,
+		ManagerSessionSecret:    managerSessionSecret,
 
 		RuntimeUser:          runtimeUser,
 		ContainerRuntimeUser: containerRuntimeUser,

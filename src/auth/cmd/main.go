@@ -75,7 +75,7 @@ func parseConfig() (*handler.AppConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MANAGER_TIMEOUT: %v", err)
 	}
-	managerSecret, err := getEnv("MANAGER_SECRET")
+	managerSessionSecret, err := getEnv("MANAGER_SESSION_SECRET")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment variable: %v", err)
 	}
@@ -108,7 +108,7 @@ func parseConfig() (*handler.AppConfig, error) {
 		TrustedProxies:          trustProxiesToSlice(trustedProxies),
 		ManagerBaseURL:          managerBaseURL,
 		ManagerTimeout:          managerTimeout,
-		ManagerSecret:           managerSecret,
+		ManagerSessionSecret:    managerSessionSecret,
 		AllowSignup:             allowSignup,
 	}, nil
 }

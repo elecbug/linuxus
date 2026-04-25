@@ -32,8 +32,8 @@ type Config struct {
 	AuthContainerName string
 	// AdminUserID is the privileged user ID.
 	AdminUserID string
-	// ManagerSecret is an optional shared secret for protected endpoints.
-	ManagerSecret string
+	// ManagerSessionSecret is an optional shared secret for protected endpoints.
+	ManagerSessionSecret string
 
 	// RuntimeUser is the user identity used to run user containers.
 	RuntimeUser string

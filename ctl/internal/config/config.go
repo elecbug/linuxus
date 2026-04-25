@@ -127,8 +127,8 @@ type Config struct {
 
 		// Security defines authentication settings for manager endpoints.
 		Security struct {
-			// ManagerSecret authenticates privileged manager operations.
-			ManagerSecret string `yaml:"manager_secret"`
+			// SessionSecret signs manager session data.
+			SessionSecret string `yaml:"session_secret"`
 		} `yaml:"security"`
 
 		// AdminID is the admin user ID.
