@@ -38,6 +38,7 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 		Networks: []string{
 			a.Config.ManagerService.Container.Network,
 		},
+		Privileged: false,
 	}
 }
 
@@ -84,8 +85,9 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 			"HOST_HOMES_DIR=" + a.Config.Volumes.Host.Homes,
 			"HOST_SHARE_DIR=" + a.Config.Volumes.Host.Share,
 			"HOST_READONLY_DIR=" + a.Config.Volumes.Host.Readonly,
-			"CONTAINER_SHARE_DIR=" + a.Config.Volumes.Container.Share,
-			"CONTAINER_READONLY_DIR=" + a.Config.Volumes.Container.Readonly,
+			"CONTAINER_HOMES_DIR=" + a.Config.ManagerService.Container.HomesDir,
+			"CONTAINER_SHARE_DIR=" + a.Config.ManagerService.Container.ShareDir,
+			"CONTAINER_READONLY_DIR=" + a.Config.ManagerService.Container.ReadonlyDir,
 
 			"CONTAINER_USER_TIMEOUT=" + a.Config.ManagerService.UserManagement.CleanupTimeout,
 			"MANAGER_WAIT_TIME=" + a.Config.ManagerService.AuthService.ConnectionTimeout,
@@ -103,19 +105,20 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 			"ADMIN_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Soft),
 			"ADMIN_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Hard),
 
-			"USER_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
-			"ADMIN_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
 			"SHARE_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
+			"USER_DISK_LIMIT=" + a.Config.UserService.Limits.User.Disk,
+			"ADMIN_DISK_LIMIT=" + a.Config.UserService.Limits.Admin.Disk,
 		},
 		Volumes: []string{
-			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Homes, a.Config.Volumes.Host.Homes),
-			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Share),
-			fmt.Sprintf("%s:%s:rw", a.Config.Volumes.Host.Readonly, a.Config.Volumes.Host.Readonly),
+			fmt.Sprintf("%s:%s", a.Config.Volumes.Host.Homes, a.Config.ManagerService.Container.HomesDir),
+			fmt.Sprintf("%s:%s", a.Config.Volumes.Host.Share, a.Config.ManagerService.Container.ShareDir),
+			fmt.Sprintf("%s:%s", a.Config.Volumes.Host.Readonly, a.Config.ManagerService.Container.ReadonlyDir),
 			"/var/run/docker.sock:/var/run/docker.sock:rw",
 		},
 		Restart: "unless-stopped",
 		Networks: []string{
 			a.Config.ManagerService.Container.Network,
 		},
+		Privileged: true,
 	}, nil
 }

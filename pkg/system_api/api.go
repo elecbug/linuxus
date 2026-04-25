@@ -145,9 +145,16 @@ func (LinuxSystemAPI) IsMountPoint(path string) (bool, error) {
 
 // AttachLoopDevice attaches the specified image file to a free loop device and returns its path.
 func (LinuxSystemAPI) AttachLoopDevice(imagePath string) (string, error) {
-	out, err := exec.Command("losetup", "--find", "--show", imagePath).Output()
+	cmd := exec.Command("losetup", "--find", "--show", imagePath)
+
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("losetup attach failed: %s: %w", imagePath, err)
+		return "", fmt.Errorf(
+			"losetup attach failed: %s: %s: %w",
+			imagePath,
+			strings.TrimSpace(string(out)),
+			err,
+		)
 	}
 
 	loopdev := strings.TrimSpace(string(out))

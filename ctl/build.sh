@@ -9,6 +9,7 @@ OUTPUT="linuxusctl"
 
 cd "$SOURCE_DIR"
 
+go work sync
 go build -o "../$OUTPUT" "$SOURCE"
 
 cd "$CURRENT_DIR"

@@ -46,6 +46,8 @@ type RuntimeContainerSpec struct {
 	Limits ContainerLimits
 	// Networks is the list of networks to connect.
 	Networks []string
+	// Privileged enables privileged mode.
+	Privileged bool
 }
 
 // RuntimeNetworkSpec describes a Docker network to create.

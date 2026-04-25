@@ -1,0 +1,8 @@
+go 1.26.1
+
+use (
+	./ctl
+	./pkg/system_api
+	./src/auth
+	./src/manager
+)
