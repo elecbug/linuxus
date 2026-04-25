@@ -6,8 +6,6 @@ import "time"
 type UserUpRequest struct {
 	// UserID is the original user identifier.
 	UserID string `json:"user_id"`
-	// SafeID is the sanitized identifier used for runtime resources.
-	SafeID string `json:"safe_id"`
 }
 
 // UserUpResponse is the result payload for runtime preparation.
@@ -16,8 +14,6 @@ type UserUpResponse struct {
 	OK bool `json:"ok"`
 	// UserID echoes the requested user identifier.
 	UserID string `json:"user_id,omitempty"`
-	// SafeID echoes the sanitized identifier.
-	SafeID string `json:"safe_id,omitempty"`
 	// ContainerName is the prepared runtime container name.
 	ContainerName string `json:"container_name,omitempty"`
 	// NetworkName is the prepared runtime network name.

@@ -55,17 +55,15 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 
 // updateSessionState updates runtime idle/session tracking state for a user.
 func (s *Server) updateSessionState(userID string, active int, observedAt time.Time) {
-	safeID := sanitizeID(userID)
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rt, ok := s.runtimes[safeID]
+	rt, ok := s.runtimes[userID]
 	if !ok {
 		rt = &RuntimeState{
 			UserID: userID,
 		}
-		s.runtimes[safeID] = rt
+		s.runtimes[userID] = rt
 	}
 
 	prev := rt.ActiveSessions

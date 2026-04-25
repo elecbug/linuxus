@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 )
 
@@ -27,7 +26,6 @@ func (a *App) LoadUserList() error {
 	defer f.Close()
 
 	a.UserIDs = nil
-	a.SafeIDs = nil
 	a.seen = make(map[string]struct{})
 
 	scanner := bufio.NewScanner(f)
@@ -49,10 +47,8 @@ func (a *App) LoadUserList() error {
 			continue
 		}
 
-		safeID := sanitizeName(userID)
 		a.seen[userID] = struct{}{}
 		a.UserIDs = append(a.UserIDs, userID)
-		a.SafeIDs = append(a.SafeIDs, safeID)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -62,18 +58,4 @@ func (a *App) LoadUserList() error {
 		fmt.Println("Warning: no valid user IDs found in auth list")
 	}
 	return nil
-}
-
-// sanitizeName converts an arbitrary user ID to a Docker-safe identifier.
-func sanitizeName(s string) string {
-	s = strings.ToLower(s)
-	reInvalid := regexp.MustCompile(`[^a-z0-9]+`)
-	s = reInvalid.ReplaceAllString(s, "_")
-	reDup := regexp.MustCompile(`_+`)
-	s = reDup.ReplaceAllString(s, "_")
-	s = strings.Trim(s, "_")
-	if s == "" {
-		return "invalid"
-	}
-	return s
 }

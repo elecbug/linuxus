@@ -28,6 +28,12 @@ func (a *App) handleSignup(w http.ResponseWriter, r *http.Request) {
 		}
 
 		id := strings.TrimSpace(r.FormValue("id"))
+
+		if !allowID(id) {
+			a.renderSignup(w, "ID can only contain alphabets, digits, underscores, or hyphens.")
+			return
+		}
+
 		password := r.FormValue("password")
 		confirmPassword := r.FormValue("confirm_password")
 
@@ -82,4 +88,20 @@ func (a *App) renderSignup(w http.ResponseWriter, errMsg string) {
 		http.Error(w, "Template execution error", http.StatusInternalServerError)
 		return
 	}
+}
+
+func allowID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, ch := range id {
+		if (ch >= 'A' && ch <= 'Z') ||
+			(ch >= 'a' && ch <= 'z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '_' || ch == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }

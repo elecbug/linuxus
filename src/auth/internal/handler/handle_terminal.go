@@ -33,8 +33,7 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	safeID := sanitizeID(id)
-	targetURL := fmt.Sprintf("http://%s%s:7681", a.userContainerNamePrefix, safeID)
+	targetURL := fmt.Sprintf("http://%s%s:7681", a.userContainerNamePrefix, id)
 
 	target, err := url.Parse(targetURL)
 	if err != nil {
@@ -80,29 +79,6 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxy.ServeHTTP(w, r)
-}
-
-// sanitizeID converts a user ID into a safe runtime identifier.
-func sanitizeID(id string) string {
-	id = strings.ToLower(id)
-	var b strings.Builder
-
-	for _, ch := range id {
-		if (ch >= 'a' && ch <= 'z') ||
-			(ch >= '0' && ch <= '9') ||
-			ch == '_' || ch == '-' || ch == '.' {
-			b.WriteRune(ch)
-		} else {
-			b.WriteRune('_')
-		}
-	}
-
-	result := b.String()
-	result = strings.TrimLeft(result, "._-")
-	if result == "" {
-		return "invalid"
-	}
-	return result
 }
 
 // isWebSocketRequest checks if the incoming HTTP request is a WebSocket upgrade request.

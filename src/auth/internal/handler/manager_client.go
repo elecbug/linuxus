@@ -21,7 +21,6 @@ func (a *App) ensureUserContainerReady(ctx context.Context, userID string) error
 
 	payload := packet.UserUpRequest{
 		UserID: userID,
-		SafeID: sanitizeID(userID),
 	}
 
 	body, err := json.Marshal(payload)
