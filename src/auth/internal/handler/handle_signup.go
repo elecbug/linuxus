@@ -28,6 +28,12 @@ func (a *App) handleSignup(w http.ResponseWriter, r *http.Request) {
 		}
 
 		id := strings.TrimSpace(r.FormValue("id"))
+
+		if !allowID(id) {
+			a.renderSignup(w, "ID can only contain alphabets, digits, underscores(_), or hyphens(-) and cannot start or end with underscores or hyphens.")
+			return
+		}
+
 		password := r.FormValue("password")
 		confirmPassword := r.FormValue("confirm_password")
 
@@ -82,4 +88,27 @@ func (a *App) renderSignup(w http.ResponseWriter, errMsg string) {
 		http.Error(w, "Template execution error", http.StatusInternalServerError)
 		return
 	}
+}
+
+// allowID checks if the provided ID is valid according to defined rules.
+func allowID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for i, ch := range id {
+		if i == 0 && (ch == '_' || ch == '-') {
+			return false
+		}
+		if i == len(id)-1 && (ch == '_' || ch == '-') {
+			return false
+		}
+		if (ch >= 'A' && ch <= 'Z') ||
+			(ch >= 'a' && ch <= 'z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '_' || ch == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }

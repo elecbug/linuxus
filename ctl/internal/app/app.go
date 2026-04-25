@@ -33,8 +33,6 @@ type App struct {
 	Config config.Config
 	// UserIDs stores raw user IDs parsed from auth list.
 	UserIDs []string
-	// SafeIDs stores sanitized user IDs safe for Docker resource names.
-	SafeIDs []string
 	// seen tracks deduplication of user IDs while parsing auth data.
 	seen map[string]struct{}
 }

@@ -8,8 +8,6 @@ import (
 type UserUpRequest struct {
 	// UserID is the original user identifier.
 	UserID string `json:"user_id"`
-	// SafeID is the sanitized identifier used for runtime resources.
-	SafeID string `json:"safe_id"`
 }
 
 // UserUpResponse is the manager response for a user runtime preparation request.
@@ -18,8 +16,6 @@ type UserUpResponse struct {
 	OK bool `json:"ok"`
 	// UserID is the original user identifier.
 	UserID string `json:"user_id"`
-	// SafeID is the sanitized identifier used for runtime resources.
-	SafeID string `json:"safe_id"`
 	// ContainerName is the prepared runtime container name.
 	ContainerName string `json:"container_name"`
 	// NetworkName is the prepared runtime network name.

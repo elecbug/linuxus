@@ -1,11 +1,15 @@
 package html
 
+import "sort"
+
 // HTMLPage represents a full HTML document with head and body data.
 type HTMLPage struct {
 	// title is the page title rendered in head.
 	title string
 	// meta contains meta tag attributes.
 	meta []Attribute
+	// links contains link tag attributes.
+	links map[string][]Attribute
 	// css contains optional embedded style definitions.
 	css *CSS
 	// body contains body child nodes or raw strings.
@@ -13,10 +17,11 @@ type HTMLPage struct {
 }
 
 // NewHTMLPage creates a full HTML document model.
-func NewHTMLPage(title string, meta []Attribute, css *CSS, body ...any) *HTMLPage {
+func NewHTMLPage(title string, meta []Attribute, links map[string][]Attribute, css *CSS, body ...any) *HTMLPage {
 	return &HTMLPage{
 		title: title,
 		meta:  meta,
+		links: links,
 		css:   css,
 		body:  body,
 	}
@@ -57,6 +62,34 @@ func (p *HTMLPage) RemoveMeta(predicate func(x Attribute) bool) *HTMLPage {
 // Meta returns all meta tag attributes.
 func (p *HTMLPage) Meta() []Attribute {
 	return p.meta
+}
+
+// AddLink appends a link tag attribute pair.
+func (p *HTMLPage) AddLink(tag string, key string, value string) *HTMLPage {
+	if p.links == nil {
+		p.links = make(map[string][]Attribute)
+	}
+
+	p.links[tag] = append(p.links[tag], Attribute{Key: key, Value: value})
+	return p
+}
+
+// RemoveLink removes the first link entry matching predicate.
+func (p *HTMLPage) RemoveLink(predicate func(x Attribute) bool) *HTMLPage {
+	for tag, attrs := range p.links {
+		for i, kv := range attrs {
+			if predicate(kv) {
+				p.links[tag] = append(attrs[:i], attrs[i+1:]...)
+				return p
+			}
+		}
+	}
+	return p
+}
+
+// Links returns all link tag attributes.
+func (p *HTMLPage) Links() map[string][]Attribute {
+	return p.links
 }
 
 // SetCSS sets the CSS definition for the page.
@@ -110,6 +143,20 @@ func (p *HTMLPage) Render() string {
 	pageStr += getIndentStr(1) + "<title>" + p.title + "</title>\n"
 	for _, kv := range p.meta {
 		pageStr += getIndentStr(1) + "<meta " + kv.Key + "=\"" + kv.Value + "\">\n"
+	}
+	linkKeys := make([]string, 0, len(p.links))
+	for tag := range p.links {
+		linkKeys = append(linkKeys, tag)
+	}
+	sort.Strings(linkKeys)
+	for _, tag := range linkKeys {
+		links := p.links[tag]
+		linkStr := "<link "
+		for _, kv := range links {
+			linkStr += kv.Key + "=\"" + kv.Value + "\" "
+		}
+		linkStr += ">\n"
+		pageStr += getIndentStr(1) + linkStr
 	}
 	if p.css != nil {
 		pageStr += p.css.renderWithIndent(1)

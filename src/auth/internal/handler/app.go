@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -259,6 +261,14 @@ func (a *App) RegisterRoutes() {
 	a.mux.HandleFunc("/"+a.servicePath+"/", a.handleServicePage)
 	a.mux.HandleFunc("/"+a.terminalPath, a.handleTerminalRedirect)
 	a.mux.HandleFunc("/"+a.terminalPath+"/", a.handleTerminalProxy)
+
+	staticDir := "static"
+	if exe, err := os.Executable(); err == nil {
+		staticDir = filepath.Join(filepath.Dir(exe), "static")
+	} else {
+		log.Printf("warning: could not determine executable path, serving static from relative path: %v", err)
+	}
+	a.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 }
 
 // evictStaleEntries removes old failure tracking entries that are no longer active.

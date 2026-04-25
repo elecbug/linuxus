@@ -154,7 +154,7 @@ func loginTooltipCSS() []*html.CSSContent {
 		),
 		html.NewCSSContent("a.signup-link:visited",
 			html.NewAttributes(
-				"color", FOOTER_LINK_VISITED_COLOR,
+				"color", FOOTER_LINK_COLOR,
 				"text-decoration", "underline",
 			)...,
 		),

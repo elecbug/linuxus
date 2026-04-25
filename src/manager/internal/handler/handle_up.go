@@ -39,7 +39,6 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.UserID = strings.TrimSpace(req.UserID)
-	req.SafeID = strings.TrimSpace(req.SafeID)
 	if req.UserID == "" {
 		writeJSON(w, http.StatusBadRequest, packet.UserUpResponse{
 			OK:      false,
@@ -47,21 +46,24 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	if req.SafeID == "" {
-		req.SafeID = sanitizeName(req.UserID)
+	if !allowID(req.UserID) {
+		writeJSON(w, http.StatusBadRequest, packet.UserUpResponse{
+			OK:      false,
+			Message: "user_id contains invalid characters",
+		})
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), s.cfg.ManagerWaitTime)
 	defer cancel()
 
-	resp, err := s.ensureUserRuntimeReady(ctx, req.UserID, req.SafeID)
+	resp, err := s.ensureUserRuntimeReady(ctx, req.UserID)
 	if err != nil {
-		log.Printf("user up failed user=%s safe=%s err=%v", req.UserID, req.SafeID, err)
+		log.Printf("user up failed user=%s err=%v", req.UserID, err)
 		writeJSON(w, http.StatusServiceUnavailable, packet.UserUpResponse{
 			OK:            false,
 			UserID:        req.UserID,
-			SafeID:        req.SafeID,
-			ContainerName: s.cfg.UserContainerNamePrefix + req.SafeID,
+			ContainerName: s.cfg.UserContainerNamePrefix + req.UserID,
 			Message:       err.Error(),
 		})
 		return
@@ -71,8 +73,12 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 }
 
 // ensureUserRuntimeReady ensures a user container and network are ready to serve requests.
-func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID string) (*packet.UserUpResponse, error) {
-	containerName := s.cfg.UserContainerNamePrefix + safeID
+func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (*packet.UserUpResponse, error) {
+	if !allowID(userID) {
+		return nil, fmt.Errorf("user_id contains invalid characters")
+	}
+
+	containerName := s.cfg.UserContainerNamePrefix + userID
 
 	if _, err := s.docker.ImageInspect(ctx, s.cfg.UserImage, client.ImageInspectWithRawResponse(nil)); err != nil {
 		return nil, fmt.Errorf("user image not found: %s", s.cfg.UserImage)
@@ -102,7 +108,6 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 		return &packet.UserUpResponse{
 			OK:            true,
 			UserID:        userID,
-			SafeID:        safeID,
 			ContainerName: containerName,
 			NetworkName:   networkName,
 			Subnet:        subnet,
@@ -115,7 +120,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 		return nil, err
 	}
 
-	networkName := s.cfg.NetworkPrefix + safeID
+	networkName := s.cfg.NetworkPrefix + userID
 	if exists, err := s.existNetwork(ctx, networkName); err != nil {
 		return nil, err
 	} else if exists {
@@ -141,7 +146,6 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID, safeID stri
 	return &packet.UserUpResponse{
 		OK:            true,
 		UserID:        userID,
-		SafeID:        safeID,
 		ContainerName: containerName,
 		NetworkName:   networkName,
 		Subnet:        subnet,

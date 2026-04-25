@@ -99,6 +99,7 @@ func TestHTMLPageRendering(t *testing.T) {
 	p := NewHTMLPage(
 		"Test Page",
 		NewAttributes("charset", "UTF-8"),
+		nil,
 		css,
 		htmlContent,
 	)
@@ -156,7 +157,7 @@ func TestHTMLPageRemoveContent(t *testing.T) {
 		NewAttributes("class", "container"),
 		"Hello, World!",
 	)
-	p := NewHTMLPage("Test Page", nil, nil, htmlContent)
+	p := NewHTMLPage("Test Page", nil, nil, nil, htmlContent)
 
 	p.AddBodyContent(
 		NewHTML(

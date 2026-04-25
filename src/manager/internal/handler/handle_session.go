@@ -55,17 +55,15 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 
 // updateSessionState updates runtime idle/session tracking state for a user.
 func (s *Server) updateSessionState(userID string, active int, observedAt time.Time) {
-	safeID := sanitizeID(userID)
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rt, ok := s.runtimes[safeID]
+	rt, ok := s.runtimes[userID]
 	if !ok {
 		rt = &RuntimeState{
 			UserID: userID,
 		}
-		s.runtimes[safeID] = rt
+		s.runtimes[userID] = rt
 	}
 
 	prev := rt.ActiveSessions
@@ -124,8 +122,12 @@ func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userI
 
 // resolveUserRuntimeNames resolves managed container/network names for a user.
 func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (string, string) {
-	containerName := s.cfg.UserContainerNamePrefix + sanitizeID(userID)
-	networkName := s.cfg.NetworkPrefix + sanitizeID(userID)
+	if !allowID(userID) {
+		return "", ""
+	}
+
+	containerName := s.cfg.UserContainerNamePrefix + userID
+	networkName := s.cfg.NetworkPrefix + userID
 
 	inspect, err := s.docker.ContainerInspect(ctx, containerName)
 	if err != nil {

@@ -9,6 +9,7 @@ func GetLoginPage(loginPath string, allowSignup bool, signupPath string) string 
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | Login",
 		getBaseMeta(),
+		getFaviconLink(),
 		getLoginCSS(),
 		html.NewHTML(
 			"h2",
@@ -65,14 +66,16 @@ func getAllowSignupHTML(allowSignup bool, signupPath string) *html.HTML {
 			html.NewAttributes(
 				"class", "tooltip",
 			),
+			"Don't have an account? ",
 			html.NewHTML(
 				"a",
 				html.NewAttributes(
 					"class", "signup-link",
 					"href", "/"+signupPath,
 				),
-				"Don't have an account? Sign up here.",
+				"Sign up",
 			),
+			" here.",
 		)
 	} else {
 		return html.NewHTML(
@@ -80,7 +83,7 @@ func getAllowSignupHTML(allowSignup bool, signupPath string) *html.HTML {
 			html.NewAttributes(
 				"class", "tooltip",
 			),
-			"New user signups are currently disabled.",
+			"New user sign ups are currently disabled.",
 		)
 	}
 }
@@ -90,6 +93,7 @@ func GetServicePage(terminalPath, logoutPath string) string {
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | {{.ID}}",
 		getBaseMeta(),
+		getFaviconLink(),
 		getServiceCSS(),
 		html.NewHTML(
 			"div",
@@ -147,6 +151,7 @@ func GetErrorPage() string {
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | Error",
 		getBaseMeta(),
+		getFaviconLink(),
 		getErrorCSS(),
 		html.NewHTML(
 			"h2",
@@ -174,6 +179,7 @@ func GetSignupPage(signupPath, loginPath string) string {
 	htmlpage := html.NewHTMLPage(
 		"Linuxus | Sign Up",
 		getBaseMeta(),
+		getFaviconLink(),
 		getLoginCSS(),
 		html.NewHTML(
 			"h2",
@@ -228,14 +234,16 @@ func GetSignupPage(signupPath, loginPath string) string {
 		html.NewHTML(
 			"p",
 			html.NewAttributes("class", "tooltip"),
+			"Already have an account? ",
 			html.NewHTML(
 				"a",
 				html.NewAttributes(
 					"class", "signup-link",
 					"href", "/"+loginPath,
 				),
-				"Already have an account? Login here.",
+				"Login",
 			),
+			" here.",
 		),
 		linuxusFooterHTML(),
 	)
@@ -250,6 +258,17 @@ func getBaseMeta() []html.Attribute {
 		"name", "viewport",
 		"content", "width=device-width, initial-scale=1.0",
 	)
+}
+
+// getFaviconLink returns the link tag for the favicon.
+func getFaviconLink() map[string][]html.Attribute {
+	return map[string][]html.Attribute{
+		"icon": html.NewAttributes(
+			"rel", "icon",
+			"type", "image/png",
+			"href", "/static/favicon.png",
+		),
+	}
 }
 
 // linuxusFooterHTML builds the shared footer element.

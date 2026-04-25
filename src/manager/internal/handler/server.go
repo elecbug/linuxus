@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"regexp"
 	"sync"
 	"syscall"
 	"time"
@@ -16,9 +15,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/manager/internal/config"
 )
-
-// reInvalid matches characters that are not allowed in sanitized runtime names.
-var reInvalid = regexp.MustCompile(`[^a-z0-9]+`)
 
 // Server holds manager service dependencies and runtime state tracking.
 type Server struct {
