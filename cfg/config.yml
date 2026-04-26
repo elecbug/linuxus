@@ -1,5 +1,5 @@
 user_service:
-  source_dir: ./src/service
+  source_dir: src/service
   container:
     name_prefix: linuxus_user_
     network_name_prefix: linuxus_user_net_
@@ -35,7 +35,7 @@ user_service:
       # session_timeout: 3600
 
 auth_service:
-  source_dir: ./src/auth
+  source_dir: src/auth
   container:
     name: linuxus_auth
     external_port: 8080
@@ -48,7 +48,7 @@ auth_service:
     terminal: terminal
     signup: signup
   mounts:
-    host_auth_list_path: ./data/AUTH_LIST
+    host_auth_list_path: data/AUTH_LIST
     container_auth_list_path: /data/AUTH_LIST
   security:
     session_secret: change-this-secret-before-production
@@ -56,7 +56,7 @@ auth_service:
   allow_signup: true
 
 manager_service:
-  source_dir: ./src/manager
+  source_dir: src/manager
   container:
     name: linuxus_manager
     network: linuxus_manager_net
@@ -74,10 +74,10 @@ manager_service:
 
 volumes:
   host:
-    volumes: ./volumes
-    homes: ./volumes/homes
-    share: ./volumes/share
-    readonly: ./volumes/readonly
+    volumes: volumes
+    homes: volumes/homes
+    share: volumes/share
+    readonly: volumes/readonly
   container:
     share: /home/share
     readonly: /home/readonly

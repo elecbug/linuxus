@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 
 	"github.com/elecbug/linuxus/ctl/internal/app"
+	"github.com/elecbug/linuxus/ctl/internal/config"
 	"github.com/elecbug/linuxus/ctl/internal/format"
 )
 
 // main executes the CLI entrypoint and prints user-friendly errors.
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		format.Log(format.ERROR_PREFIX, "An error occurred: %v", err)
 		os.Exit(1)
 	}
 }
@@ -49,6 +50,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
 	execPath, err = filepath.EvalSymlinks(execPath)
 	if err != nil {
 		return err
@@ -62,6 +64,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
 	if opts.IsHelp {
 		printUsage(os.Args[0])
 		return nil
@@ -75,7 +78,8 @@ func run() error {
 	if err := app.LoadConfig(); err != nil {
 		return err
 	}
-	if err := app.ValidateConfig(); err != nil {
+
+	if err := config.ValidateConfig(&app.Config); err != nil {
 		return err
 	}
 

@@ -185,7 +185,12 @@ func (a *App) ServicePS() error {
 			Status: format.DisplayStatusText(state, status, hasState),
 			Image:  image,
 			Ports:  ports,
-			Role:   format.DisplayUserName(a.Config, name),
+			Role: format.DisplayUserName(
+				a.Config.UserService.Container.NamePrefix,
+				a.Config.AuthService.Container.Name,
+				a.Config.ManagerService.Container.Name,
+				name,
+			),
 		})
 	}
 

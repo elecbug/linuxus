@@ -3,8 +3,6 @@ package format
 import (
 	"fmt"
 	"strings"
-
-	"github.com/elecbug/linuxus/ctl/internal/config"
 )
 
 // DisplayNetworkID shortens network IDs for compact table output.
@@ -29,14 +27,14 @@ func DisplayStatusText(state, status string, hasState bool) string {
 }
 
 // DisplayUserName maps managed container names to display user identifiers.
-func DisplayUserName(cfg config.Config, name string) string {
-	if strings.HasPrefix(name, cfg.UserService.Container.NamePrefix) {
-		return fmt.Sprintf("<USER:%s>", name[len(cfg.UserService.Container.NamePrefix):])
+func DisplayUserName(containerNamePrefix, authContainerName, managerContainerName, name string) string {
+	if strings.HasPrefix(name, containerNamePrefix) {
+		return fmt.Sprintf("<USER:%s>", name[len(containerNamePrefix):])
 	}
-	if name == cfg.AuthService.Container.Name {
+	if name == authContainerName {
 		return "<AUTH SERVICE>"
 	}
-	if name == cfg.ManagerService.Container.Name {
+	if name == managerContainerName {
 		return "<MANAGER SERVICE>"
 	}
 	return "-"
