@@ -1,11 +1,9 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -21,59 +19,6 @@ func (a *App) LoadConfig() error {
 	}
 
 	a.normalizeConfigPaths()
-	return nil
-}
-
-// ValidateConfig validates required config values before runtime operations.
-func (a *App) ValidateConfig() error {
-	if a.Config.AuthService.Container.ExternalPort <= 0 {
-		return errors.New("auth_service.external_port must be a positive integer")
-	}
-	if a.Config.ManagerService.AdminID == "" {
-		return errors.New("manager_service.admin_id must not be empty")
-	}
-	if a.Config.Volumes.Host.Volumes == "" {
-		return errors.New("volumes.host.volumes must not be empty")
-	}
-	if a.Config.Volumes.Host.Homes == "" || a.Config.Volumes.Host.Share == "" || a.Config.Volumes.Host.Readonly == "" {
-		return errors.New("volume host paths must not be empty")
-	}
-	if a.Config.Volumes.DiskLimit == "" {
-		return errors.New("volumes.disk_limit must not be empty")
-	}
-	if a.Config.UserService.SourceDir == "" {
-		return errors.New("user_service.source_dir must not be empty")
-	}
-	if a.Config.AuthService.SourceDir == "" {
-		return errors.New("auth_service.source_dir must not be empty")
-	}
-	if a.Config.ManagerService.SourceDir == "" {
-		return errors.New("manager_service.source_dir must not be empty")
-	}
-	if a.Config.ManagerService.Container.Name == "" {
-		return errors.New("manager_service.container.name must not be empty")
-	}
-	if a.Config.ManagerService.Container.Network == "" {
-		return errors.New("manager_service.container.network must not be empty")
-	}
-	if a.Config.ManagerService.AuthService.ConnectionTimeout == "" {
-		return errors.New("manager_service.auth_service.connection_timeout must not be empty")
-	}
-	if _, err := time.ParseDuration(a.Config.ManagerService.AuthService.ConnectionTimeout); err != nil {
-		return fmt.Errorf("manager_service.auth_service.connection_timeout is not a valid duration: %w", err)
-	}
-	if a.Config.ManagerService.Container.Subnet == "" {
-		return errors.New("manager_service.container.subnet must not be empty")
-	}
-	if a.Config.UserService.Container.NamePrefix == "" {
-		return errors.New("user_service.container.name_prefix must not be empty")
-	}
-	if a.Config.UserService.Container.NetworkNamePrefix == "" {
-		return errors.New("user_service.container.network_name_prefix must not be empty")
-	}
-	if a.Config.UserService.Container.BaseSubnet16 == "" {
-		return errors.New("user_service.container.base_subnet_16 must not be empty")
-	}
 	return nil
 }
 
