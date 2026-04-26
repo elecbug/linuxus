@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -17,7 +16,7 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.UserService.SourceDir == "" {
 		errMsgs = append(errMsgs, "user_service.source_dir is required")
-	} else if err := isValidDirPath(cfg.UserService.SourceDir); err != nil {
+	} else if err := existDir(cfg.UserService.SourceDir); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("user_service.source_dir (%v)", err))
 	}
 
@@ -75,7 +74,7 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.AuthService.SourceDir == "" {
 		errMsgs = append(errMsgs, "auth_service.source_dir is required")
-	} else if err := isValidDirPath(cfg.AuthService.SourceDir); err != nil {
+	} else if err := existDir(cfg.AuthService.SourceDir); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("auth_service.source_dir (%v)", err))
 	}
 
@@ -115,13 +114,13 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.AuthService.Mounts.HostAuthListPath == "" {
 		errMsgs = append(errMsgs, "auth_service.mounts.host_auth_list_path is required")
-	} else if err := isValidDirPath(cfg.AuthService.Mounts.HostAuthListPath); err != nil {
+	} else if err := usablePath(cfg.AuthService.Mounts.HostAuthListPath); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("auth_service.mounts.host_auth_list_path (%v)", err))
 	}
 
 	if cfg.AuthService.Mounts.ContainerAuthListPath == "" {
 		errMsgs = append(errMsgs, "auth_service.mounts.container_auth_list_path is required")
-	} else if !strings.HasPrefix(cfg.AuthService.Mounts.ContainerAuthListPath, "/") {
+	} else if !isAbsolutePath(cfg.AuthService.Mounts.ContainerAuthListPath) {
 		errMsgs = append(errMsgs, "auth_service.mounts.container_auth_list_path must start with '/'")
 	}
 
@@ -129,11 +128,13 @@ func ValidateConfig(cfg *Config) error {
 		errMsgs = append(errMsgs, "auth_service.security.session_secret is required")
 	}
 
-	// TrustedProxies can be empty, but if provided, it must be a valid comma-separated list of CIDR blocks.
+	if err := isValidTrustedProxies(cfg.AuthService.Security.TrustedProxies); err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("auth_service.security.trusted_proxies (%v)", err))
+	}
 
 	if cfg.ManagerService.SourceDir == "" {
 		errMsgs = append(errMsgs, "manager_service.source_dir is required")
-	} else if err := isValidDirPath(cfg.ManagerService.SourceDir); err != nil {
+	} else if err := existDir(cfg.ManagerService.SourceDir); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("manager_service.source_dir (%v)", err))
 	}
 
@@ -161,20 +162,32 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.ManagerService.Container.HomesDir == "" {
 		errMsgs = append(errMsgs, "manager_service.container.homes_dir is required")
-	} else if err := isValidDirPath(cfg.ManagerService.Container.HomesDir); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("manager_service.container.homes_dir (%v)", err))
+	} else if !isAbsolutePath(cfg.ManagerService.Container.HomesDir) {
+		errMsgs = append(errMsgs, "manager_service.container.homes_dir must start with '/'")
 	}
 
 	if cfg.ManagerService.Container.ShareDir == "" {
 		errMsgs = append(errMsgs, "manager_service.container.share_dir is required")
-	} else if err := isValidDirPath(cfg.ManagerService.Container.ShareDir); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("manager_service.container.share_dir (%v)", err))
+	} else if !isAbsolutePath(cfg.ManagerService.Container.ShareDir) {
+		errMsgs = append(errMsgs, "manager_service.container.share_dir must start with '/'")
 	}
 
 	if cfg.ManagerService.Container.ReadonlyDir == "" {
 		errMsgs = append(errMsgs, "manager_service.container.readonly_dir is required")
-	} else if err := isValidDirPath(cfg.ManagerService.Container.ReadonlyDir); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("manager_service.container.readonly_dir (%v)", err))
+	} else if !isAbsolutePath(cfg.ManagerService.Container.ReadonlyDir) {
+		errMsgs = append(errMsgs, "manager_service.container.readonly_dir must start with '/'")
+	}
+
+	if cfg.ManagerService.Container.HomesDir != "" && cfg.ManagerService.Container.ShareDir != "" && cfg.ManagerService.Container.HomesDir == cfg.ManagerService.Container.ShareDir {
+		errMsgs = append(errMsgs, "manager_service.container.homes_dir and manager_service.container.share_dir cannot be the same")
+	}
+
+	if cfg.ManagerService.Container.HomesDir != "" && cfg.ManagerService.Container.ReadonlyDir != "" && cfg.ManagerService.Container.HomesDir == cfg.ManagerService.Container.ReadonlyDir {
+		errMsgs = append(errMsgs, "manager_service.container.homes_dir and manager_service.container.readonly_dir cannot be the same")
+	}
+
+	if cfg.ManagerService.Container.ShareDir != "" && cfg.ManagerService.Container.ReadonlyDir != "" && cfg.ManagerService.Container.ShareDir == cfg.ManagerService.Container.ReadonlyDir {
+		errMsgs = append(errMsgs, "manager_service.container.share_dir and manager_service.container.readonly_dir cannot be the same")
 	}
 
 	if cfg.ManagerService.UserManagement.CleanupTimeout == "" {
@@ -201,37 +214,37 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.Volumes.Host.Volumes == "" {
 		errMsgs = append(errMsgs, "volumes.host.volumes is required")
-	} else if err := isValidDirPath(cfg.Volumes.Host.Volumes); err != nil {
+	} else if err := usablePath(cfg.Volumes.Host.Volumes); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.volumes (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Homes == "" {
 		errMsgs = append(errMsgs, "volumes.host.homes is required")
-	} else if err := isValidDirPath(cfg.Volumes.Host.Homes); err != nil {
+	} else if err := usablePath(cfg.Volumes.Host.Homes); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.homes (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Share == "" {
 		errMsgs = append(errMsgs, "volumes.host.share is required")
-	} else if err := isValidDirPath(cfg.Volumes.Host.Share); err != nil {
+	} else if err := usablePath(cfg.Volumes.Host.Share); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.share (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Readonly == "" {
 		errMsgs = append(errMsgs, "volumes.host.readonly is required")
-	} else if err := isValidDirPath(cfg.Volumes.Host.Readonly); err != nil {
+	} else if err := usablePath(cfg.Volumes.Host.Readonly); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.readonly (%v)", err))
 	}
 
 	if cfg.Volumes.Container.Share == "" {
 		errMsgs = append(errMsgs, "volumes.container.share_dir is required")
-	} else if !strings.HasPrefix(cfg.Volumes.Container.Share, "/") {
+	} else if !isAbsolutePath(cfg.Volumes.Container.Share) {
 		errMsgs = append(errMsgs, "volumes.container.share_dir must start with '/'")
 	}
 
 	if cfg.Volumes.Container.Readonly == "" {
 		errMsgs = append(errMsgs, "volumes.container.readonly_dir is required")
-	} else if !strings.HasPrefix(cfg.Volumes.Container.Readonly, "/") {
+	} else if !isAbsolutePath(cfg.Volumes.Container.Readonly) {
 		errMsgs = append(errMsgs, "volumes.container.readonly_dir must start with '/'")
 	}
 
@@ -242,23 +255,45 @@ func ValidateConfig(cfg *Config) error {
 	}
 
 	if len(errMsgs) > 0 {
-		return fmt.Errorf(strings.Join(errMsgs, "; "))
+		return fmt.Errorf("validation errors: %s", strings.Join(errMsgs, "; "))
 	}
 
 	return nil
 }
 
-// isValidDirPath checks if the given path is a valid directory.
-func isValidDirPath(path string) error {
+// existDir checks if the given path existDir and is a directory.
+func existDir(path string) error {
 	_, err := os.Stat(path)
-
-	if err == nil {
-		return nil
-	} else if errors.Is(err, os.ErrNotExist) {
-		return nil // Directory doesn't exist, but that's not an error for validation purposes
-	} else {
-		return fmt.Errorf("path %s is not a valid directory: %v", path, err)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("path does not exist: %s", path)
+		}
+		return err
 	}
+
+	return nil
+}
+
+// usablePath checks if the given path is usable (exists or can be created).
+func usablePath(path string) error {
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(path, 0755); err != nil {
+				return fmt.Errorf("path does not exist and cannot be created: %s", path)
+			} else {
+				// Clean up the created directory if it was just for validation
+				defer os.RemoveAll(path)
+			}
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+// isAbsolutePath checks if the given path is an absolute path.
+func isAbsolutePath(path string) bool {
+	return strings.HasPrefix(path, "/")
 }
 
 // isValidDockerID checks if the given string is a valid Docker ID prefix.
@@ -284,7 +319,7 @@ func isValidDockerID(id string) bool {
 	return true
 }
 
-// isValidDockerName checks if the given string is a valid Docker name.
+// isValidDockerPrefix checks if the given string is a valid Docker prefix.
 func isValidDockerPrefix(prefix string) bool {
 	if prefix == "" {
 		return false
@@ -357,6 +392,24 @@ func isValidLimits(l Limits) error {
 
 	if len(errMsgs) > 0 {
 		return fmt.Errorf(strings.Join(errMsgs, "; "))
+	}
+
+	return nil
+}
+
+// isValidTrustedProxies checks if the given string is a valid comma-separated list of CIDR blocks.
+func isValidTrustedProxies(proxies string) error {
+	if proxies == "" {
+		return nil // Empty is allowed
+	}
+
+	proxyList := strings.Split(proxies, ",")
+
+	for _, proxy := range proxyList {
+		proxy = strings.TrimSpace(proxy)
+		if !isValidSubnet(proxy) {
+			return fmt.Errorf("invalid CIDR block: %s", proxy)
+		}
 	}
 
 	return nil
