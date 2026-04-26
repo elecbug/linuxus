@@ -14,7 +14,7 @@ import (
 // main executes the CLI entrypoint and prints user-friendly errors.
 func main() {
 	if err := run(); err != nil {
-		format.Log(format.ERROR_PREFIX, "Occurred some errors: %v", err)
+		format.Log(format.ERROR_PREFIX, "An error occurred: %v", err)
 		os.Exit(1)
 	}
 }
