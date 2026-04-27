@@ -15,7 +15,7 @@ const (
 	INFO_PREFIX    LogLevel = "[I]"
 )
 
-func Log(level LogLevel, format string, a ...interface{}) {
+func Log(level LogLevel, format string, a ...any) {
 	prefixedFormat := string(level) + " " + format
 	message := fmt.Sprintf(prefixedFormat, a...)
 	log.Println(message)
