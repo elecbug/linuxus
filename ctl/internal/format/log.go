@@ -1,7 +1,10 @@
 package format
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 )
 
@@ -21,6 +24,32 @@ func Log(level LogLevel, format string, a ...any) {
 	prefixedFormat := getTimestamp() + " " + string(level) + " " + format
 	message := fmt.Sprintf(prefixedFormat, a...)
 	fmt.Println(message)
+}
+
+// DockerBuildLog reads and formats Docker build logs with the specified log level and format.
+func DockerBuildLog(level LogLevel, logBuf bytes.Buffer, imageName string) error {
+	Log(level, "Building image %s...", imageName)
+
+	for logBuf.Len() > 0 {
+		line, err := logBuf.ReadString('\n')
+		line = strings.TrimSpace(line)
+
+		if err != nil && err != io.EOF {
+			fmt.Printf("\n")
+			Log(ERROR_PREFIX, "Error reading build logs: %v", err)
+
+			return err
+		}
+		if strings.HasPrefix(line, "Step ") ||
+			strings.HasPrefix(line, "Successfully") {
+
+			Log(level, line)
+		} else {
+			//
+		}
+	}
+
+	return nil
 }
 
 // getTimestamp returns the current timestamp formatted as a string.

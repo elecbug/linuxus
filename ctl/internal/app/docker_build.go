@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -26,14 +25,14 @@ func (a *App) buildRuntimeImages() error {
 		return fmt.Errorf("failed to build auth image: %w", err)
 	}
 
+	if err := a.buildImage(a.Config.ManagerService.SourceDir, a.managerImageName(), nil); err != nil {
+		return fmt.Errorf("failed to build manager image: %w", err)
+	}
+
 	if err := a.buildImage(a.Config.UserService.SourceDir, a.userImageName(), map[string]*string{
 		"CONTAINER_RUNTIME_USER": &a.Config.UserService.Runtime.LinuxUsername,
 	}); err != nil {
 		return fmt.Errorf("failed to build user image: %w", err)
-	}
-
-	if err := a.buildImage(a.Config.ManagerService.SourceDir, a.managerImageName(), nil); err != nil {
-		return fmt.Errorf("failed to build manager image: %w", err)
 	}
 
 	return nil
@@ -67,20 +66,8 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 		nil,
 	)
 
-	for logBuf.Len() > 0 {
-		line, err := logBuf.ReadString('\n')
-		line = strings.Trim(line, "\r\n")
+	format.DockerBuildLog(format.DETAIL_PREFIX, logBuf, tag)
 
-		if err != nil && err != io.EOF {
-			format.Log(format.ERROR_PREFIX, "Error reading build logs: %v", err)
-			return err
-		}
-		format.Log(format.DETAIL_PREFIX, "%s", line)
-
-		if err == io.EOF {
-			break
-		}
-	}
 	return nil
 }
 
