@@ -15,7 +15,7 @@ import (
 
 // buildRuntimeImages builds all runtime images required by services.
 func (a *App) buildRuntimeImages() error {
-	format.Log(format.RUN_PREFIX, "Building runtime images...")
+	format.Log(format.DETAIL_PREFIX, "Building runtime images...")
 
 	if a.dockerClient == nil {
 		return fmt.Errorf("Docker client is not initialized")
@@ -25,21 +25,20 @@ func (a *App) buildRuntimeImages() error {
 		return fmt.Errorf("failed to build auth image: %w", err)
 	}
 
+	if err := a.buildImage(a.Config.ManagerService.SourceDir, a.managerImageName(), nil); err != nil {
+		return fmt.Errorf("failed to build manager image: %w", err)
+	}
+
 	if err := a.buildImage(a.Config.UserService.SourceDir, a.userImageName(), map[string]*string{
 		"CONTAINER_RUNTIME_USER": &a.Config.UserService.Runtime.LinuxUsername,
 	}); err != nil {
 		return fmt.Errorf("failed to build user image: %w", err)
 	}
 
-	if err := a.buildImage(a.Config.ManagerService.SourceDir, a.managerImageName(), nil); err != nil {
-		return fmt.Errorf("failed to build manager image: %w", err)
-	}
-
 	return nil
 }
 
 // buildImage builds a Docker image from a source directory.
-// Build logs are printed only when the build fails.
 func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*string) error {
 	buildCtx, err := tarBuildContext(sourceDir)
 	if err != nil {
@@ -66,11 +65,13 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 		false,
 		nil,
 	)
-	if err != nil {
-		format.Log(format.ERROR_PREFIX, "Docker image build failed: %s", tag)
-		format.Log(format.ERROR_PREFIX, "Build logs:\n%s", logBuf.String())
 
-		return err
+	if inErr := format.DockerBuildLog(format.DETAIL_PREFIX, logBuf, tag); inErr != nil {
+		return fmt.Errorf("failed to process Docker build log for image %s: %w", tag, inErr)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to build image %s: %w", tag, err)
 	}
 
 	return nil
@@ -146,6 +147,7 @@ func tarBuildContext(dir string) (io.Reader, error) {
 	return buf, nil
 }
 
+// addFileToTar adds a file or directory to the tar archive.
 func addFileToTar(tw *tar.Writer, realPath, tarPath string, info os.FileInfo) error {
 	header, err := tar.FileInfoHeader(info, "")
 	if err != nil {
