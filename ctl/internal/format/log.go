@@ -26,26 +26,23 @@ func Log(level LogLevel, format string, a ...any) {
 	fmt.Println(message)
 }
 
-// DockerBuildLog reads and formats Docker build logs with the specified log level and format.
+// DockerBuildLog processes and logs the output from a Docker build operation.
 func DockerBuildLog(level LogLevel, logBuf bytes.Buffer, imageName string) error {
 	Log(level, "Building image %s...", imageName)
 
 	for logBuf.Len() > 0 {
 		line, err := logBuf.ReadString('\n')
-		line = strings.TrimSpace(line)
+		line = strings.TrimSpace(strings.Trim(line, "\r\n"))
 
 		if err != nil && err != io.EOF {
-			fmt.Printf("\n")
-			Log(ERROR_PREFIX, "Error reading build logs: %v", err)
-
+			Log(ERROR_PREFIX, "Error reading Docker build log: %v", err)
 			return err
 		}
-		if strings.HasPrefix(line, "Step ") ||
-			strings.HasPrefix(line, "Successfully") {
 
+		if len(line) == 0 {
+			continue
+		} else if !strings.HasPrefix(line, "--->") {
 			Log(level, line)
-		} else {
-			//
 		}
 	}
 

@@ -66,7 +66,13 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 		nil,
 	)
 
-	format.DockerBuildLog(format.DETAIL_PREFIX, logBuf, tag)
+	if inErr := format.DockerBuildLog(format.DETAIL_PREFIX, logBuf, tag); inErr != nil {
+		return fmt.Errorf("failed to process Docker build log for image %s: %w", tag, inErr)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to build image %s: %w", tag, err)
+	}
 
 	return nil
 }
