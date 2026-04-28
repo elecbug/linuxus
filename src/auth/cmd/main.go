@@ -87,6 +87,10 @@ func parseConfig() (*handler.AppConfig, error) {
 	if allowSignupStr != "" {
 		if allowSignupStr == fmt.Sprintf("%v", true) {
 			allowSignup = true
+		} else if allowSignupStr == fmt.Sprintf("%v", false) {
+			allowSignup = false
+		} else {
+			return nil, fmt.Errorf("invalid value for ALLOW_SIGNUP: %s", allowSignupStr)
 		}
 	}
 
