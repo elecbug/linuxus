@@ -147,6 +147,7 @@ func tarBuildContext(dir string) (io.Reader, error) {
 	return buf, nil
 }
 
+// addFileToTar adds a file or directory to the tar archive.
 func addFileToTar(tw *tar.Writer, realPath, tarPath string, info os.FileInfo) error {
 	header, err := tar.FileInfoHeader(info, "")
 	if err != nil {
