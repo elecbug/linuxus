@@ -40,7 +40,6 @@ func (a *App) buildRuntimeImages() error {
 }
 
 // buildImage builds a Docker image from a source directory.
-// Build logs are printed only when the build fails.
 func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*string) error {
 	buildCtx, err := tarBuildContext(sourceDir)
 	if err != nil {
