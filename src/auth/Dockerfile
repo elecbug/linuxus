@@ -14,8 +14,7 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
 
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
-    && echo $TZ > /etc/timezone
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 WORKDIR /app
 

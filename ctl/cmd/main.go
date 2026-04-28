@@ -187,8 +187,8 @@ func usageText(bin string) string {
 	result += fmt.Sprintf("  %-25s# Restart and show status\n", fmt.Sprintf("%s -r -p", bin))
 	result += fmt.Sprintf("  %-25s# Reset all user data\n\n", fmt.Sprintf("%s -v", bin))
 	result += "Log Format:\n"
-	result += fmt.Sprintf("  %s: Header messages indicating the start of major operations\n", format.HEADER_PREFIX)
-	result += fmt.Sprintf("  %s: Messages indicating the execution of specific steps\n", format.RUN_PREFIX)
+	result += fmt.Sprintf("  %s: Run messages indicating the start of major operations\n", format.RUN_PREFIX)
+	result += fmt.Sprintf("  %s: Detail messages indicating the execution of specific steps\n", format.DETAIL_PREFIX)
 	result += fmt.Sprintf("  %s: Informational messages about the progress and status of operations\n", format.INFO_PREFIX)
 	result += fmt.Sprintf("  %s: Warning messages indicating potential issues that do not stop execution\n", format.WARNING_PREFIX)
 	result += fmt.Sprintf("  %s: Error messages indicating failures that may require user attention\n", format.ERROR_PREFIX)

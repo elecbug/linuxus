@@ -13,7 +13,7 @@ import (
 
 // ServiceUp builds images and starts all runtime-managed services.
 func (a *App) ServiceUp() error {
-	format.Log(format.HEADER_PREFIX, "Starting runtime-managed containers...")
+	format.Log(format.RUN_PREFIX, "Starting runtime-managed containers...")
 
 	if err := a.buildRuntimeImages(); err != nil {
 		return err
@@ -28,13 +28,13 @@ func (a *App) ServiceUp() error {
 		return err
 	}
 
-	format.Log(format.RUN_PREFIX, "Runtime services started.")
+	format.Log(format.DETAIL_PREFIX, "Runtime services started.")
 	return nil
 }
 
 // ServiceDown stops and removes all runtime-managed services.
 func (a *App) ServiceDown() error {
-	format.Log(format.HEADER_PREFIX, "Stopping runtime-managed containers...")
+	format.Log(format.RUN_PREFIX, "Stopping runtime-managed containers...")
 	if err := a.removeManagedContainers(); err != nil {
 		return err
 	}
@@ -42,13 +42,13 @@ func (a *App) ServiceDown() error {
 		return err
 	}
 
-	format.Log(format.RUN_PREFIX, "Runtime services stopped.")
+	format.Log(format.DETAIL_PREFIX, "Runtime services stopped.")
 	return nil
 }
 
 // ServiceRestart recreates runtime-managed services.
 func (a *App) ServiceRestart() error {
-	format.Log(format.HEADER_PREFIX, "Restarting runtime-managed containers...")
+	format.Log(format.RUN_PREFIX, "Restarting runtime-managed containers...")
 	if err := a.ServiceDown(); err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (a *App) ServiceRestart() error {
 
 // VolumeClean unmounts and removes managed volume data and loop devices.
 func (a *App) VolumeClean() error {
-	format.Log(format.HEADER_PREFIX, "Cleaning volumes...")
+	format.Log(format.RUN_PREFIX, "Cleaning volumes...")
 
 	_ = a.ServiceDown()
 
@@ -108,7 +108,7 @@ func (a *App) VolumeClean() error {
 	}
 
 	for _, dev := range loopDevs {
-		format.Log(format.RUN_PREFIX, "Detaching loop device: %s", dev)
+		format.Log(format.DETAIL_PREFIX, "Detaching loop device: %s", dev)
 		err = a.detachLoopDevice(dev)
 		if err != nil {
 			format.Log(format.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
@@ -129,14 +129,14 @@ func (a *App) VolumeClean() error {
 		return fmt.Errorf("failed to remove volumes dir: %w", err)
 	}
 
-	format.Log(format.RUN_PREFIX, "Volume clean completed.")
+	format.Log(format.DETAIL_PREFIX, "Volume clean completed.")
 	return nil
 }
 
 // ServicePS prints runtime status for managed containers and networks.
 func (a *App) ServicePS() error {
-	format.Log(format.HEADER_PREFIX, "Gathering runtime status...")
-	format.Log(format.RUN_PREFIX, "Runtime service status:")
+	format.Log(format.RUN_PREFIX, "Gathering runtime status...")
+	format.Log(format.DETAIL_PREFIX, "Runtime service status:")
 
 	names, err := a.managedContainerNames()
 	if err != nil {
@@ -200,7 +200,7 @@ func (a *App) ServicePS() error {
 		fmt.Println(result)
 	}
 
-	format.Log(format.RUN_PREFIX, "Runtime network status:")
+	format.Log(format.DETAIL_PREFIX, "Runtime network status:")
 
 	networkInfos := make([]spec.NetworkInfo, 0)
 	networkInfos = append(networkInfos, spec.NetworkInfo{

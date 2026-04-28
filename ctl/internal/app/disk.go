@@ -67,7 +67,7 @@ func (a *App) createSharedDisk(path string) error {
 	if exists, err := a.systemAPI.Exists(img); err != nil {
 		return fmt.Errorf("failed to stat image file %s: %w", img, err)
 	} else if !exists {
-		format.Log(format.RUN_PREFIX, "Creating shared disk for %s (%s)", mountPoint, sizeStr)
+		format.Log(format.DETAIL_PREFIX, "Creating shared disk for %s (%s)", mountPoint, sizeStr)
 
 		if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
 			return err
@@ -149,7 +149,7 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	if exists, err := a.systemAPI.Exists(img); err != nil {
 		return fmt.Errorf("failed to stat image file %s: %w", img, err)
 	} else if !exists {
-		format.Log(format.RUN_PREFIX, "Creating disk for %s (%s)", userID, sizeStr)
+		format.Log(format.DETAIL_PREFIX, "Creating disk for %s (%s)", userID, sizeStr)
 
 		if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
 			return err
@@ -256,7 +256,7 @@ func (a *App) umountDisk(mountPoint string) error {
 	}
 
 	if mounted {
-		format.Log(format.RUN_PREFIX, "Unmounting: %s", mountPoint)
+		format.Log(format.DETAIL_PREFIX, "Unmounting: %s", mountPoint)
 		return a.systemAPI.Unmount(mountPoint)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -15,7 +16,7 @@ import (
 
 // buildRuntimeImages builds all runtime images required by services.
 func (a *App) buildRuntimeImages() error {
-	format.Log(format.RUN_PREFIX, "Building runtime images...")
+	format.Log(format.DETAIL_PREFIX, "Building runtime images...")
 
 	if a.dockerClient == nil {
 		return fmt.Errorf("Docker client is not initialized")
@@ -66,13 +67,21 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 		false,
 		nil,
 	)
-	if err != nil {
-		format.Log(format.ERROR_PREFIX, "Docker image build failed: %s", tag)
-		format.Log(format.ERROR_PREFIX, "Build logs:\n%s", logBuf.String())
 
-		return err
+	for logBuf.Len() > 0 {
+		line, err := logBuf.ReadString('\n')
+		line = strings.Trim(line, "\r\n")
+
+		if err != nil && err != io.EOF {
+			format.Log(format.ERROR_PREFIX, "Error reading build logs: %v", err)
+			return err
+		}
+		format.Log(format.DETAIL_PREFIX, "%s", line)
+
+		if err == io.EOF {
+			break
+		}
 	}
-
 	return nil
 }
 

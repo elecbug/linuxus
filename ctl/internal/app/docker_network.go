@@ -34,7 +34,7 @@ func (a *App) ensureNetwork(spec spec.RuntimeNetworkSpec) error {
 		return fmt.Errorf("Docker client is not initialized")
 	}
 
-	format.Log(format.RUN_PREFIX, "Creating network: %s", spec.Name)
+	format.Log(format.DETAIL_PREFIX, "Creating network: %s", spec.Name)
 
 	_, err = cli.NetworkCreate(a.context, spec.Name, network.CreateOptions{
 		Driver: "bridge",
@@ -72,7 +72,7 @@ func (a *App) removeManagedNetworks() error {
 			return fmt.Errorf("Docker client is not initialized")
 		}
 
-		format.Log(format.RUN_PREFIX, "Removing network: %s", name)
+		format.Log(format.DETAIL_PREFIX, "Removing network: %s", name)
 
 		if err := cli.NetworkRemove(a.context, name); err != nil {
 			return fmt.Errorf("failed to remove network %s: %w", name, err)
