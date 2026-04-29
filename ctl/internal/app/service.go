@@ -234,3 +234,19 @@ func (a *App) ServicePS() error {
 
 	return nil
 }
+
+// AddUser adds a new user by creating necessary directories and activating the user in the system.
+func (a *App) AddUser() error {
+	format.Log(format.RUN_PREFIX, "Adding a new user...")
+
+	// TODO: Implement user addition logic, including creating necessary directories and activating the user in the system.
+	return nil
+}
+
+// RemoveUser removes an existing user by deactivating the user in the system and cleaning up associated resources.
+func (a *App) RemoveUser() error {
+	format.Log(format.RUN_PREFIX, "Removing an existing user...")
+
+	// TODO: Implement user removal logic, including deactivating the user in the system and cleaning up associated resources.
+	return nil
+}

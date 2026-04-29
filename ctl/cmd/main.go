@@ -29,6 +29,8 @@ const (
 	VOLUME_CLEAN
 	ENSURE_DISK
 	PS
+	ADD_USER
+	REMOVE_USER
 )
 
 // Options stores parsed CLI flags and execution intents.
@@ -130,6 +132,14 @@ func run() error {
 			if err := app.ServicePS(); err != nil {
 				return err
 			}
+		case ADD_USER:
+			if err := app.AddUser(); err != nil {
+				return err
+			}
+		case REMOVE_USER:
+			if err := app.RemoveUser(); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -159,6 +169,10 @@ func parseArgs(args []string) (Options, error) {
 			opts.Opts = append(opts.Opts, ENSURE_DISK)
 		case "-p", "ps":
 			opts.Opts = append(opts.Opts, PS)
+		case "-au", "add-user":
+			opts.Opts = append(opts.Opts, ADD_USER)
+		case "-ru", "remove-user":
+			opts.Opts = append(opts.Opts, REMOVE_USER)
 		case "-h", "help":
 			opts.IsHelp = true
 		default:
@@ -173,20 +187,22 @@ func parseArgs(args []string) (Options, error) {
 func usageText(bin string) string {
 	result := ""
 	result += "Usage:\n"
-	result += fmt.Sprintf("  %s [OPTION]...\n\n", bin)
-	result += "Options:\n"
+	result += fmt.Sprintf("  %s [OPTION]...\n", bin)
+	result += "\nOptions:\n"
 	result += fmt.Sprintf("  %-25s# Show help message\n", "-h, help")
 	result += fmt.Sprintf("  %-25s# Build images and start services\n", "-u, up")
 	result += fmt.Sprintf("  %-25s# Stop and remove services\n", "-d, down")
 	result += fmt.Sprintf("  %-25s# Restart services\n", "-r, restart")
 	result += fmt.Sprintf("  %-25s# Reset all user directories\n", "-v, volume-clean")
 	result += fmt.Sprintf("  %-25s# Create missing user directories and activate signed-up users\n", "-e, ensure-disk")
-	result += fmt.Sprintf("  %-25s# Show service status\n\n", "-p, ps")
-	result += "Examples:\n"
+	result += fmt.Sprintf("  %-25s# Show service status\n", "-p, ps")
+	result += fmt.Sprintf("  %-25s# Add a new user\n", "-au, add-user")
+	result += fmt.Sprintf("  %-25s# Remove an existing user\n", "-ru, remove-user")
+	result += "\nExamples:\n"
 	result += fmt.Sprintf("  %-25s# Build and start\n", fmt.Sprintf("%s -u", bin))
 	result += fmt.Sprintf("  %-25s# Restart and show status\n", fmt.Sprintf("%s -r -p", bin))
-	result += fmt.Sprintf("  %-25s# Reset all user data\n\n", fmt.Sprintf("%s -v", bin))
-	result += "Log Format:\n"
+	result += fmt.Sprintf("  %-25s# Reset all user data\n", fmt.Sprintf("%s -v", bin))
+	result += "\nLog Format:\n"
 	result += fmt.Sprintf("  %s: Run messages indicating the start of major operations\n", format.RUN_PREFIX)
 	result += fmt.Sprintf("  %s: Detail messages indicating the execution of specific steps\n", format.DETAIL_PREFIX)
 	result += fmt.Sprintf("  %s: Informational messages about the progress and status of operations\n", format.INFO_PREFIX)

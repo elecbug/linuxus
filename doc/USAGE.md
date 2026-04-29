@@ -60,6 +60,8 @@ Generated executable:
 | `-v`, `volume-clean` | Reset all user directories                                   |
 | `-e`, `ensure-disk`  | Create missing user directories and activate signed-up users |
 | `-p`, `ps`           | Show service status                                          |
+| `-au`, `add-user`    | Add a new user                                               |
+| `-ru`, `remove-user` | Remove an existing user                                      |
 
 ---
 
