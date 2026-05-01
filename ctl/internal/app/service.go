@@ -237,6 +237,14 @@ func (a *App) AddUser(userID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read password: %w", err)
 	}
+	cfmPassword, err := format.InputPassword("Confirm password for new user %s: ", userID)
+	if err != nil {
+		return fmt.Errorf("failed to read password confirmation: %w", err)
+	}
+
+	if password != cfmPassword {
+		return fmt.Errorf("passwords do not match")
+	}
 
 	if err := a.updateUser(userID, password); err != nil {
 		return fmt.Errorf("failed to add user: %w", err)
