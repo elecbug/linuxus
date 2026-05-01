@@ -102,7 +102,10 @@ func (a *App) VolumeClean(userID string) error {
 
 		return nil
 	} else {
-		yes := format.Input("Are you sure you want to clean volumes for ALL users? This action cannot be undone. (yes/no): ")
+		yes, err := format.Input("Are you sure you want to clean volumes for ALL users? This action cannot be undone. (yes/no): ")
+		if err != nil {
+			return fmt.Errorf("failed to read confirmation: %w", err)
+		}
 
 		if strings.ToLower(yes) != "yes" {
 			format.Log(format.INFO_PREFIX, "Volume clean cancelled.")
@@ -230,7 +233,10 @@ func (a *App) AddUser(userID string) error {
 		return fmt.Errorf("user ID already exists: %s", userID)
 	}
 
-	password := format.Input("Enter password for new user %s: ", userID)
+	password, err := format.InputPassword("Enter password for new user %s: ", userID)
+	if err != nil {
+		return fmt.Errorf("failed to read password: %w", err)
+	}
 
 	if err := a.updateUser(userID, password); err != nil {
 		return fmt.Errorf("failed to add user: %w", err)
@@ -253,7 +259,10 @@ func (a *App) RemoveUser(userID string) error {
 		return fmt.Errorf("user ID does not exist: %s", userID)
 	}
 
-	yes := format.Input("Are you sure you want to remove user %s? This action cannot be undone. (yes/no): ", userID)
+	yes, err := format.Input("Are you sure you want to remove user %s? This action cannot be undone. (yes/no): ", userID)
+	if err != nil {
+		return fmt.Errorf("failed to read confirmation: %w", err)
+	}
 
 	if strings.ToLower(yes) != "yes" {
 		format.Log(format.INFO_PREFIX, "User removal cancelled.")

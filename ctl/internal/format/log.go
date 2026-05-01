@@ -1,11 +1,15 @@
 package format
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
+
+	"golang.org/x/term"
 )
 
 // LogLevel defines the severity level of log messages.
@@ -27,13 +31,36 @@ func Log(level LogLevel, format string, a ...any) {
 	fmt.Println(message)
 }
 
-func Input(prompt string, a ...any) string {
+// Input prompts the user for a line of text and returns the trimmed result.
+// It returns an error if reading fails or if EOF is reached before any input.
+func Input(prompt string, a ...any) (string, error) {
 	formattedPrompt := fmt.Sprintf(string(INPUT_PREFIX)+" "+prompt, a...)
 	fmt.Print(formattedPrompt)
 
-	var input string
-	fmt.Scanln(&input)
-	return input
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		if err == io.EOF && line != "" {
+			// valid input at EOF (no trailing newline)
+		} else {
+			return "", fmt.Errorf("failed to read input: %w", err)
+		}
+	}
+	return strings.TrimRight(line, "\r\n"), nil
+}
+
+// InputPassword prompts the user for a password without echoing the input to the terminal.
+// It returns an error if reading fails.
+func InputPassword(prompt string, a ...any) (string, error) {
+	formattedPrompt := fmt.Sprintf(string(INPUT_PREFIX)+" "+prompt, a...)
+	fmt.Print(formattedPrompt)
+
+	password, err := term.ReadPassword(int(os.Stdin.Fd()))
+	fmt.Println()
+	if err != nil {
+		return "", fmt.Errorf("failed to read password: %w", err)
+	}
+	return string(password), nil
 }
 
 // DockerBuildLog processes and logs the output from a Docker build operation.
