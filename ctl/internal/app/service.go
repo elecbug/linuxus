@@ -225,6 +225,51 @@ func (a *App) ServicePS(params []string) error {
 	return nil
 }
 
+// EnsureDisk creates and mounts shared/admin/user disk images.
+func (a *App) EnsureDisk(userID string) error {
+	if !isAllUsersKeyword(userID) {
+		if !a.existsUser(userID) {
+			return fmt.Errorf("user ID not found in auth list: %s", userID)
+		}
+
+		if err := a.systemAPI.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
+			return err
+		}
+
+		if err := a.createSharedDisk(a.Config.Volumes.Host.Share); err != nil {
+			return err
+		}
+		if err := a.createSharedDisk(a.Config.Volumes.Host.Readonly); err != nil {
+			return err
+		}
+
+		if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
+			return err
+		}
+
+		return nil
+	} else {
+		if err := a.systemAPI.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
+			return err
+		}
+
+		if err := a.createSharedDisk(a.Config.Volumes.Host.Share); err != nil {
+			return err
+		}
+		if err := a.createSharedDisk(a.Config.Volumes.Host.Readonly); err != nil {
+			return err
+		}
+
+		for _, userID := range a.UserIDs {
+			if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
 // AddUser adds a new user by creating necessary directories and activating the user in the system.
 func (a *App) AddUser(userID string) error {
 	format.Log(format.RUN_PREFIX, "Adding a new user...")

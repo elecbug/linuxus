@@ -90,9 +90,6 @@ func run() error {
 		if err := appli.LoadUserList(); err != nil {
 			return err
 		}
-		if err := appli.PrepareUserDisks(app.ALL_USER_KEYWORDS[0]); err != nil {
-			return err
-		}
 		if err := appli.ServiceUp(); err != nil {
 			return err
 		}
@@ -104,9 +101,6 @@ func run() error {
 
 	case RESTART:
 		if err := appli.LoadUserList(); err != nil {
-			return err
-		}
-		if err := appli.PrepareUserDisks(app.ALL_USER_KEYWORDS[0]); err != nil {
 			return err
 		}
 		if err := appli.ServiceRestart(); err != nil {
@@ -127,7 +121,7 @@ func run() error {
 			return err
 		}
 
-		if err := appli.PrepareUserDisks(opt.Params[0]); err != nil {
+		if err := appli.EnsureDisk(opt.Params[0]); err != nil {
 			return err
 		}
 

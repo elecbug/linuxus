@@ -10,51 +10,6 @@ import (
 	"github.com/elecbug/linuxus/ctl/internal/format"
 )
 
-// PrepareUserDisks creates and mounts shared/admin/user disk images.
-func (a *App) PrepareUserDisks(userID string) error {
-	if !isAllUsersKeyword(userID) {
-		if !a.existsUser(userID) {
-			return fmt.Errorf("user ID not found in auth list: %s", userID)
-		}
-
-		if err := a.systemAPI.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
-			return err
-		}
-
-		if err := a.createSharedDisk(a.Config.Volumes.Host.Share); err != nil {
-			return err
-		}
-		if err := a.createSharedDisk(a.Config.Volumes.Host.Readonly); err != nil {
-			return err
-		}
-
-		if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
-			return err
-		}
-
-		return nil
-	} else {
-		if err := a.systemAPI.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
-			return err
-		}
-
-		if err := a.createSharedDisk(a.Config.Volumes.Host.Share); err != nil {
-			return err
-		}
-		if err := a.createSharedDisk(a.Config.Volumes.Host.Readonly); err != nil {
-			return err
-		}
-
-		for _, userID := range a.UserIDs {
-			if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-}
-
 // createSharedDisk creates and mounts a shared loopback disk at the target path.
 func (a *App) createSharedDisk(path string) error {
 	sizeStr := a.Config.Volumes.DiskLimit
