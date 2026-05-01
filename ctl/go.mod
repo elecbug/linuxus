@@ -7,6 +7,7 @@ require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.7.0
 	github.com/elecbug/linuxus/pkg/system_api v0.0.0-20260425114155-32f51b9f61ec
+	golang.org/x/crypto v0.49.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

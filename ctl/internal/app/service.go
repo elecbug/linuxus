@@ -5,11 +5,20 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/containerd/errdefs"
-	"github.com/docker/docker/api/types/network"
 	"github.com/elecbug/linuxus/ctl/internal/format"
-	"github.com/elecbug/linuxus/ctl/internal/spec"
 )
+
+var ALL_USER_KEYWORLDS = []string{"--all", "-a"}
+
+// isAllUsersKeyword checks if the provided string matches any of the defined keywords for "all users".
+func isAllUsersKeyword(s string) bool {
+	for _, keyword := range ALL_USER_KEYWORLDS {
+		if s == keyword {
+			return true
+		}
+	}
+	return false
+}
 
 // ServiceUp builds images and starts all runtime-managed services.
 func (a *App) ServiceUp() error {
@@ -56,197 +65,198 @@ func (a *App) ServiceRestart() error {
 }
 
 // VolumeClean unmounts and removes managed volume data and loop devices.
-func (a *App) VolumeClean() error {
-	format.Log(format.RUN_PREFIX, "Cleaning volumes...")
+func (a *App) VolumeClean(userID string) error {
+	if !isAllUsersKeyword(userID) {
+		format.Log(format.RUN_PREFIX, "Cleaning volume for user: %s...", userID)
 
-	_ = a.ServiceDown()
+		if err := a.umountDisk(filepath.Join(a.Config.Volumes.Host.Homes, userID)); err != nil {
+			format.Log(format.ERROR_PREFIX, "Failed to unmount home disk for user %s: %v", userID, err)
+		}
 
-	homeMounts, err := a.listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
-	if err != nil {
-		return err
-	}
-	for _, dir := range homeMounts {
-		err = a.umountDisk(dir)
+		userHome := filepath.Join(a.Config.Volumes.Host.Homes, userID)
+		userImg := filepath.Join(a.Config.Volumes.Host.Homes, userID+".img")
+
+		homeDev, err := a.findLoopDevicesForImages(userHome)
 		if err != nil {
-			format.Log(format.ERROR_PREFIX, "Failed to unmount home disk at %s: %v", dir, err)
-			continue
+			return fmt.Errorf("failed to find loop devices for user %s: %w", userID, err)
 		}
-	}
 
-	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
-		err = a.umountDisk(mountPoint)
-		if err != nil {
-			format.Log(format.ERROR_PREFIX, "Failed to unmount shared disk at %s: %v", mountPoint, err)
-			continue
+		for _, dev := range homeDev {
+			format.Log(format.DETAIL_PREFIX, "Detaching loop device: %s", dev)
+			err = a.detachLoopDevice(dev)
+			if err != nil {
+				format.Log(format.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
+				continue
+			}
 		}
-	}
 
-	homeDevs, err := a.findLoopDevicesForImages(a.Config.Volumes.Host.Homes)
-	if err != nil {
-		return err
-	}
-
-	seen := make(map[string]struct{})
-	var loopDevs []string
-	for _, dev := range homeDevs {
-		if _, exists := seen[dev]; !exists {
-			seen[dev] = struct{}{}
-			loopDevs = append(loopDevs, dev)
+		if err := a.systemAPI.RemoveAll(userHome); err != nil {
+			return fmt.Errorf("failed to remove home dir for user %s: %w", userID, err)
 		}
-	}
-	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
-		devs, err := a.findLoopDevicesForImages(filepath.Dir(mountPoint))
+
+		if err := a.systemAPI.Remove(userImg); err != nil {
+			return fmt.Errorf("failed to remove home image for user %s: %w", userID, err)
+		}
+
+		format.Log(format.DETAIL_PREFIX, "Volume clean completed for user: %s.", userID)
+
+		return nil
+	} else {
+		yes := format.Input("Are you sure you want to clean volumes for ALL users? This action cannot be undone. (yes/no): ")
+
+		if strings.ToLower(yes) != "yes" {
+			format.Log(format.INFO_PREFIX, "Volume clean cancelled.")
+			return nil
+		}
+
+		format.Log(format.RUN_PREFIX, "Cleaning volumes for all users...")
+
+		_ = a.ServiceDown()
+
+		homeMounts, err := a.listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
 		if err != nil {
 			return err
 		}
-		for _, dev := range devs {
+		for _, dir := range homeMounts {
+			err = a.umountDisk(dir)
+			if err != nil {
+				format.Log(format.ERROR_PREFIX, "Failed to unmount home disk at %s: %v", dir, err)
+				continue
+			}
+		}
+
+		for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
+			err = a.umountDisk(mountPoint)
+			if err != nil {
+				format.Log(format.ERROR_PREFIX, "Failed to unmount shared disk at %s: %v", mountPoint, err)
+				continue
+			}
+		}
+
+		homeDevs, err := a.findLoopDevicesForImages(a.Config.Volumes.Host.Homes)
+		if err != nil {
+			return err
+		}
+
+		seen := make(map[string]struct{})
+		var loopDevs []string
+		for _, dev := range homeDevs {
 			if _, exists := seen[dev]; !exists {
 				seen[dev] = struct{}{}
 				loopDevs = append(loopDevs, dev)
 			}
 		}
-	}
-
-	for _, dev := range loopDevs {
-		format.Log(format.DETAIL_PREFIX, "Detaching loop device: %s", dev)
-		err = a.detachLoopDevice(dev)
-		if err != nil {
-			format.Log(format.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
-			continue
+		for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
+			devs, err := a.findLoopDevicesForImages(filepath.Dir(mountPoint))
+			if err != nil {
+				return err
+			}
+			for _, dev := range devs {
+				if _, exists := seen[dev]; !exists {
+					seen[dev] = struct{}{}
+					loopDevs = append(loopDevs, dev)
+				}
+			}
 		}
-	}
 
-	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Homes); err != nil {
-		return fmt.Errorf("failed to remove homes dir: %w", err)
-	}
-	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Share); err != nil {
-		return fmt.Errorf("failed to remove share dir: %w", err)
-	}
-	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil {
-		return fmt.Errorf("failed to remove readonly dir: %w", err)
-	}
-	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Volumes); err != nil {
-		return fmt.Errorf("failed to remove volumes dir: %w", err)
-	}
+		for _, dev := range loopDevs {
+			format.Log(format.DETAIL_PREFIX, "Detaching loop device: %s", dev)
+			err = a.detachLoopDevice(dev)
+			if err != nil {
+				format.Log(format.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
+				continue
+			}
+		}
 
-	format.Log(format.DETAIL_PREFIX, "Volume clean completed.")
-	return nil
+		if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Homes); err != nil {
+			return fmt.Errorf("failed to remove homes dir: %w", err)
+		}
+		if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Share); err != nil {
+			return fmt.Errorf("failed to remove share dir: %w", err)
+		}
+		if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil {
+			return fmt.Errorf("failed to remove readonly dir: %w", err)
+		}
+		if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Volumes); err != nil {
+			return fmt.Errorf("failed to remove volumes dir: %w", err)
+		}
+
+		format.Log(format.DETAIL_PREFIX, "Volume clean completed.")
+		return nil
+	}
 }
 
 // ServicePS prints runtime status for managed containers and networks.
-func (a *App) ServicePS() error {
+func (a *App) ServicePS(params []string) error {
 	format.Log(format.RUN_PREFIX, "Gathering runtime status...")
-	format.Log(format.DETAIL_PREFIX, "Runtime service status:")
 
-	names, err := a.managedContainerNames()
-	if err != nil {
-		return err
-	}
-
-	containerInfos := make([]spec.ContainerInfo, 0, len(names)+1)
-	containerInfos = append(containerInfos, spec.ContainerInfo{
-		Name:   "CONTAINER NAME",
-		Status: "STATE(STATUS)",
-		Image:  "IMAGE",
-		Ports:  "PORTS",
-		Role:   "ROLE",
-	})
-
-	for _, name := range names {
-		info, err := a.dockerClient.ContainerInspect(a.context, name)
-		if err != nil {
-			if errdefs.IsNotFound(err) {
-				containerInfos = append(containerInfos, spec.ContainerInfo{
-					Name:   name,
-					Status: "not found",
-					Image:  "-",
-					Ports:  "-",
-					Role:   "-",
-				})
-				continue
-			}
-			return fmt.Errorf("failed to inspect container %s: %w", name, err)
+	if len(params) == 0 {
+		a.showContainerInfos()
+		a.showNetworkInfos()
+	} else if len(params) == 1 {
+		switch params[0] {
+		case "containers", "container", "c":
+			a.showContainerInfos()
+		case "networks", "network", "n":
+			a.showNetworkInfos()
+		case "all", "a":
+			a.showContainerInfos()
+			a.showNetworkInfos()
+		default:
+			return fmt.Errorf("invalid parameter for ps option: %s", params[0])
 		}
-
-		hasState := false
-		state := "-"
-		status := "-"
-		if info.State != nil {
-			hasState = true
-			state = info.State.Status
-			status = format.ContainerInspectToStatusText(info)
-		}
-
-		image := info.Config.Image
-		ports := format.ContainerInspectToPortSummary(info)
-
-		containerInfos = append(containerInfos, spec.ContainerInfo{
-			Name:   name,
-			Status: format.DisplayStatusText(state, status, hasState),
-			Image:  image,
-			Ports:  ports,
-			Role: format.DisplayUserName(
-				a.Config.UserService.Container.NamePrefix,
-				a.Config.AuthService.Container.Name,
-				a.Config.ManagerService.Container.Name,
-				name,
-			),
-		})
-	}
-
-	strContainerResults := format.ContainerInfosToStrings(containerInfos)
-
-	for _, result := range strContainerResults {
-		fmt.Println(result)
-	}
-
-	format.Log(format.DETAIL_PREFIX, "Runtime network status:")
-
-	networkInfos := make([]spec.NetworkInfo, 0)
-	networkInfos = append(networkInfos, spec.NetworkInfo{
-		Name:   "NETWORK NAME",
-		ID:     "NETWORK ID",
-		Subnet: "SUBNET",
-	})
-
-	networks, err := a.dockerClient.NetworkList(a.context, network.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to list networks: %w", err)
-	}
-
-	for _, net := range networks {
-		if strings.HasPrefix(net.Name, a.Config.UserService.Container.NetworkNamePrefix) ||
-			net.Name == a.Config.ManagerService.Container.Network {
-			info := spec.NetworkInfo{
-				Name:   net.Name,
-				ID:     format.DisplayNetworkID(net.ID),
-				Subnet: net.IPAM.Config[0].Subnet,
-			}
-			networkInfos = append(networkInfos, info)
-		}
-	}
-
-	strNetResults := format.NetworkInfosToStrings(networkInfos)
-
-	for _, result := range strNetResults {
-		fmt.Println(result)
 	}
 
 	return nil
 }
 
 // AddUser adds a new user by creating necessary directories and activating the user in the system.
-func (a *App) AddUser() error {
+func (a *App) AddUser(userID string) error {
 	format.Log(format.RUN_PREFIX, "Adding a new user...")
 
-	// TODO: Implement user addition logic, including creating necessary directories and activating the user in the system.
+	if a.existsUser(userID) {
+		return fmt.Errorf("user ID already exists: %s", userID)
+	}
+
+	password := format.Input("Enter password for new user %s: ", userID)
+
+	if err := a.updateUser(userID, password); err != nil {
+		return fmt.Errorf("failed to add user: %w", err)
+	}
+
+	if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
+		return fmt.Errorf("failed to create user disk: %w", err)
+	}
+
+	format.Log(format.DETAIL_PREFIX, "User %s added successfully.", userID)
+
 	return nil
 }
 
 // RemoveUser removes an existing user by deactivating the user in the system and cleaning up associated resources.
-func (a *App) RemoveUser() error {
+func (a *App) RemoveUser(userID string) error {
 	format.Log(format.RUN_PREFIX, "Removing an existing user...")
 
-	// TODO: Implement user removal logic, including deactivating the user in the system and cleaning up associated resources.
+	if !a.existsUser(userID) {
+		return fmt.Errorf("user ID does not exist: %s", userID)
+	}
+
+	yes := format.Input("Are you sure you want to remove user %s? This action cannot be undone. (yes/no): ", userID)
+
+	if strings.ToLower(yes) != "yes" {
+		format.Log(format.INFO_PREFIX, "User removal cancelled.")
+		return nil
+	}
+
+	if err := a.removeUser(userID); err != nil {
+		return fmt.Errorf("failed to remove user: %w", err)
+	}
+
+	if err := a.VolumeClean(userID); err != nil {
+		return fmt.Errorf("failed to clean user volumes: %w", err)
+	}
+
+	format.Log(format.DETAIL_PREFIX, "User %s removed successfully.", userID)
+
 	return nil
 }

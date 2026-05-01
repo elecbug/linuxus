@@ -20,6 +20,7 @@ type API interface {
 	Exists(path string) (bool, error)
 	CreateEmptyFile(path string, sizeBytes int64) error
 	RemoveAll(path string) error
+	Remove(path string) error
 	FormatExt4(path string) error
 
 	IsMountPoint(path string) (bool, error)
@@ -105,6 +106,14 @@ func (LinuxSystemAPI) CreateEmptyFile(path string, sizeBytes int64) error {
 func (LinuxSystemAPI) RemoveAll(path string) error {
 	if err := os.RemoveAll(path); err != nil {
 		return fmt.Errorf("failed to remove path: %s: %w", path, err)
+	}
+	return nil
+}
+
+// Remove removes the specified file.
+func (LinuxSystemAPI) Remove(path string) error {
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("failed to remove file: %s: %w", path, err)
 	}
 	return nil
 }
@@ -310,6 +319,18 @@ func (u UnsupportedSystemAPI) RemoveAll(path string) error {
 		}
 
 		return fmt.Errorf("failed to remove path: %s: %w", path, err)
+	}
+	return nil
+}
+
+// Remove removes the specified file.
+func (u UnsupportedSystemAPI) Remove(path string) error {
+	if err := os.Remove(path); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return fmt.Errorf("failed to remove file: %s: %w", path, err)
 	}
 	return nil
 }

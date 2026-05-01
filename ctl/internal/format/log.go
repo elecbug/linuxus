@@ -17,6 +17,7 @@ const (
 	ERROR_PREFIX   LogLevel = "[ERROR]"
 	WARNING_PREFIX LogLevel = "[WARNING]"
 	INFO_PREFIX    LogLevel = "[INFO]"
+	INPUT_PREFIX   LogLevel = "[INPUT]"
 )
 
 // Log formats a log message with the specified log level and arguments.
@@ -24,6 +25,15 @@ func Log(level LogLevel, format string, a ...any) {
 	prefixedFormat := getTimestamp() + " " + string(level) + " " + format
 	message := fmt.Sprintf(prefixedFormat, a...)
 	fmt.Println(message)
+}
+
+func Input(prompt string, a ...any) string {
+	formattedPrompt := fmt.Sprintf(string(INPUT_PREFIX)+" "+prompt, a...)
+	fmt.Print(formattedPrompt)
+
+	var input string
+	fmt.Scanln(&input)
+	return input
 }
 
 // DockerBuildLog processes and logs the output from a Docker build operation.

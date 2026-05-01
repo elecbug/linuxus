@@ -51,26 +51,26 @@ Generated executable:
 
 ### ⚙️ Available Options
 
-| Option               | Description                                                  |
-| -------------------- | ------------------------------------------------------------ |
-| `-h`, `help`         | Show help message                                            |
-| `-u`, `up`           | Build images and start services                              |
-| `-d`, `down`         | Stop and remove services                                     |
-| `-r`, `restart`      | Restart services                                             |
-| `-v`, `volume-clean` | Reset all user directories                                   |
-| `-e`, `ensure-disk`  | Create missing user directories and activate signed-up users |
-| `-p`, `ps`           | Show service status                                          |
-| `-au`, `add-user`    | Add a new user                                               |
-| `-ru`, `remove-user` | Remove an existing user                                      |
+| Command                           | Description                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `help`                            | Show help message                                                                                |
+| `up`                              | Build images and start services                                                                  |
+| `down`                            | Stop and remove services                                                                         |
+| `restart`                         | Restart services                                                                                 |
+| `ps [all\|container\|network]`    | Show status about linuxus service                                                                |
+| `add-user <USERNAME>`             | Add a new user                                                                                   |
+| `remove-user <USERNAME>`          | Remove an existing user                                                                          |
+| `volume-clean <OPTION\|USERNAME>` | Remove all user directories if the option is all, otherwise remove specific user directory       |
+| `ensure-disk <OPTION\|USERNAME>`  | Create a missing user directory if the option is all, otherwise create a specific user directory |
 
 ---
 
 ### 3.2 Example Usage
 
 ```bash
-./linuxusctl -u          # Build and start
-./linuxusctl -r -p       # Restart and show status
-./linuxusctl -v          # Reset all user data
+./linuxusctl up                    # Build and start
+./linuxusctl restart               # Restart
+./linuxusctl ps network            # Show network status of linuxus service
 ```
 
 ---
