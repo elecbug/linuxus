@@ -70,6 +70,9 @@ func (a *App) updateUser(userID, password string) error {
 	if a.existsUser(userID) {
 		return fmt.Errorf("user ID already exists: %s", userID)
 	}
+	if !allowID(userID) {
+		return fmt.Errorf("invalid user ID: %s. User IDs can only contain letters, digits, underscores, and hyphens, and cannot start or end with an underscore or hyphen", userID)
+	}
 
 	f, err := os.OpenFile(a.Config.AuthService.Mounts.HostAuthListPath, os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
@@ -138,4 +141,27 @@ func (a *App) removeUser(userID string) error {
 	}
 
 	return nil
+}
+
+// allowID checks if the provided ID is valid according to defined rules.
+func allowID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for i, ch := range id {
+		if i == 0 && (ch == '_' || ch == '-') {
+			return false
+		}
+		if i == len(id)-1 && (ch == '_' || ch == '-') {
+			return false
+		}
+		if (ch >= 'A' && ch <= 'Z') ||
+			(ch >= 'a' && ch <= 'z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '_' || ch == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }

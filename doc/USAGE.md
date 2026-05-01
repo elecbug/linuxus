@@ -36,7 +36,7 @@ Build the control CLI:
 Generated executable:
 
 ```bash
-./linuxusctl --help
+./linuxusctl help
 ```
 
 ---
@@ -57,7 +57,7 @@ Generated executable:
 | `up`                              | Build images and start services                                                                  |
 | `down`                            | Stop and remove services                                                                         |
 | `restart`                         | Restart services                                                                                 |
-| `ps [all\|container\|network]`    | Show status about linuxus service                                                                |
+| `ps [OPTION]`                     | Show status about linuxus service                                                                |
 | `add-user <USERNAME>`             | Add a new user                                                                                   |
 | `remove-user <USERNAME>`          | Remove an existing user                                                                          |
 | `volume-clean <OPTION\|USERNAME>` | Remove all user directories if the option is all, otherwise remove specific user directory       |

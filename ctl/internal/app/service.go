@@ -202,11 +202,11 @@ func (a *App) ServicePS(params []string) error {
 		}
 	} else if len(params) == 1 {
 		switch params[0] {
-		case "containers", "container", "c":
+		case "container", "c":
 			if err := a.showContainerInfos(); err != nil {
 				return err
 			}
-		case "networks", "network", "n":
+		case "network", "n":
 			if err := a.showNetworkInfos(); err != nil {
 				return err
 			}
