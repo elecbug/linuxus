@@ -90,7 +90,7 @@ func run() error {
 		if err := appli.LoadUserList(); err != nil {
 			return err
 		}
-		if err := appli.PrepareUserDisks(app.ALL_USER_KEYWORLDS[0]); err != nil {
+		if err := appli.PrepareUserDisks(app.ALL_USER_KEYWORDS[0]); err != nil {
 			return err
 		}
 		if err := appli.ServiceUp(); err != nil {
@@ -106,7 +106,7 @@ func run() error {
 		if err := appli.LoadUserList(); err != nil {
 			return err
 		}
-		if err := appli.PrepareUserDisks(app.ALL_USER_KEYWORLDS[0]); err != nil {
+		if err := appli.PrepareUserDisks(app.ALL_USER_KEYWORDS[0]); err != nil {
 			return err
 		}
 		if err := appli.ServiceRestart(); err != nil {

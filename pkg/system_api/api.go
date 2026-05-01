@@ -113,6 +113,10 @@ func (LinuxSystemAPI) RemoveAll(path string) error {
 // Remove removes the specified file.
 func (LinuxSystemAPI) Remove(path string) error {
 	if err := os.Remove(path); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
 		return fmt.Errorf("failed to remove file: %s: %w", path, err)
 	}
 	return nil

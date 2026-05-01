@@ -8,11 +8,11 @@ import (
 	"github.com/elecbug/linuxus/ctl/internal/format"
 )
 
-var ALL_USER_KEYWORLDS = []string{"--all", "-a"}
+var ALL_USER_KEYWORDS = []string{"--all", "-a"}
 
 // isAllUsersKeyword checks if the provided string matches any of the defined keywords for "all users".
 func isAllUsersKeyword(s string) bool {
-	for _, keyword := range ALL_USER_KEYWORLDS {
+	for _, keyword := range ALL_USER_KEYWORDS {
 		if s == keyword {
 			return true
 		}
@@ -191,17 +191,29 @@ func (a *App) ServicePS(params []string) error {
 	format.Log(format.RUN_PREFIX, "Gathering runtime status...")
 
 	if len(params) == 0 {
-		a.showContainerInfos()
-		a.showNetworkInfos()
+		if err := a.showContainerInfos(); err != nil {
+			return err
+		}
+		if err := a.showNetworkInfos(); err != nil {
+			return err
+		}
 	} else if len(params) == 1 {
 		switch params[0] {
 		case "containers", "container", "c":
-			a.showContainerInfos()
+			if err := a.showContainerInfos(); err != nil {
+				return err
+			}
 		case "networks", "network", "n":
-			a.showNetworkInfos()
+			if err := a.showNetworkInfos(); err != nil {
+				return err
+			}
 		case "all", "a":
-			a.showContainerInfos()
-			a.showNetworkInfos()
+			if err := a.showContainerInfos(); err != nil {
+				return err
+			}
+			if err := a.showNetworkInfos(); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("invalid parameter for ps option: %s", params[0])
 		}
