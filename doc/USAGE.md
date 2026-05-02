@@ -39,9 +39,24 @@ Generated executable:
 ./linuxusctl help
 ```
 
+For a more convenient CLI experience, enable bash completion support.
+
+Run the following command:
+
+```bash
+source ./ctl/linuxus-completion.bash
+```
+
+After enabling completion, you can use `TAB` to automatically complete commands and options.
+
 ---
 
 ## 3. Run Service
+
+> [!IMPORTANT]
+> `linuxusctl` is a project-local control binary.
+> Do not move `linuxusctl` outside the Linuxus project root.
+> It depends on `./src`, `./cfg`, and `./volume` relative to the project root.
 
 ### 3.1 Start / Manage Services
 
