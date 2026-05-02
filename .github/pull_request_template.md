@@ -20,18 +20,20 @@
 
 ---
 
-## 🔍 Details
+## 🔍 Details (optional)
 
-<!-- Explain the changes in detail:    -->
-<!-- - What was changed?               -->
-<!-- - Why was it changed?             -->
-<!-- - Any important design decisions? -->
+<!--
+Explain the changes in detail:
+- What was changed?
+- Why was it changed?
+- Any important design decisions?
+-->
 
 
 
 ---
 
-## 🧪 How to Test
+## 🧪 How to Test (optional)
 
 <!-- Steps to verify this PR: -->
 
@@ -39,7 +41,7 @@
 
 ---
 
-## 📸 Screenshots (if applicable)
+## 📸 Screenshots (optional, if applicable)
 
 <!-- Add screenshots or logs if needed. -->
 
@@ -49,8 +51,8 @@
 
 ## ⚠️ Breaking Changes
 
-* [ ] Yes
-* [ ] No
+- [ ] Yes
+- [ ] No
 
 <!-- If yes, explain: -->
 
@@ -67,15 +69,15 @@
 
 ## 📋 Checklist
 
-* [ ] PR title starts with `[TYPE]` (e.g., `[BUG] fix login error`)
-* [ ] Code builds successfully
-* [ ] No unnecessary files included
-* [ ] Documentation updated (if needed)
-* [ ] Tested locally
+- [ ] PR title starts with `[TYPE]` (e.g., `[BUG] fix login error`)
+- [ ] Code builds successfully
+- [ ] No unnecessary files included
+- [ ] Documentation updated (if needed)
+- [ ] Tested locally
 
 ---
 
-## 💬 Additional Notes
+## 💬 Additional Notes (optional)
 
 <!-- Anything else reviewers should know. -->
 
