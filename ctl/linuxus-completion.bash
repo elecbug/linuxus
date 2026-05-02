@@ -38,4 +38,4 @@ _linuxus_completion() {
     esac
 }
 
-complete -F _linuxus_completion linuxusctl
+complete -F _linuxus_completion ./linuxusctl
