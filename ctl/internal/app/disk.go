@@ -6,9 +6,181 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/elecbug/linuxus/ctl/internal/format"
 )
+
+// cleanVolumesAll unmounts and removes all user and shared disks after confirming with the user.
+func (a *App) cleanVolumesAll() error {
+	yes, err := format.Input("Are you sure you want to clean volumes for ALL users? This action cannot be undone. (yes/no): ")
+	if err != nil {
+		return fmt.Errorf("failed to read confirmation: %w", err)
+	}
+
+	if strings.ToLower(yes) != "yes" {
+		format.Log(format.INFO_PREFIX, "Volume clean cancelled.")
+		return nil
+	}
+
+	format.Log(format.RUN_PREFIX, "Cleaning volumes for all users...")
+
+	_ = a.ServiceDown()
+
+	homeMounts, err := a.listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
+	if err != nil {
+		return err
+	}
+	for _, dir := range homeMounts {
+		err = a.umountDisk(dir)
+		if err != nil {
+			format.Log(format.ERROR_PREFIX, "Failed to unmount home disk at %s: %v", dir, err)
+			continue
+		}
+	}
+
+	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
+		err = a.umountDisk(mountPoint)
+		if err != nil {
+			format.Log(format.ERROR_PREFIX, "Failed to unmount shared disk at %s: %v", mountPoint, err)
+			continue
+		}
+	}
+
+	homeDevs, err := a.findLoopDevicesForImages(a.Config.Volumes.Host.Homes)
+	if err != nil {
+		return err
+	}
+
+	seen := make(map[string]struct{})
+	var loopDevs []string
+	for _, dev := range homeDevs {
+		if _, exists := seen[dev]; !exists {
+			seen[dev] = struct{}{}
+			loopDevs = append(loopDevs, dev)
+		}
+	}
+	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
+		devs, err := a.findLoopDevicesForImages(filepath.Dir(mountPoint))
+		if err != nil {
+			return err
+		}
+		for _, dev := range devs {
+			if _, exists := seen[dev]; !exists {
+				seen[dev] = struct{}{}
+				loopDevs = append(loopDevs, dev)
+			}
+		}
+	}
+
+	for _, dev := range loopDevs {
+		format.Log(format.DETAIL_PREFIX, "Detaching loop device: %s", dev)
+		err = a.detachLoopDevice(dev)
+		if err != nil {
+			format.Log(format.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
+			continue
+		}
+	}
+
+	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Homes); err != nil {
+		return fmt.Errorf("failed to remove homes dir: %w", err)
+	}
+	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Share); err != nil {
+		return fmt.Errorf("failed to remove share dir: %w", err)
+	}
+	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil {
+		return fmt.Errorf("failed to remove readonly dir: %w", err)
+	}
+	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Volumes); err != nil {
+		return fmt.Errorf("failed to remove volumes dir: %w", err)
+	}
+
+	format.Log(format.DETAIL_PREFIX, "Volume clean completed.")
+	return nil
+}
+
+// cleanVolumeUser unmounts and removes the specified user's disk and home directory.
+func (a *App) cleanVolumeUser(userID string) error {
+	format.Log(format.RUN_PREFIX, "Cleaning volume for user: %s...", userID)
+
+	if err := a.umountDisk(filepath.Join(a.Config.Volumes.Host.Homes, userID)); err != nil {
+		format.Log(format.ERROR_PREFIX, "Failed to unmount home disk for user %s: %v", userID, err)
+	}
+
+	userHome := filepath.Join(a.Config.Volumes.Host.Homes, userID)
+	userImg := filepath.Join(a.Config.Volumes.Host.Homes, userID+".img")
+
+	homeDev, err := a.findLoopDevicesForImages(userHome)
+	if err != nil {
+		return fmt.Errorf("failed to find loop devices for user %s: %w", userID, err)
+	}
+
+	for _, dev := range homeDev {
+		format.Log(format.DETAIL_PREFIX, "Detaching loop device: %s", dev)
+		err = a.detachLoopDevice(dev)
+		if err != nil {
+			format.Log(format.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
+			continue
+		}
+	}
+
+	if err := a.systemAPI.RemoveAll(userHome); err != nil {
+		return fmt.Errorf("failed to remove home dir for user %s: %w", userID, err)
+	}
+
+	if err := a.systemAPI.Remove(userImg); err != nil {
+		return fmt.Errorf("failed to remove home image for user %s: %w", userID, err)
+	}
+
+	format.Log(format.DETAIL_PREFIX, "Volume clean completed for user: %s.", userID)
+
+	return nil
+}
+
+// ensureDiskAll creates and mounts disks for all users and shared volumes.
+func (a *App) ensureDiskAll() error {
+	if err := a.systemAPI.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
+		return err
+	}
+
+	if err := a.createSharedDisk(a.Config.Volumes.Host.Share); err != nil {
+		return err
+	}
+	if err := a.createSharedDisk(a.Config.Volumes.Host.Readonly); err != nil {
+		return err
+	}
+
+	for _, userID := range a.UserIDs {
+		if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *App) ensureDiskUser(userID string) error {
+	if !a.existsUser(userID) {
+		return fmt.Errorf("user ID not found in auth list: %s", userID)
+	}
+
+	if err := a.systemAPI.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
+		return err
+	}
+
+	if err := a.createSharedDisk(a.Config.Volumes.Host.Share); err != nil {
+		return err
+	}
+	if err := a.createSharedDisk(a.Config.Volumes.Host.Readonly); err != nil {
+		return err
+	}
+
+	if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // createSharedDisk creates and mounts a shared loopback disk at the target path.
 func (a *App) createSharedDisk(path string) error {

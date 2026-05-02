@@ -112,13 +112,13 @@ A **Signup** link will appear on the login page.
 After signup, the host must initialize user environments:
 
 ```bash
-./linuxusctl -e
+./linuxusctl ensure-disk <USERNAME>
 ```
 
-or:
+or initialize all missed user environments:
 
 ```bash
-./linuxusctl ensure-disk
+./linuxusctl ensure-disk --all
 ```
 
 This step:
