@@ -24,8 +24,14 @@ func (a *App) cleanVolumesAll() error {
 	}
 
 	format.Log(format.RUN_PREFIX, "Cleaning volumes for all users...")
+	format.Log(format.INFO_PREFIX, "Stopping and removing all managed containers and networks...")
 
-	_ = a.ServiceDown()
+	if err := a.removeManagedContainers(); err != nil {
+		return err
+	}
+	if err := a.removeManagedNetworks(); err != nil {
+		return err
+	}
 
 	homeMounts, err := a.listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
 	if err != nil {

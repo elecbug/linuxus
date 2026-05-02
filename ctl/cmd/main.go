@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/elecbug/linuxus/ctl/internal/app"
+	"github.com/elecbug/linuxus/ctl/internal/cli"
 	"github.com/elecbug/linuxus/ctl/internal/config"
 	"github.com/elecbug/linuxus/ctl/internal/format"
 )
@@ -27,7 +27,7 @@ const (
 	UP Opt = iota
 	DOWN
 	RESTART
-	VOLUME_CLEAN
+	CLEAN_VOLUME
 	ENSURE_DISK
 	PS
 	ADD_USER
@@ -38,7 +38,7 @@ const (
 // Options encapsulates the selected operations and their parameters.
 type Options struct {
 	Option Opt
-	Params []string
+	Params *cli.Parameters
 }
 
 // run initializes the application and executes selected runtime operations.
@@ -90,12 +90,12 @@ func run() error {
 		if err := a.LoadUserList(); err != nil {
 			return err
 		}
-		if err := a.ServiceUp(); err != nil {
+		if err := a.ServiceUp(opt.Params); err != nil {
 			return err
 		}
 
 	case DOWN:
-		if err := a.ServiceDown(); err != nil {
+		if err := a.ServiceDown(opt.Params); err != nil {
 			return err
 		}
 
@@ -103,16 +103,16 @@ func run() error {
 		if err := a.LoadUserList(); err != nil {
 			return err
 		}
-		if err := a.ServiceRestart(); err != nil {
+		if err := a.ServiceRestart(opt.Params); err != nil {
 			return err
 		}
 
-	case VOLUME_CLEAN:
+	case CLEAN_VOLUME:
 		if err := a.LoadUserList(); err != nil {
 			return err
 		}
 
-		if err := a.VolumeClean(opt.Params[0]); err != nil {
+		if err := a.ServiceCleanVolume(opt.Params); err != nil {
 			return err
 		}
 
@@ -121,7 +121,7 @@ func run() error {
 			return err
 		}
 
-		if err := a.EnsureDisk(opt.Params[0]); err != nil {
+		if err := a.ServiceEnsureDisk(opt.Params); err != nil {
 			return err
 		}
 
@@ -135,7 +135,7 @@ func run() error {
 			return err
 		}
 
-		if err := a.AddUser(opt.Params[0]); err != nil {
+		if err := a.ServiceAddUser(opt.Params); err != nil {
 			return err
 		}
 	case REMOVE_USER:
@@ -143,7 +143,7 @@ func run() error {
 			return err
 		}
 
-		if err := a.RemoveUser(opt.Params[0]); err != nil {
+		if err := a.ServiceRemoveUser(opt.Params); err != nil {
 			return err
 		}
 	}
@@ -153,7 +153,9 @@ func run() error {
 
 // parseArgs converts CLI arguments into executable options.
 func parseArgs(bin string, args []string) (Options, error) {
-	result := Options{}
+	result := Options{
+		Params: cli.NewParameters(),
+	}
 
 	if len(args) == 0 {
 		return result, errors.New(usageText(bin, true, true, true))
@@ -166,8 +168,8 @@ func parseArgs(bin string, args []string) (Options, error) {
 		result.Option = DOWN
 	case "restart":
 		result.Option = RESTART
-	case "volume-clean":
-		result.Option = VOLUME_CLEAN
+	case "clean-volume":
+		result.Option = CLEAN_VOLUME
 	case "ensure-disk":
 		result.Option = ENSURE_DISK
 	case "ps":
@@ -182,24 +184,18 @@ func parseArgs(bin string, args []string) (Options, error) {
 		return result, fmt.Errorf("invalid parameter: '%s'\n\n%s", args[0], usageText(bin, true, true, false))
 	}
 
+	params := make([]string, 0)
+
 	if len(args) > 1 {
-		result.Params = args[1:]
+		params = append(params, args[1:]...)
 	}
 
-	if ((result.Option == HELP || result.Option == UP || result.Option == DOWN || result.Option == RESTART) && len(result.Params) > 0) ||
-		((result.Option == ADD_USER || result.Option == REMOVE_USER || result.Option == ENSURE_DISK || result.Option == VOLUME_CLEAN) && len(result.Params) != 1) ||
-		(result.Option == PS && len(result.Params) > 1) {
-		return result, fmt.Errorf("invalid parameter%s [%s] for '%s'\n\n%s",
-			s(len(result.Params)),
-			strings.Join(result.Params, " "),
-			args[0],
-			usageText(bin, true, true, false),
-		)
-	}
+	result.Params = cli.ParseParams(params)
 
 	return result, nil
 }
 
+// s returns "s" if n is not 1, otherwise returns an empty string. Used for pluralization in error messages.
 func s(n int) string {
 	if n == 0 || n == 1 {
 		return ""
@@ -225,14 +221,14 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 		result += fmt.Sprintf("│     %-35s  - OPTION can be one of container, network, all or their shorthand c, n, a. If not specified, defaults to all.\n", "")
 		result += "│\n"
 		result += "├─ User Management:\n"
-		result += fmt.Sprintf("│  ├─ %-35s# Add a new user\n", "add-user <USERNAME>")
-		result += fmt.Sprintf("│  └─ %-35s# Remove an existing user\n", "remove-user <USERNAME>")
+		result += fmt.Sprintf("│  ├─ %-35s# Add a new user\n", "add-user --user <USERNAME>")
+		result += fmt.Sprintf("│  └─ %-35s# Remove an existing user\n", "remove-user --user <USERNAME>")
 		result += "│\n"
 		result += "└─ Disk Management:\n"
-		result += fmt.Sprintf("   ├─ %-35s# Remove all user directories if the option is all, otherwise remove specific user directory\n", "volume-clean <OPTION|USERNAME>")
-		result += fmt.Sprintf("   │  %-35s  - OPTION can be --all or their shorthand -a. Otherwise, specify a username.\n", "")
-		result += fmt.Sprintf("   └─ %-35s# Create a missing user directory if the option is all, otherwise create a specific user directory\n", "ensure-disk <OPTION|USERNAME>")
-		result += fmt.Sprintf("      %-35s  - OPTION can be --all or their shorthand -a. Otherwise, specify a username.\n", "")
+		result += fmt.Sprintf("   ├─ %-35s# Remove all user directories if the option is all, otherwise remove specific user directory\n", "clean-volume <OPTION>")
+		result += fmt.Sprintf("   │  %-35s  - OPTION can be --all, --user or their shorthand -a, -u. If --user is specified, a username must be provided.\n", "")
+		result += fmt.Sprintf("   └─ %-35s# Create a missing user directory if the option is all, otherwise create a specific user directory\n", "ensure-disk <OPTION>")
+		result += fmt.Sprintf("      %-35s  - OPTION can be --all, --user or their shorthand -a, -u. If --user is specified, a username must be provided.\n", "")
 	}
 	if showExample {
 		result += "\n"

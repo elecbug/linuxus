@@ -58,10 +58,10 @@ Generated executable:
 | `down`                            | Stop and remove services                                                                         |
 | `restart`                         | Restart services                                                                                 |
 | `ps [OPTION]`                     | Show status about linuxus service                                                                |
-| `add-user <USERNAME>`             | Add a new user                                                                                   |
-| `remove-user <USERNAME>`          | Remove an existing user                                                                          |
-| `volume-clean <OPTION\|USERNAME>` | Remove all user directories if the option is all, otherwise remove specific user directory       |
-| `ensure-disk <OPTION\|USERNAME>`  | Create a missing user directory if the option is all, otherwise create a specific user directory |
+| `add-user --user <USERNAME>`      | Add a new user                                                                                   |
+| `remove-user --user <USERNAME>`   | Remove an existing user                                                                          |
+| `clean-volume <OPTION>`           | Remove all user directories if the option is all, otherwise remove specific user directory       |
+| `ensure-disk <OPTION>`            | Create a missing user directory if the option is all, otherwise create a specific user directory |
 
 ---
 
