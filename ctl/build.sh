@@ -4,6 +4,7 @@ set -e
 
 CURRENT_DIR=$(pwd)
 SOURCE_DIR=$(dirname "$(realpath "$0")")
+
 SOURCE="cmd/main.go"
 OUTPUT="linuxusctl"
 
