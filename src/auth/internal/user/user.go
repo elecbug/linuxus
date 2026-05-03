@@ -77,3 +77,25 @@ func AddUser(path string, users map[string]string, id, password string) error {
 
 	return nil
 }
+
+// SyncUsers reloads the user credentials from the auth list file into memory.
+func SyncUsers(users map[string]string, authListPath string) error {
+	loadedUsers, err := LoadUsers(authListPath)
+	if err != nil {
+		return fmt.Errorf("failed to sync users: %v", err)
+	}
+
+	if len(loadedUsers) > len(users) {
+		for id, hash := range loadedUsers {
+			users[id] = hash
+		}
+	} else if len(loadedUsers) < len(users) {
+		for id := range users {
+			if _, exists := loadedUsers[id]; !exists {
+				delete(users, id)
+			}
+		}
+	}
+
+	return nil
+}

@@ -11,6 +11,12 @@ import (
 
 // handleSignup processes GET and POST requests to the signup endpoint for user registration.
 func (a *App) handleSignup(w http.ResponseWriter, r *http.Request) {
+	err := user.SyncUsers(a.users, a.authListFile)
+	if err != nil {
+		a.renderError(w, "Failed to load user data", http.StatusInternalServerError)
+		return
+	}
+
 	if !a.allowSignup {
 		a.renderError(w, "User signup is currently disabled.", http.StatusForbidden)
 		return
