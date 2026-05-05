@@ -2,7 +2,7 @@ package format
 
 import (
 	"bufio"
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -64,23 +64,49 @@ func InputPassword(prompt string, a ...any) (string, error) {
 }
 
 // DockerBuildLog processes and logs the output from a Docker build operation.
-func DockerBuildLog(level LogLevel, logBuf bytes.Buffer, imageName string) error {
+func DockerBuildLog(level LogLevel, r io.Reader, imageName string) error {
 	Log(level, "Building image %s...", imageName)
 
-	for logBuf.Len() > 0 {
-		line, err := logBuf.ReadString('\n')
-		line = strings.TrimSpace(strings.Trim(line, "\r\n"))
+	decoder := json.NewDecoder(r)
 
-		if err != nil && err != io.EOF {
+	for {
+		var msg struct {
+			Stream      string `json:"stream"`
+			Status      string `json:"status"`
+			Progress    string `json:"progress"`
+			Error       string `json:"error"`
+			ErrorDetail struct {
+				Message string `json:"message"`
+			} `json:"errorDetail"`
+		}
+
+		if err := decoder.Decode(&msg); err != nil {
+			if err == io.EOF {
+				break
+			}
 			Log(ERROR_PREFIX, "Error reading Docker build log: %v", err)
 			return err
 		}
 
-		if len(line) == 0 {
-			continue
-		} else if !strings.HasPrefix(line, "--->") {
-			Log(level, line)
+		if msg.Error != "" {
+			Log(ERROR_PREFIX, "%s", msg.Error)
+			return fmt.Errorf(msg.Error)
 		}
+
+		text := strings.TrimSpace(msg.Stream)
+		if text == "" {
+			text = strings.TrimSpace(msg.Status + " " + msg.Progress)
+		}
+
+		if text == "" {
+			continue
+		}
+
+		if strings.HasPrefix(text, "--->") {
+			continue
+		}
+
+		Log(level, "%s", text)
 	}
 
 	return nil
