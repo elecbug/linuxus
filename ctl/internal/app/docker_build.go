@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/docker/docker/api/types/build"
-	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/elecbug/linuxus/ctl/internal/format"
 )
 
@@ -56,17 +55,7 @@ func (a *App) buildImage(sourceDir string, tag string, buildArgs map[string]*str
 	}
 	defer resp.Body.Close()
 
-	var logBuf bytes.Buffer
-
-	err = jsonmessage.DisplayJSONMessagesStream(
-		resp.Body,
-		&logBuf,
-		0,
-		false,
-		nil,
-	)
-
-	if inErr := format.DockerBuildLog(format.DETAIL_PREFIX, logBuf, tag); inErr != nil {
+	if inErr := format.DockerBuildLog(format.DETAIL_PREFIX, resp.Body, tag); inErr != nil {
 		return fmt.Errorf("failed to process Docker build log for image %s: %w", tag, inErr)
 	}
 
