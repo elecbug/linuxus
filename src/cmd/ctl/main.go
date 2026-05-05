@@ -9,13 +9,13 @@ import (
 	"github.com/elecbug/linuxus/src/internal/ctl/app"
 	"github.com/elecbug/linuxus/src/internal/ctl/cli"
 	"github.com/elecbug/linuxus/src/internal/ctl/config"
-	"github.com/elecbug/linuxus/src/internal/ctl/format"
+	"github.com/elecbug/linuxus/src/internal/ctl/log"
 )
 
 // main executes the CLI entrypoint and prints user-friendly errors.
 func main() {
 	if err := run(); err != nil {
-		format.Log(format.ERROR_PREFIX, "An error occurred: %v", err)
+		log.Log(log.ERROR_PREFIX, "An error occurred: %v", err)
 		os.Exit(1)
 	}
 }
@@ -218,12 +218,12 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 	if showLogFormat {
 		result += "\n"
 		result += "Log Format:\n"
-		result += fmt.Sprintf("  %s: Run messages indicating the start of major operations\n", format.RUN_PREFIX)
-		result += fmt.Sprintf("  %s: Detail messages indicating the execution of specific steps\n", format.DETAIL_PREFIX)
-		result += fmt.Sprintf("  %s: Informational messages about the progress and status of operations\n", format.INFO_PREFIX)
-		result += fmt.Sprintf("  %s: Warning messages indicating potential issues that do not stop execution\n", format.WARNING_PREFIX)
-		result += fmt.Sprintf("  %s: Error messages indicating failures that may require user attention\n", format.ERROR_PREFIX)
-		result += fmt.Sprintf("  %s: Input messages indicating user input or interaction\n", format.INPUT_PREFIX)
+		result += fmt.Sprintf("  %s: Run messages indicating the start of major operations\n", log.RUN_PREFIX)
+		result += fmt.Sprintf("  %s: Detail messages indicating the execution of specific steps\n", log.DETAIL_PREFIX)
+		result += fmt.Sprintf("  %s: Informational messages about the progress and status of operations\n", log.INFO_PREFIX)
+		result += fmt.Sprintf("  %s: Warning messages indicating potential issues that do not stop execution\n", log.WARNING_PREFIX)
+		result += fmt.Sprintf("  %s: Error messages indicating failures that may require user attention\n", log.ERROR_PREFIX)
+		result += fmt.Sprintf("  %s: Input messages indicating user input or interaction\n", log.INPUT_PREFIX)
 	}
 	return result
 }

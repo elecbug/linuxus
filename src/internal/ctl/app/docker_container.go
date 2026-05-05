@@ -8,7 +8,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
-	"github.com/elecbug/linuxus/src/internal/ctl/format"
+	"github.com/elecbug/linuxus/src/internal/common/parser"
+	"github.com/elecbug/linuxus/src/internal/ctl/log"
 	"github.com/elecbug/linuxus/src/internal/ctl/spec"
 )
 
@@ -38,7 +39,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 		return err
 	}
 	if exists {
-		format.Log(format.DETAIL_PREFIX, "Recreating container: %s", spec.Name)
+		log.Log(log.DETAIL_PREFIX, "Recreating container: %s", spec.Name)
 		if err := cli.ContainerRemove(a.context, spec.Name, container.RemoveOptions{
 			Force: true,
 		}); err != nil {
@@ -56,7 +57,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 		portBindings = nat.PortMap{}
 
 		for _, p := range spec.Ports {
-			containerPort, hostBinding, err := format.StringToPortBinding(p)
+			containerPort, hostBinding, err := parser.StringToPortBinding(p)
 			if err != nil {
 				return fmt.Errorf("invalid port binding %q: %w", p, err)
 			}
@@ -76,7 +77,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 
 	hostCfg := &container.HostConfig{
 		Binds:          spec.Volumes,
-		Tmpfs:          format.StringsToTmpfsMap(spec.Tmpfs),
+		Tmpfs:          parser.StringsToTmpfsMap(spec.Tmpfs),
 		PortBindings:   portBindings,
 		ReadonlyRootfs: spec.ReadOnly,
 		SecurityOpt:    spec.SecurityOpt,
@@ -88,14 +89,14 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 	}
 
 	if spec.Limits.Memory != "" {
-		memBytes, err := format.StringToBytes(spec.Limits.Memory)
+		memBytes, err := parser.StringToBytes(spec.Limits.Memory)
 		if err != nil {
 			return fmt.Errorf("invalid memory limit %q: %w", spec.Limits.Memory, err)
 		}
 		hostCfg.Memory = memBytes
 	}
 	if spec.Limits.CPUs != "" {
-		nanoCPUs, err := format.StringToNanoCPUs(spec.Limits.CPUs)
+		nanoCPUs, err := parser.StringToNanoCPUs(spec.Limits.CPUs)
 		if err != nil {
 			return fmt.Errorf("invalid cpu limit %q: %w", spec.Limits.CPUs, err)
 		}
@@ -168,7 +169,7 @@ func (a *App) removeManagedContainers() error {
 			return fmt.Errorf("Docker client is not initialized")
 		}
 
-		format.Log(format.DETAIL_PREFIX, "Removing container: %s", name)
+		log.Log(log.DETAIL_PREFIX, "Removing container: %s", name)
 
 		if err := cli.ContainerRemove(a.context, name, container.RemoveOptions{Force: true}); err != nil {
 			return fmt.Errorf("failed to remove container %s: %w", name, err)

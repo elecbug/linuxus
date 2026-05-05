@@ -7,13 +7,14 @@ import (
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/network"
 	"github.com/elecbug/linuxus/src/internal/common/convert"
-	"github.com/elecbug/linuxus/src/internal/ctl/format"
+	"github.com/elecbug/linuxus/src/internal/common/parser"
+	"github.com/elecbug/linuxus/src/internal/ctl/log"
 	"github.com/elecbug/linuxus/src/internal/ctl/spec"
 )
 
 // showContainerInfos retrieves and displays information about the runtime-managed containers.
 func (a *App) showContainerInfos() error {
-	format.Log(format.DETAIL_PREFIX, "Runtime service status:")
+	log.Log(log.DETAIL_PREFIX, "Runtime service status:")
 
 	names, err := a.managedContainerNames()
 	if err != nil {
@@ -51,11 +52,11 @@ func (a *App) showContainerInfos() error {
 		if info.State != nil {
 			hasState = true
 			state = info.State.Status
-			status = format.ContainerInspectToStatusText(info)
+			status = parser.ContainerInspectToStatusText(info)
 		}
 
 		image := info.Config.Image
-		ports := format.ContainerInspectToPortSummary(info)
+		ports := parser.ContainerInspectToPortSummary(info)
 
 		containerInfos = append(containerInfos, spec.ContainerInfo{
 			Name:   name,
@@ -71,7 +72,7 @@ func (a *App) showContainerInfos() error {
 		})
 	}
 
-	strContainerResults := format.ContainerInfosToStrings(containerInfos)
+	strContainerResults := parser.ContainerInfosToStrings(containerInfos)
 
 	for _, result := range strContainerResults {
 		fmt.Println(result)
@@ -82,7 +83,7 @@ func (a *App) showContainerInfos() error {
 
 // showNetworkInfos retrieves and displays information about the runtime networks used by the services.
 func (a *App) showNetworkInfos() error {
-	format.Log(format.DETAIL_PREFIX, "Runtime network status:")
+	log.Log(log.DETAIL_PREFIX, "Runtime network status:")
 
 	networkInfos := make([]spec.NetworkInfo, 0)
 	networkInfos = append(networkInfos, spec.NetworkInfo{
@@ -108,7 +109,7 @@ func (a *App) showNetworkInfos() error {
 		}
 	}
 
-	strNetResults := format.NetworkInfosToStrings(networkInfos)
+	strNetResults := parser.NetworkInfosToStrings(networkInfos)
 
 	for _, result := range strNetResults {
 		fmt.Println(result)

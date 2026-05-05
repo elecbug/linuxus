@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/elecbug/linuxus/src/internal/ctl/format"
+	"github.com/elecbug/linuxus/src/internal/common/parser"
 	"github.com/elecbug/linuxus/src/internal/ctl/spec"
 )
 
@@ -45,21 +45,21 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 // buildManagerRuntimeSpec builds the manager service container runtime specification.
 func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 	userCPUStr := fmt.Sprintf("%v", a.Config.UserService.Limits.User.CPU)
-	userNanoCPUs, err := format.StringToNanoCPUs(userCPUStr)
+	userNanoCPUs, err := parser.StringToNanoCPUs(userCPUStr)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid user cpu limit: %w", err)
 	}
-	userMemBytes, err := format.StringToBytes(a.Config.UserService.Limits.User.Memory)
+	userMemBytes, err := parser.StringToBytes(a.Config.UserService.Limits.User.Memory)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid user memory limit: %w", err)
 	}
 
 	adminCPUStr := fmt.Sprintf("%v", a.Config.UserService.Limits.Admin.CPU)
-	adminNanoCPUs, err := format.StringToNanoCPUs(adminCPUStr)
+	adminNanoCPUs, err := parser.StringToNanoCPUs(adminCPUStr)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid admin cpu limit: %w", err)
 	}
-	adminMemBytes, err := format.StringToBytes(a.Config.UserService.Limits.Admin.Memory)
+	adminMemBytes, err := parser.StringToBytes(a.Config.UserService.Limits.Admin.Memory)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid admin memory limit: %w", err)
 	}

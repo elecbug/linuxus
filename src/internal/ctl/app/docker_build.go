@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 
 	"github.com/docker/docker/api/types/build"
-	"github.com/elecbug/linuxus/src/internal/ctl/format"
+	"github.com/elecbug/linuxus/src/internal/ctl/log"
 )
 
 // buildRuntimeImages builds all runtime images required by services.
 func (a *App) buildRuntimeImages() error {
-	format.Log(format.DETAIL_PREFIX, "Building runtime images...")
+	log.Log(log.DETAIL_PREFIX, "Building runtime images...")
 
 	if a.dockerClient == nil {
 		return fmt.Errorf("Docker client is not initialized")
@@ -75,7 +75,7 @@ func (a *App) buildImage(dockerfilePath string, tag string, buildArgs map[string
 	}
 	defer resp.Body.Close()
 
-	if err := format.DockerBuildLog(format.DETAIL_PREFIX, resp.Body, tag); err != nil {
+	if err := log.DockerBuildLog(log.DETAIL_PREFIX, resp.Body, tag); err != nil {
 		return fmt.Errorf("failed to process Docker build log for image %s: %w", tag, err)
 	}
 
