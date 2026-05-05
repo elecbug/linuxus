@@ -30,7 +30,7 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 Build the control CLI:
 
 ```bash
-./build/ctl.sh
+./shell/build_ctl.sh
 ```
 
 Generated executable:
@@ -44,7 +44,7 @@ For a more convenient CLI experience, enable bash completion support.
 Run the following command:
 
 ```bash
-source ./build/linuxus-completion.bash
+source ./shell/linuxus-completion.bash
 ```
 
 After enabling completion, you can use `TAB` to automatically complete commands and options.
@@ -200,32 +200,3 @@ volumes/
 
 > ![](./fig/03-shell_2.png)
 > Shell Page - Test GCC
-
----
-
-## 📎 APPENDIX - Manual User Setup (Legacy)
-
-### Build Hash Generator
-
-```bash
-./util/make_hash/build.sh
-```
-
-### Create Authentication File
-
-```bash
-mkdir -p data
-touch data/AUTH_LIST
-```
-
-### Add Users
-
-```bash
-./util/make_hash.out <ID> <PASSWORD> >> data/AUTH_LIST
-```
-
-Recommended for:
-
-* Initial admin bootstrap
-* Bulk provisioning
-* Signup-disabled environments
