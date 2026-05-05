@@ -45,21 +45,21 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 // buildManagerRuntimeSpec builds the manager service container runtime specification.
 func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 	userCPUStr := fmt.Sprintf("%v", a.Config.UserService.Limits.User.CPU)
-	userNanoCPUs, err := convert.NanoCPUs(userCPUStr)
+	userNanoCPUs, err := convert.NanoCPUsFromString(userCPUStr)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid user cpu limit: %w", err)
 	}
-	userMemBytes, err := convert.Bytes(a.Config.UserService.Limits.User.Memory)
+	userMemBytes, err := convert.BytesFromString(a.Config.UserService.Limits.User.Memory)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid user memory limit: %w", err)
 	}
 
 	adminCPUStr := fmt.Sprintf("%v", a.Config.UserService.Limits.Admin.CPU)
-	adminNanoCPUs, err := convert.NanoCPUs(adminCPUStr)
+	adminNanoCPUs, err := convert.NanoCPUsFromString(adminCPUStr)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid admin cpu limit: %w", err)
 	}
-	adminMemBytes, err := convert.Bytes(a.Config.UserService.Limits.Admin.Memory)
+	adminMemBytes, err := convert.BytesFromString(a.Config.UserService.Limits.Admin.Memory)
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid admin memory limit: %w", err)
 	}
