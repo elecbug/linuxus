@@ -3,7 +3,7 @@ package page
 import (
 	"fmt"
 
-	html "github.com/elecbug/linuxus/src/internal/auth/html"
+	"github.com/elecbug/linuxus/src/internal/common/html"
 )
 
 // getLoginCSS builds style rules for the login page.

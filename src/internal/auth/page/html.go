@@ -1,7 +1,7 @@
 package page
 
 import (
-	"github.com/elecbug/linuxus/src/internal/auth/html"
+	"github.com/elecbug/linuxus/src/internal/common/html"
 )
 
 // GetLoginPage renders the login HTML template.
