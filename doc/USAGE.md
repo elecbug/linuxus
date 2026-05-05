@@ -44,7 +44,7 @@ For a more convenient CLI experience, enable bash completion support.
 Run the following command:
 
 ```bash
-source ./ctl/linuxus-completion.bash
+source ./build/linuxus-completion.bash
 ```
 
 After enabling completion, you can use `TAB` to automatically complete commands and options.
