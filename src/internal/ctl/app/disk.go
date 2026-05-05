@@ -158,7 +158,7 @@ func (a *App) ensureDiskAll() error {
 		return err
 	}
 
-	for _, userID := range a.UserIDs {
+	for userID, _ := range a.UserIDs {
 		if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
 			return err
 		}
