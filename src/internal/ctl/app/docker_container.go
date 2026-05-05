@@ -8,7 +8,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
-	"github.com/elecbug/linuxus/src/internal/common/parser"
+	"github.com/elecbug/linuxus/src/internal/common/convert"
 	"github.com/elecbug/linuxus/src/internal/ctl/log"
 	"github.com/elecbug/linuxus/src/internal/ctl/spec"
 )
@@ -57,7 +57,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 		portBindings = nat.PortMap{}
 
 		for _, p := range spec.Ports {
-			containerPort, hostBinding, err := parser.PortBinding(p)
+			containerPort, hostBinding, err := convert.PortBinding(p)
 			if err != nil {
 				return fmt.Errorf("invalid port binding %q: %w", p, err)
 			}
@@ -77,7 +77,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 
 	hostCfg := &container.HostConfig{
 		Binds:          spec.Volumes,
-		Tmpfs:          parser.TmpfsMap(spec.Tmpfs),
+		Tmpfs:          convert.TmpfsMap(spec.Tmpfs),
 		PortBindings:   portBindings,
 		ReadonlyRootfs: spec.ReadOnly,
 		SecurityOpt:    spec.SecurityOpt,
@@ -89,14 +89,14 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 	}
 
 	if spec.Limits.Memory != "" {
-		memBytes, err := parser.Bytes(spec.Limits.Memory)
+		memBytes, err := convert.Bytes(spec.Limits.Memory)
 		if err != nil {
 			return fmt.Errorf("invalid memory limit %q: %w", spec.Limits.Memory, err)
 		}
 		hostCfg.Memory = memBytes
 	}
 	if spec.Limits.CPUs != "" {
-		nanoCPUs, err := parser.NanoCPUs(spec.Limits.CPUs)
+		nanoCPUs, err := convert.NanoCPUs(spec.Limits.CPUs)
 		if err != nil {
 			return fmt.Errorf("invalid cpu limit %q: %w", spec.Limits.CPUs, err)
 		}
