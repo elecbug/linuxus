@@ -57,7 +57,7 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 		portBindings = nat.PortMap{}
 
 		for _, p := range spec.Ports {
-			containerPort, hostBinding, err := convert.PortBinding(p)
+			containerPort, hostBinding, err := convert.PortBindingFromString(p)
 			if err != nil {
 				return fmt.Errorf("invalid port binding %q: %w", p, err)
 			}
@@ -89,14 +89,14 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 	}
 
 	if spec.Limits.Memory != "" {
-		memBytes, err := convert.Bytes(spec.Limits.Memory)
+		memBytes, err := convert.BytesFromString(spec.Limits.Memory)
 		if err != nil {
 			return fmt.Errorf("invalid memory limit %q: %w", spec.Limits.Memory, err)
 		}
 		hostCfg.Memory = memBytes
 	}
 	if spec.Limits.CPUs != "" {
-		nanoCPUs, err := convert.NanoCPUs(spec.Limits.CPUs)
+		nanoCPUs, err := convert.NanoCPUsFromString(spec.Limits.CPUs)
 		if err != nil {
 			return fmt.Errorf("invalid cpu limit %q: %w", spec.Limits.CPUs, err)
 		}
