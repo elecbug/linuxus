@@ -16,6 +16,8 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/src/internal/common/packet"
+	"github.com/elecbug/linuxus/src/internal/common/ruleset"
+	"github.com/elecbug/linuxus/src/internal/common/subnet"
 	"github.com/elecbug/linuxus/src/internal/manager/config"
 )
 
@@ -46,7 +48,7 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	if !allowID(req.UserID) {
+	if !ruleset.AllowedUserID(req.UserID) {
 		writeJSON(w, http.StatusBadRequest, packet.UserUpResponse{
 			OK:      false,
 			Message: "user_id contains invalid characters",
@@ -74,7 +76,7 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 
 // ensureUserRuntimeReady ensures a user container and network are ready to serve requests.
 func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (*packet.UserUpResponse, error) {
-	if !allowID(userID) {
+	if !ruleset.AllowedUserID(userID) {
 		return nil, fmt.Errorf("user_id contains invalid characters")
 	}
 
@@ -381,8 +383,8 @@ func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, err
 			continue
 		}
 
-		subnet := strings.TrimSpace(inspect.IPAM.Config[0].Subnet)
-		idx, ok := subnetToIndex(s.cfg.BaseIP, subnet)
+		sn := strings.TrimSpace(inspect.IPAM.Config[0].Subnet)
+		idx, ok := subnet.SubnetToIndex(s.cfg.BaseIP, sn)
 		if ok {
 			used[idx] = struct{}{}
 		}
@@ -392,11 +394,11 @@ func (s *Server) findFirstFreeNetworkSlot(ctx context.Context) (int, string, err
 		if _, exists := used[idx]; exists {
 			continue
 		}
-		subnet, err := getSubnetByIndex(s.cfg.BaseIP, idx)
+		sn, err := subnet.GetSubnetByIndex(s.cfg.BaseIP, idx)
 		if err != nil {
 			return 0, "", err
 		}
-		return idx, subnet, nil
+		return idx, sn, nil
 	}
 }
 
