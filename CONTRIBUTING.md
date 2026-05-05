@@ -69,14 +69,6 @@ Before submitting a PR:
 
 ---
 
-## 🧪 Running the Project
-
-```bash
-./util/simple_build_and_run.sh -g -u
-```
-
----
-
 ## 🧱 Code Style Guidelines
 
 * Keep code simple and readable
