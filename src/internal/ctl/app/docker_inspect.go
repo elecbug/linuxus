@@ -7,7 +7,6 @@ import (
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/network"
 	"github.com/elecbug/linuxus/src/internal/common/convert"
-	"github.com/elecbug/linuxus/src/internal/common/parser"
 	"github.com/elecbug/linuxus/src/internal/ctl/log"
 	"github.com/elecbug/linuxus/src/internal/ctl/spec"
 )
@@ -52,11 +51,11 @@ func (a *App) showContainerInfos() error {
 		if info.State != nil {
 			hasState = true
 			state = info.State.Status
-			status = parser.ContainerInspectToStatusText(info)
+			status = convert.ContainerInspectToStatusText(info)
 		}
 
 		image := info.Config.Image
-		ports := parser.ContainerInspectToPortSummary(info)
+		ports := convert.ContainerInspectToPortSummary(info)
 
 		containerInfos = append(containerInfos, spec.ContainerInfo{
 			Name:   name,
@@ -72,7 +71,7 @@ func (a *App) showContainerInfos() error {
 		})
 	}
 
-	strContainerResults := parser.ContainerInfosToStrings(containerInfos)
+	strContainerResults := convert.ContainerInfosToStrings(containerInfos)
 
 	for _, result := range strContainerResults {
 		fmt.Println(result)
@@ -109,7 +108,7 @@ func (a *App) showNetworkInfos() error {
 		}
 	}
 
-	strNetResults := parser.NetworkInfosToStrings(networkInfos)
+	strNetResults := convert.NetworkInfosToStrings(networkInfos)
 
 	for _, result := range strNetResults {
 		fmt.Println(result)
