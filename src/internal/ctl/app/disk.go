@@ -193,7 +193,7 @@ func (a *App) ensureDiskUser(userID string) error {
 // createSharedDisk creates and mounts a shared loopback disk at the target path.
 func (a *App) createSharedDisk(path string) error {
 	sizeStr := a.Config.Volumes.DiskLimit
-	size, err := parser.StringToBytes(sizeStr)
+	size, err := parser.Bytes(sizeStr)
 	if err != nil {
 		return fmt.Errorf("invalid disk size for shared disk: %w", err)
 	}
@@ -278,7 +278,7 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 		sizeStr = a.Config.UserService.Limits.Admin.Disk
 	}
 
-	size, err := parser.StringToBytes(sizeStr)
+	size, err := parser.Bytes(sizeStr)
 	if err != nil {
 		return fmt.Errorf("invalid disk size for %s: %w", userID, err)
 	}
