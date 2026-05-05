@@ -161,29 +161,6 @@ func SyncUsers(users map[string]string, authListPath string) error {
 	return nil
 }
 
-// AllowedID checks if the provided ID is valid according to defined rules.
-func AllowedID(id string) bool {
-	if id == "" {
-		return false
-	}
-	for i, ch := range id {
-		if i == 0 && (ch == '_' || ch == '-') {
-			return false
-		}
-		if i == len(id)-1 && (ch == '_' || ch == '-') {
-			return false
-		}
-		if (ch >= 'A' && ch <= 'Z') ||
-			(ch >= 'a' && ch <= 'z') ||
-			(ch >= '0' && ch <= '9') ||
-			ch == '_' || ch == '-' {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
 // ExistsUser checks if a user ID exists in the provided user map.
 func ExistsUser(users map[string]string, id string) bool {
 	_, ok := users[id]
