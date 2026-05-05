@@ -87,9 +87,6 @@ func run() error {
 
 	switch opt.Option {
 	case UP:
-		if err := a.LoadUserList(); err != nil {
-			return err
-		}
 		if err := a.ServiceUp(opt.Params); err != nil {
 			return err
 		}
@@ -100,27 +97,16 @@ func run() error {
 		}
 
 	case RESTART:
-		if err := a.LoadUserList(); err != nil {
-			return err
-		}
 		if err := a.ServiceRestart(opt.Params); err != nil {
 			return err
 		}
 
 	case CLEAN_VOLUME:
-		if err := a.LoadUserList(); err != nil {
-			return err
-		}
-
 		if err := a.ServiceCleanVolume(opt.Params); err != nil {
 			return err
 		}
 
 	case ENSURE_DISK:
-		if err := a.LoadUserList(); err != nil {
-			return err
-		}
-
 		if err := a.ServiceEnsureDisk(opt.Params); err != nil {
 			return err
 		}
@@ -131,18 +117,10 @@ func run() error {
 		}
 
 	case ADD_USER:
-		if err := a.LoadUserList(); err != nil {
-			return err
-		}
-
 		if err := a.ServiceAddUser(opt.Params); err != nil {
 			return err
 		}
 	case REMOVE_USER:
-		if err := a.LoadUserList(); err != nil {
-			return err
-		}
-
 		if err := a.ServiceRemoveUser(opt.Params); err != nil {
 			return err
 		}

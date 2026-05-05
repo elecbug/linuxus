@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 	"github.com/elecbug/linuxus/src/internal/ctl/format"
 )
 
@@ -16,13 +17,13 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.UserService.Container.NamePrefix == "" {
 		errMsgs = append(errMsgs, "user_service.container.name_prefix is required")
-	} else if !isValidDockerPrefix(cfg.UserService.Container.NamePrefix) {
+	} else if !ruleset.AllowedDockerPrefix(cfg.UserService.Container.NamePrefix) {
 		errMsgs = append(errMsgs, "user_service.container.name_prefix must be a valid Docker prefix")
 	}
 
 	if cfg.UserService.Container.NetworkNamePrefix == "" {
 		errMsgs = append(errMsgs, "user_service.container.network_name_prefix is required")
-	} else if !isValidDockerPrefix(cfg.UserService.Container.NetworkNamePrefix) {
+	} else if !ruleset.AllowedDockerPrefix(cfg.UserService.Container.NetworkNamePrefix) {
 		errMsgs = append(errMsgs, "user_service.container.network_name_prefix must be a valid Docker prefix")
 	}
 
@@ -44,13 +45,13 @@ func ValidateConfig(cfg *Config) error {
 		errMsgs = append(errMsgs, "user_service.runtime.linux_username is required")
 	} else if cfg.UserService.Runtime.LinuxUsername == "root" {
 		errMsgs = append(errMsgs, "user_service.runtime.linux_username cannot be 'root'")
-	} else if !isValidDockerID(cfg.UserService.Runtime.LinuxUsername) {
+	} else if !ruleset.AllowedDockerID(cfg.UserService.Runtime.LinuxUsername) {
 		errMsgs = append(errMsgs, "user_service.runtime.linux_username must be a valid Docker ID")
 	}
 
 	if cfg.UserService.Runtime.LinuxHostname == "" {
 		errMsgs = append(errMsgs, "user_service.runtime.linux_hostname is required")
-	} else if !isValidDockerID(cfg.UserService.Runtime.LinuxHostname) {
+	} else if !ruleset.AllowedDockerID(cfg.UserService.Runtime.LinuxHostname) {
 		errMsgs = append(errMsgs, "user_service.runtime.linux_hostname must be a valid Docker ID")
 	}
 
@@ -68,7 +69,7 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.AuthService.Container.Name == "" {
 		errMsgs = append(errMsgs, "auth_service.container.name is required")
-	} else if !isValidDockerID(cfg.AuthService.Container.Name) {
+	} else if !ruleset.AllowedDockerID(cfg.AuthService.Container.Name) {
 		errMsgs = append(errMsgs, "auth_service.container.name must be a valid Docker ID")
 	}
 
@@ -122,7 +123,7 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.ManagerService.Container.Name == "" {
 		errMsgs = append(errMsgs, "manager_service.container.name is required")
-	} else if !isValidDockerID(cfg.ManagerService.Container.Name) {
+	} else if !ruleset.AllowedDockerID(cfg.ManagerService.Container.Name) {
 		errMsgs = append(errMsgs, "manager_service.container.name must be a valid Docker ID")
 	} else if cfg.ManagerService.Container.Name == cfg.AuthService.Container.Name {
 		errMsgs = append(errMsgs, "manager_service.container.name cannot be the same as auth_service.container.name")
@@ -130,7 +131,7 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.ManagerService.Container.Network == "" {
 		errMsgs = append(errMsgs, "manager_service.container.network is required")
-	} else if !isValidDockerID(cfg.ManagerService.Container.Network) {
+	} else if !ruleset.AllowedDockerID(cfg.ManagerService.Container.Network) {
 		errMsgs = append(errMsgs, "manager_service.container.network must be a valid Docker ID")
 	} else if cfg.ManagerService.Container.Network == cfg.UserService.Container.NetworkNamePrefix {
 		errMsgs = append(errMsgs, "manager_service.container.network cannot be the same as user_service.container.network_name_prefix")
@@ -190,7 +191,7 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.ManagerService.AdminID == "" {
 		errMsgs = append(errMsgs, "manager_service.admin_id is required")
-	} else if !isValidDockerID(cfg.ManagerService.AdminID) {
+	} else if !ruleset.AllowedDockerID(cfg.ManagerService.AdminID) {
 		errMsgs = append(errMsgs, "manager_service.admin_id must be a valid Docker ID")
 	}
 
@@ -263,49 +264,6 @@ func usablePath(path string) error {
 // isAbsolutePath checks if the given path is an absolute path.
 func isAbsolutePath(path string) bool {
 	return strings.HasPrefix(path, "/")
-}
-
-// isValidDockerID checks if the given string is a valid Docker ID prefix.
-func isValidDockerID(id string) bool {
-	if id == "" {
-		return false
-	}
-	for i, ch := range id {
-		if i == 0 && (ch == '_' || ch == '-') {
-			return false
-		}
-		if i == len(id)-1 && (ch == '_' || ch == '-') {
-			return false
-		}
-		if (ch >= 'A' && ch <= 'Z') ||
-			(ch >= 'a' && ch <= 'z') ||
-			(ch >= '0' && ch <= '9') ||
-			ch == '_' || ch == '-' {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
-// isValidDockerPrefix checks if the given string is a valid Docker prefix.
-func isValidDockerPrefix(prefix string) bool {
-	if prefix == "" {
-		return false
-	}
-	for i, ch := range prefix {
-		if i == 0 && (ch == '_' || ch == '-') {
-			return false
-		}
-		if (ch >= 'A' && ch <= 'Z') ||
-			(ch >= 'a' && ch <= 'z') ||
-			(ch >= '0' && ch <= '9') ||
-			ch == '_' || ch == '-' {
-			continue
-		}
-		return false
-	}
-	return true
 }
 
 // isValidSubnet checks if the given string is a valid subnet in CIDR notation.

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/elecbug/linuxus/src/internal/common/user"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,6 +20,12 @@ func (a *App) LoadConfig() error {
 	}
 
 	a.normalizeConfigPaths()
+
+	a.UserIDs, err = user.LoadUsers(a.Config.AuthService.Mounts.HostAuthListPath)
+	if err != nil {
+		return fmt.Errorf("failed to load user IDs from auth list: %w", err)
+	}
+
 	return nil
 }
 

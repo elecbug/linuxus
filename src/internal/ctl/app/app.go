@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/client"
+	"github.com/elecbug/linuxus/src/internal/common/system_api"
 	"github.com/elecbug/linuxus/src/internal/ctl/config"
-	"github.com/elecbug/linuxus/src/internal/ctl/system_api"
 )
 
 // App stores runtime state, config, and Docker dependencies for linuxusctl.
@@ -32,7 +32,7 @@ type App struct {
 	// Config stores the parsed application configuration.
 	Config config.Config
 	// UserIDs stores raw user IDs parsed from auth list.
-	UserIDs []string
+	UserIDs map[string]string
 	// seen tracks deduplication of user IDs while parsing auth data.
 	seen map[string]struct{}
 }
@@ -54,6 +54,7 @@ func CreateApp(currentDir, execDir, repoDir, sourceDir, configFile string) (*App
 		sourceDir:    sourceDir,
 		configFile:   configFile,
 		seen:         make(map[string]struct{}),
+		UserIDs:      nil,
 	}
 
 	return app, nil

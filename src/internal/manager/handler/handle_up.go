@@ -15,8 +15,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/elecbug/linuxus/src/internal/common/packet"
 	"github.com/elecbug/linuxus/src/internal/manager/config"
-	"github.com/elecbug/linuxus/src/internal/manager/packet"
 )
 
 // HandleUserUp handles user runtime preparation requests.
