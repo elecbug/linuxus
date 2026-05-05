@@ -30,7 +30,7 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 Build the control CLI:
 
 ```bash
-./ctl/build.sh
+./build/ctl.sh
 ```
 
 Generated executable:
