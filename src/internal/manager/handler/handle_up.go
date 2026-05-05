@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/elecbug/linuxus/src/internal/common/http_helper"
 	"github.com/elecbug/linuxus/src/internal/common/packet"
 	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 	"github.com/elecbug/linuxus/src/internal/common/subnet"
@@ -24,7 +25,7 @@ import (
 // HandleUserUp handles user runtime preparation requests.
 func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, packet.UserUpResponse{
+		http_helper.WriteJSONViaHTTP(w, http.StatusMethodNotAllowed, packet.UserUpResponse{
 			OK:      false,
 			Message: "method not allowed",
 		})
@@ -33,7 +34,7 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 
 	var req packet.UserUpRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, packet.UserUpResponse{
+		http_helper.WriteJSONViaHTTP(w, http.StatusBadRequest, packet.UserUpResponse{
 			OK:      false,
 			Message: "invalid json body",
 		})
@@ -42,14 +43,14 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 
 	req.UserID = strings.TrimSpace(req.UserID)
 	if req.UserID == "" {
-		writeJSON(w, http.StatusBadRequest, packet.UserUpResponse{
+		http_helper.WriteJSONViaHTTP(w, http.StatusBadRequest, packet.UserUpResponse{
 			OK:      false,
 			Message: "user_id is required",
 		})
 		return
 	}
 	if !ruleset.AllowedUserID(req.UserID) {
-		writeJSON(w, http.StatusBadRequest, packet.UserUpResponse{
+		http_helper.WriteJSONViaHTTP(w, http.StatusBadRequest, packet.UserUpResponse{
 			OK:      false,
 			Message: "user_id contains invalid characters",
 		})
@@ -62,7 +63,7 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.ensureUserRuntimeReady(ctx, req.UserID)
 	if err != nil {
 		log.Printf("user up failed user=%s err=%v", req.UserID, err)
-		writeJSON(w, http.StatusServiceUnavailable, packet.UserUpResponse{
+		http_helper.WriteJSONViaHTTP(w, http.StatusServiceUnavailable, packet.UserUpResponse{
 			OK:            false,
 			UserID:        req.UserID,
 			ContainerName: s.cfg.UserContainerNamePrefix + req.UserID,
@@ -71,7 +72,7 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	http_helper.WriteJSONViaHTTP(w, http.StatusOK, resp)
 }
 
 // ensureUserRuntimeReady ensures a user container and network are ready to serve requests.

@@ -6,6 +6,7 @@ import (
 
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/network"
+	"github.com/elecbug/linuxus/src/internal/common/convert"
 	"github.com/elecbug/linuxus/src/internal/ctl/format"
 	"github.com/elecbug/linuxus/src/internal/ctl/spec"
 )
@@ -58,10 +59,10 @@ func (a *App) showContainerInfos() error {
 
 		containerInfos = append(containerInfos, spec.ContainerInfo{
 			Name:   name,
-			Status: format.DisplayStatusText(state, status, hasState),
+			Status: convert.FormatStatusText(state, status, hasState),
 			Image:  image,
 			Ports:  ports,
-			Role: format.DisplayUserName(
+			Role: convert.FormatUserName(
 				a.Config.UserService.Container.NamePrefix,
 				a.Config.AuthService.Container.Name,
 				a.Config.ManagerService.Container.Name,
@@ -100,7 +101,7 @@ func (a *App) showNetworkInfos() error {
 			net.Name == a.Config.ManagerService.Container.Network {
 			info := spec.NetworkInfo{
 				Name:   net.Name,
-				ID:     format.DisplayNetworkID(net.ID),
+				ID:     convert.ShortenNetworkID(net.ID),
 				Subnet: net.IPAM.Config[0].Subnet,
 			}
 			networkInfos = append(networkInfos, info)

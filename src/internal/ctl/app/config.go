@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
+	"github.com/elecbug/linuxus/src/internal/common/convert"
 	"github.com/elecbug/linuxus/src/internal/common/user"
 	"gopkg.in/yaml.v3"
 )
@@ -31,25 +31,10 @@ func (a *App) LoadConfig() error {
 
 // normalizeConfigPaths resolves source-relative paths to absolute paths.
 func (a *App) normalizeConfigPaths() {
-	a.Config.AuthService.Mounts.HostAuthListPath = a.absFromSource(a.Config.AuthService.Mounts.HostAuthListPath)
+	a.Config.AuthService.Mounts.HostAuthListPath = convert.PathToAbs(a.Config.AuthService.Mounts.HostAuthListPath)
 
-	a.Config.Volumes.Host.Homes = a.absFromSource(a.Config.Volumes.Host.Homes)
-	a.Config.Volumes.Host.Share = a.absFromSource(a.Config.Volumes.Host.Share)
-	a.Config.Volumes.Host.Readonly = a.absFromSource(a.Config.Volumes.Host.Readonly)
-	a.Config.Volumes.Host.Volumes = a.absFromSource(a.Config.Volumes.Host.Volumes)
-}
-
-// absFromSource resolves a path relative to the configured source directory.
-func (a *App) absFromSource(path string) string {
-	if path == "" {
-		return path
-	}
-	if filepath.IsAbs(path) {
-		return path
-	}
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return path
-	}
-	return filepath.Clean(absPath)
+	a.Config.Volumes.Host.Homes = convert.PathToAbs(a.Config.Volumes.Host.Homes)
+	a.Config.Volumes.Host.Share = convert.PathToAbs(a.Config.Volumes.Host.Share)
+	a.Config.Volumes.Host.Readonly = convert.PathToAbs(a.Config.Volumes.Host.Readonly)
+	a.Config.Volumes.Host.Volumes = convert.PathToAbs(a.Config.Volumes.Host.Volumes)
 }
