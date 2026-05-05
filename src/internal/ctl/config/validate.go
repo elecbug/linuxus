@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elecbug/linuxus/src/internal/common/parser"
 	"github.com/elecbug/linuxus/src/internal/common/ruleset"
-	"github.com/elecbug/linuxus/src/internal/ctl/format"
 )
 
 // ValidateConfig validates required config values before runtime operations.
@@ -233,7 +233,7 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.Volumes.DiskLimit == "" {
 		errMsgs = append(errMsgs, "volumes.disk_limit is required")
-	} else if _, err := format.StringToBytes(cfg.Volumes.DiskLimit); err != nil {
+	} else if _, err := parser.Bytes(cfg.Volumes.DiskLimit); err != nil {
 		errMsgs = append(errMsgs, "volumes.disk_limit must be a valid size string (e.g., 1g, 512m)")
 	}
 
@@ -282,14 +282,14 @@ func isValidSubnet16(subnet string) bool {
 func isValidLimits(l Limits) error {
 	errMsgs := []string{}
 
-	nanoCPU, err := format.StringToNanoCPUs(fmt.Sprintf("%v", l.CPU))
+	nanoCPU, err := parser.NanoCPUs(fmt.Sprintf("%v", l.CPU))
 	if err != nil {
 		errMsgs = append(errMsgs, "cpu limit must be a valid numeric string (e.g., 1, 0.5)")
 	} else if nanoCPU <= 0 {
 		errMsgs = append(errMsgs, "cpu limit must be greater than zero")
 	}
 
-	mem, err := format.StringToBytes(l.Memory)
+	mem, err := parser.Bytes(l.Memory)
 	if err != nil {
 		errMsgs = append(errMsgs, "memory limit must be a valid size string (e.g., 512m, 1g)")
 	} else if mem <= 0 {
@@ -300,7 +300,7 @@ func isValidLimits(l Limits) error {
 		errMsgs = append(errMsgs, "pid limit must be greater than zero")
 	}
 
-	disk, err := format.StringToBytes(l.Disk)
+	disk, err := parser.Bytes(l.Disk)
 	if err != nil {
 		errMsgs = append(errMsgs, "disk limit must be a valid size string (e.g., 1g, 512m)")
 	} else if disk <= 0 {

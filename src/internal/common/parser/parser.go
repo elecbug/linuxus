@@ -1,4 +1,4 @@
-package format
+package parser
 
 import (
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	"github.com/elecbug/linuxus/src/internal/ctl/spec"
 )
 
-// StringToNanoCPUs converts a CPU value to Docker NanoCPUs.
-func StringToNanoCPUs(v string) (int64, error) {
+// NanoCPUs converts a CPU value to Docker NanoCPUs.
+func NanoCPUs(v string) (int64, error) {
 	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
 	if err != nil {
 		return 0, err
@@ -22,8 +22,8 @@ func StringToNanoCPUs(v string) (int64, error) {
 	return int64(f * 1_000_000_000), nil
 }
 
-// StringToBytes converts a memory string to bytes.
-func StringToBytes(v string) (int64, error) {
+// Bytes converts a memory string to bytes.
+func Bytes(v string) (int64, error) {
 	s := strings.TrimSpace(strings.ToLower(v))
 	mult := int64(1)
 
@@ -61,8 +61,8 @@ func StringToBytes(v string) (int64, error) {
 	return n * mult, nil
 }
 
-// StringToPortBinding parses HOST:CONTAINER port mapping text.
-func StringToPortBinding(s string) (nat.Port, nat.PortBinding, error) {
+// PortBinding parses HOST:CONTAINER port mapping text.
+func PortBinding(s string) (nat.Port, nat.PortBinding, error) {
 	parts := strings.Split(s, ":")
 	if len(parts) != 2 {
 		return "", nat.PortBinding{}, fmt.Errorf("expected HOST:CONTAINER, got %q", s)
@@ -218,8 +218,8 @@ func ContainerInspectToPortSummary(info container.InspectResponse) string {
 	return out
 }
 
-// StringsToTmpfsMap converts tmpfs mount strings to Docker tmpfs map format.
-func StringsToTmpfsMap(items []string) map[string]string {
+// TmpfsMap converts tmpfs mount strings to Docker tmpfs map format.
+func TmpfsMap(items []string) map[string]string {
 	if len(items) == 0 {
 		return nil
 	}

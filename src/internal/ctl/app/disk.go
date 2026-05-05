@@ -8,24 +8,25 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/elecbug/linuxus/src/internal/common/parser"
 	"github.com/elecbug/linuxus/src/internal/common/user"
-	"github.com/elecbug/linuxus/src/internal/ctl/format"
+	"github.com/elecbug/linuxus/src/internal/ctl/log"
 )
 
 // cleanVolumesAll unmounts and removes all user and shared disks after confirming with the user.
 func (a *App) cleanVolumesAll() error {
-	yes, err := format.Input("Are you sure you want to clean volumes for ALL users? This action cannot be undone. (yes/no): ")
+	yes, err := log.Input("Are you sure you want to clean volumes for ALL users? This action cannot be undone. (yes/no): ")
 	if err != nil {
 		return fmt.Errorf("failed to read confirmation: %w", err)
 	}
 
 	if strings.ToLower(yes) != "yes" {
-		format.Log(format.INFO_PREFIX, "Volume clean cancelled.")
+		log.Log(log.INFO_PREFIX, "Volume clean cancelled.")
 		return nil
 	}
 
-	format.Log(format.RUN_PREFIX, "Cleaning volumes for all users...")
-	format.Log(format.INFO_PREFIX, "Stopping and removing all managed containers and networks...")
+	log.Log(log.RUN_PREFIX, "Cleaning volumes for all users...")
+	log.Log(log.INFO_PREFIX, "Stopping and removing all managed containers and networks...")
 
 	if err := a.removeManagedContainers(); err != nil {
 		return err
@@ -41,7 +42,7 @@ func (a *App) cleanVolumesAll() error {
 	for _, dir := range homeMounts {
 		err = a.umountDisk(dir)
 		if err != nil {
-			format.Log(format.ERROR_PREFIX, "Failed to unmount home disk at %s: %v", dir, err)
+			log.Log(log.ERROR_PREFIX, "Failed to unmount home disk at %s: %v", dir, err)
 			continue
 		}
 	}
@@ -49,7 +50,7 @@ func (a *App) cleanVolumesAll() error {
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
 		err = a.umountDisk(mountPoint)
 		if err != nil {
-			format.Log(format.ERROR_PREFIX, "Failed to unmount shared disk at %s: %v", mountPoint, err)
+			log.Log(log.ERROR_PREFIX, "Failed to unmount shared disk at %s: %v", mountPoint, err)
 			continue
 		}
 	}
@@ -81,10 +82,10 @@ func (a *App) cleanVolumesAll() error {
 	}
 
 	for _, dev := range loopDevs {
-		format.Log(format.DETAIL_PREFIX, "Detaching loop device: %s", dev)
+		log.Log(log.DETAIL_PREFIX, "Detaching loop device: %s", dev)
 		err = a.detachLoopDevice(dev)
 		if err != nil {
-			format.Log(format.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
+			log.Log(log.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
 			continue
 		}
 	}
@@ -102,16 +103,16 @@ func (a *App) cleanVolumesAll() error {
 		return fmt.Errorf("failed to remove volumes dir: %w", err)
 	}
 
-	format.Log(format.DETAIL_PREFIX, "Volume clean completed.")
+	log.Log(log.DETAIL_PREFIX, "Volume clean completed.")
 	return nil
 }
 
 // cleanVolumeUser unmounts and removes the specified user's disk and home directory.
 func (a *App) cleanVolumeUser(userID string) error {
-	format.Log(format.RUN_PREFIX, "Cleaning volume for user: %s...", userID)
+	log.Log(log.RUN_PREFIX, "Cleaning volume for user: %s...", userID)
 
 	if err := a.umountDisk(filepath.Join(a.Config.Volumes.Host.Homes, userID)); err != nil {
-		format.Log(format.ERROR_PREFIX, "Failed to unmount home disk for user %s: %v", userID, err)
+		log.Log(log.ERROR_PREFIX, "Failed to unmount home disk for user %s: %v", userID, err)
 	}
 
 	userHome := filepath.Join(a.Config.Volumes.Host.Homes, userID)
@@ -123,10 +124,10 @@ func (a *App) cleanVolumeUser(userID string) error {
 	}
 
 	for _, dev := range homeDev {
-		format.Log(format.DETAIL_PREFIX, "Detaching loop device: %s", dev)
+		log.Log(log.DETAIL_PREFIX, "Detaching loop device: %s", dev)
 		err = a.detachLoopDevice(dev)
 		if err != nil {
-			format.Log(format.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
+			log.Log(log.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
 			continue
 		}
 	}
@@ -139,7 +140,7 @@ func (a *App) cleanVolumeUser(userID string) error {
 		return fmt.Errorf("failed to remove home image for user %s: %w", userID, err)
 	}
 
-	format.Log(format.DETAIL_PREFIX, "Volume clean completed for user: %s.", userID)
+	log.Log(log.DETAIL_PREFIX, "Volume clean completed for user: %s.", userID)
 
 	return nil
 }
@@ -192,7 +193,7 @@ func (a *App) ensureDiskUser(userID string) error {
 // createSharedDisk creates and mounts a shared loopback disk at the target path.
 func (a *App) createSharedDisk(path string) error {
 	sizeStr := a.Config.Volumes.DiskLimit
-	size, err := format.StringToBytes(sizeStr)
+	size, err := parser.Bytes(sizeStr)
 	if err != nil {
 		return fmt.Errorf("invalid disk size for shared disk: %w", err)
 	}
@@ -213,14 +214,14 @@ func (a *App) createSharedDisk(path string) error {
 	if mounted, err := a.systemAPI.IsMountPoint(mountPoint); err != nil {
 		return err
 	} else if mounted {
-		format.Log(format.INFO_PREFIX, "Already mounted: %s", mountPoint)
+		log.Log(log.INFO_PREFIX, "Already mounted: %s", mountPoint)
 		return nil
 	}
 
 	if exists, err := a.systemAPI.Exists(img); err != nil {
 		return fmt.Errorf("failed to stat image file %s: %w", img, err)
 	} else if !exists {
-		format.Log(format.DETAIL_PREFIX, "Creating shared disk for %s (%s)", mountPoint, sizeStr)
+		log.Log(log.DETAIL_PREFIX, "Creating shared disk for %s (%s)", mountPoint, sizeStr)
 
 		if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
 			return err
@@ -277,7 +278,7 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 		sizeStr = a.Config.UserService.Limits.Admin.Disk
 	}
 
-	size, err := format.StringToBytes(sizeStr)
+	size, err := parser.Bytes(sizeStr)
 	if err != nil {
 		return fmt.Errorf("invalid disk size for %s: %w", userID, err)
 	}
@@ -295,14 +296,14 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	if mounted, err := a.systemAPI.IsMountPoint(mountPoint); err != nil {
 		return err
 	} else if mounted {
-		format.Log(format.INFO_PREFIX, "Already mounted: %s", mountPoint)
+		log.Log(log.INFO_PREFIX, "Already mounted: %s", mountPoint)
 		return nil
 	}
 
 	if exists, err := a.systemAPI.Exists(img); err != nil {
 		return fmt.Errorf("failed to stat image file %s: %w", img, err)
 	} else if !exists {
-		format.Log(format.DETAIL_PREFIX, "Creating disk for %s (%s)", userID, sizeStr)
+		log.Log(log.DETAIL_PREFIX, "Creating disk for %s (%s)", userID, sizeStr)
 
 		if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
 			return err
@@ -409,7 +410,7 @@ func (a *App) umountDisk(mountPoint string) error {
 	}
 
 	if mounted {
-		format.Log(format.DETAIL_PREFIX, "Unmounting: %s", mountPoint)
+		log.Log(log.DETAIL_PREFIX, "Unmounting: %s", mountPoint)
 		return a.systemAPI.Unmount(mountPoint)
 	}
 

@@ -3,7 +3,7 @@
 set -e
 
 CURRENT_DIR="$(pwd)"
-SRC_DIR="$CURRENT_DIR/src"
+SRC_DIR="$(dirname "$0")/../src"
 
 cd "$SRC_DIR"
 

@@ -12,6 +12,7 @@ import (
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/elecbug/linuxus/src/internal/common/packet"
+	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 )
 
 // HandleUserSessionState records active session counts reported by auth service.
@@ -122,7 +123,7 @@ func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userI
 
 // resolveUserRuntimeNames resolves managed container/network names for a user.
 func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (string, string) {
-	if !allowID(userID) {
+	if !ruleset.AllowedUserID(userID) {
 		return "", ""
 	}
 

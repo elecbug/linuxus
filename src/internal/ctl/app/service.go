@@ -6,7 +6,7 @@ import (
 
 	"github.com/elecbug/linuxus/src/internal/common/user"
 	"github.com/elecbug/linuxus/src/internal/ctl/cli"
-	"github.com/elecbug/linuxus/src/internal/ctl/format"
+	"github.com/elecbug/linuxus/src/internal/ctl/log"
 )
 
 // ServiceUp builds images and starts all runtime-managed services.
@@ -15,7 +15,7 @@ func (a *App) ServiceUp(params *cli.Parameters) error {
 		return fmt.Errorf("service up option does not accept any parameters, please remove any provided parameters")
 	}
 
-	format.Log(format.RUN_PREFIX, "Starting runtime-managed containers...")
+	log.Log(log.RUN_PREFIX, "Starting runtime-managed containers...")
 
 	if err := a.buildRuntimeImages(); err != nil {
 		return err
@@ -30,7 +30,7 @@ func (a *App) ServiceUp(params *cli.Parameters) error {
 		return err
 	}
 
-	format.Log(format.DETAIL_PREFIX, "Runtime services started.")
+	log.Log(log.DETAIL_PREFIX, "Runtime services started.")
 	return nil
 }
 
@@ -40,7 +40,7 @@ func (a *App) ServiceDown(params *cli.Parameters) error {
 		return fmt.Errorf("service down option does not accept any parameters, please remove any provided parameters")
 	}
 
-	format.Log(format.RUN_PREFIX, "Stopping runtime-managed containers...")
+	log.Log(log.RUN_PREFIX, "Stopping runtime-managed containers...")
 
 	if err := a.removeManagedContainers(); err != nil {
 		return err
@@ -49,7 +49,7 @@ func (a *App) ServiceDown(params *cli.Parameters) error {
 		return err
 	}
 
-	format.Log(format.DETAIL_PREFIX, "Runtime services stopped.")
+	log.Log(log.DETAIL_PREFIX, "Runtime services stopped.")
 	return nil
 }
 
@@ -59,18 +59,18 @@ func (a *App) ServiceRestart(params *cli.Parameters) error {
 		return fmt.Errorf("service up option does not accept any parameters, please remove any provided parameters")
 	}
 
-	format.Log(format.RUN_PREFIX, "Restarting runtime-managed containers...")
+	log.Log(log.RUN_PREFIX, "Restarting runtime-managed containers...")
 
 	if err := a.ServiceDown(params); err != nil {
 		return err
 	}
 
-	format.Log(format.INFO_PREFIX, "All services stopped. Restarting services...")
+	log.Log(log.INFO_PREFIX, "All services stopped. Restarting services...")
 	if err := a.ServiceUp(params); err != nil {
 		return err
 	}
 
-	format.Log(format.DETAIL_PREFIX, "Runtime services restarted.")
+	log.Log(log.DETAIL_PREFIX, "Runtime services restarted.")
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (a *App) ServicePS(params *cli.Parameters) error {
 		return fmt.Errorf("too many parameters for ps option, please specify only one of 'container', 'network', or 'all'")
 	}
 
-	format.Log(format.RUN_PREFIX, "Gathering runtime status...")
+	log.Log(log.RUN_PREFIX, "Gathering runtime status...")
 	param := params.MainParam
 
 	if param == "" {
@@ -198,17 +198,17 @@ func (a *App) ServiceAddUser(params *cli.Parameters) error {
 		userID = uID
 	}
 
-	format.Log(format.RUN_PREFIX, "Adding a new user...")
+	log.Log(log.RUN_PREFIX, "Adding a new user...")
 
 	if user.ExistsUser(a.UserIDs, userID) {
 		return fmt.Errorf("user ID already exists: %s", userID)
 	}
 
-	password, err := format.InputPassword("Enter password for new user %s: ", userID)
+	password, err := log.InputPassword("Enter password for new user %s: ", userID)
 	if err != nil {
 		return fmt.Errorf("failed to read password: %w", err)
 	}
-	cfmPassword, err := format.InputPassword("Confirm password for new user %s: ", userID)
+	cfmPassword, err := log.InputPassword("Confirm password for new user %s: ", userID)
 	if err != nil {
 		return fmt.Errorf("failed to read password confirmation: %w", err)
 	}
@@ -225,7 +225,7 @@ func (a *App) ServiceAddUser(params *cli.Parameters) error {
 		return fmt.Errorf("failed to create user disk: %w", err)
 	}
 
-	format.Log(format.DETAIL_PREFIX, "User %s added successfully.", userID)
+	log.Log(log.DETAIL_PREFIX, "User %s added successfully.", userID)
 
 	return nil
 }
@@ -236,7 +236,7 @@ func (a *App) ServiceRemoveUser(params *cli.Parameters) error {
 		return fmt.Errorf("invalid number of parameters for remove-user option, please specify exactly one '--user <USERNAME>' and no main parameter")
 	}
 
-	format.Log(format.RUN_PREFIX, "Removing an existing user...")
+	log.Log(log.RUN_PREFIX, "Removing an existing user...")
 
 	userID, okUser := params.Params["user"]
 	uID, okU := params.Params["u"]
@@ -253,13 +253,13 @@ func (a *App) ServiceRemoveUser(params *cli.Parameters) error {
 		return fmt.Errorf("user ID does not exist: %s", userID)
 	}
 
-	yes, err := format.Input("Are you sure you want to remove user %s? This action cannot be undone. (yes/no): ", userID)
+	yes, err := log.Input("Are you sure you want to remove user %s? This action cannot be undone. (yes/no): ", userID)
 	if err != nil {
 		return fmt.Errorf("failed to read confirmation: %w", err)
 	}
 
 	if strings.ToLower(yes) != "yes" {
-		format.Log(format.INFO_PREFIX, "User removal cancelled.")
+		log.Log(log.INFO_PREFIX, "User removal cancelled.")
 		return nil
 	}
 
@@ -271,7 +271,7 @@ func (a *App) ServiceRemoveUser(params *cli.Parameters) error {
 		return fmt.Errorf("failed to clean user volumes: %w", err)
 	}
 
-	format.Log(format.DETAIL_PREFIX, "User %s removed successfully.", userID)
+	log.Log(log.DETAIL_PREFIX, "User %s removed successfully.", userID)
 
 	return nil
 }

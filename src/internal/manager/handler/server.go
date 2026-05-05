@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
+	"github.com/elecbug/linuxus/src/internal/common/http_helper"
 	"github.com/elecbug/linuxus/src/internal/manager/config"
 )
 
@@ -188,7 +189,7 @@ func (s *Server) reapIdleContainers(ctx context.Context) {
 
 // HandleHealthz responds with a simple readiness payload.
 func (s *Server) HandleHealthz(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
+	http_helper.WriteJSONViaHTTP(w, http.StatusOK, map[string]any{
 		"ok": true,
 	})
 }

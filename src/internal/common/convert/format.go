@@ -1,20 +1,20 @@
-package format
+package convert
 
 import (
 	"fmt"
 	"strings"
 )
 
-// DisplayNetworkID shortens network IDs for compact table output.
-func DisplayNetworkID(id string) string {
+// ShortenNetworkID shortens network IDs for compact table output.
+func ShortenNetworkID(id string) string {
 	if len(id) > 12 {
 		return fmt.Sprintf("%s...", id[:12])
 	}
 	return id
 }
 
-// DisplayStatusText formats state and status text consistently.
-func DisplayStatusText(state, status string, hasState bool) string {
+// FormatStatusText formats state and status text consistently.
+func FormatStatusText(state, status string, hasState bool) string {
 	if !hasState {
 		return "-"
 	} else {
@@ -26,8 +26,8 @@ func DisplayStatusText(state, status string, hasState bool) string {
 	}
 }
 
-// DisplayUserName maps managed container names to display user identifiers.
-func DisplayUserName(containerNamePrefix, authContainerName, managerContainerName, name string) string {
+// FormatUserName maps managed container names to display user identifiers.
+func FormatUserName(containerNamePrefix, authContainerName, managerContainerName, name string) string {
 	if strings.HasPrefix(name, containerNamePrefix) {
 		return fmt.Sprintf("<USER:%s>", name[len(containerNamePrefix):])
 	}
