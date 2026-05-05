@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/elecbug/linuxus/src/internal/auth/handler"
-	"github.com/elecbug/linuxus/src/internal/auth/user"
+	"github.com/elecbug/linuxus/src/internal/common/user"
 )
 
 // main loads configuration, registers routes, and starts the auth server.

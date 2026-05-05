@@ -78,6 +78,67 @@ func AddUser(path string, users map[string]string, id, password string) error {
 	return nil
 }
 
+// RemoveUser deletes a user from memory and the auth list file.
+func RemoveUser(path string, users map[string]string, id string) error {
+	if _, ok := users[id]; !ok {
+		return fmt.Errorf("user '%s' does not exist", id)
+	}
+
+	delete(users, id)
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to open auth file: %v", err)
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			lines = append(lines, line)
+			continue
+		}
+
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			lines = append(lines, line)
+			continue
+		}
+
+		existingID := strings.TrimSpace(parts[0])
+		if existingID != id {
+			lines = append(lines, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("failed to read auth file: %v", err)
+	}
+
+	if err := file.Truncate(0); err != nil {
+		return fmt.Errorf("failed to truncate auth file: %v", err)
+	}
+
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to seek auth file: %v", err)
+	}
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		if _, err := writer.WriteString(line + "\n"); err != nil {
+			return fmt.Errorf("failed to write to auth file: %v", err)
+		}
+	}
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("failed to flush auth file: %v", err)
+	}
+
+	return nil
+}
+
 // SyncUsers reloads the user credentials from the auth list file into memory.
 func SyncUsers(users map[string]string, authListPath string) error {
 	loadedUsers, err := LoadUsers(authListPath)
@@ -98,4 +159,33 @@ func SyncUsers(users map[string]string, authListPath string) error {
 	}
 
 	return nil
+}
+
+// AllowedID checks if the provided ID is valid according to defined rules.
+func AllowedID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for i, ch := range id {
+		if i == 0 && (ch == '_' || ch == '-') {
+			return false
+		}
+		if i == len(id)-1 && (ch == '_' || ch == '-') {
+			return false
+		}
+		if (ch >= 'A' && ch <= 'Z') ||
+			(ch >= 'a' && ch <= 'z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '_' || ch == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// ExistsUser checks if a user ID exists in the provided user map.
+func ExistsUser(users map[string]string, id string) bool {
+	_, ok := users[id]
+	return ok
 }

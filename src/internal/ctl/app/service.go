@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/elecbug/linuxus/src/internal/common/user"
 	"github.com/elecbug/linuxus/src/internal/ctl/cli"
 	"github.com/elecbug/linuxus/src/internal/ctl/format"
 )
@@ -199,7 +200,7 @@ func (a *App) ServiceAddUser(params *cli.Parameters) error {
 
 	format.Log(format.RUN_PREFIX, "Adding a new user...")
 
-	if a.existsUser(userID) {
+	if user.ExistsUser(a.UserIDs, userID) {
 		return fmt.Errorf("user ID already exists: %s", userID)
 	}
 
@@ -216,7 +217,7 @@ func (a *App) ServiceAddUser(params *cli.Parameters) error {
 		return fmt.Errorf("passwords do not match")
 	}
 
-	if err := a.updateUser(userID, password); err != nil {
+	if err := user.AddUser(a.Config.AuthService.Mounts.HostAuthListPath, a.UserIDs, userID, password); err != nil {
 		return fmt.Errorf("failed to add user: %w", err)
 	}
 
@@ -248,7 +249,7 @@ func (a *App) ServiceRemoveUser(params *cli.Parameters) error {
 		userID = uID
 	}
 
-	if !a.existsUser(userID) {
+	if !user.ExistsUser(a.UserIDs, userID) {
 		return fmt.Errorf("user ID does not exist: %s", userID)
 	}
 
@@ -262,7 +263,7 @@ func (a *App) ServiceRemoveUser(params *cli.Parameters) error {
 		return nil
 	}
 
-	if err := a.removeUser(userID); err != nil {
+	if err := user.RemoveUser(a.Config.AuthService.Mounts.HostAuthListPath, a.UserIDs, userID); err != nil {
 		return fmt.Errorf("failed to remove user: %w", err)
 	}
 

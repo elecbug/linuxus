@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/elecbug/linuxus/src/internal/common/user"
 	"github.com/elecbug/linuxus/src/internal/ctl/format"
 )
 
@@ -166,7 +167,7 @@ func (a *App) ensureDiskAll() error {
 }
 
 func (a *App) ensureDiskUser(userID string) error {
-	if !a.existsUser(userID) {
+	if !user.ExistsUser(a.UserIDs, userID) {
 		return fmt.Errorf("user ID not found in auth list: %s", userID)
 	}
 

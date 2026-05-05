@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elecbug/linuxus/src/internal/auth/user"
+	"github.com/elecbug/linuxus/src/internal/common/user"
 	"golang.org/x/crypto/bcrypt"
 )
 

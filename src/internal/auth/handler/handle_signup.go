@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/elecbug/linuxus/src/internal/auth/page"
-	"github.com/elecbug/linuxus/src/internal/auth/user"
+	"github.com/elecbug/linuxus/src/internal/common/user"
 )
 
 // handleSignup processes GET and POST requests to the signup endpoint for user registration.
