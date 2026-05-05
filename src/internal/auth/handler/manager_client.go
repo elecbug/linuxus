@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elecbug/linuxus/src/internal/auth/packet"
+	"github.com/elecbug/linuxus/src/internal/common/packet"
 )
 
 // ensureUserContainerReady asks the manager service to ensure a user runtime is ready.

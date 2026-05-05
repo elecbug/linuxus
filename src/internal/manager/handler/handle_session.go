@@ -11,7 +11,7 @@ import (
 
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
-	"github.com/elecbug/linuxus/src/internal/manager/packet"
+	"github.com/elecbug/linuxus/src/internal/common/packet"
 )
 
 // HandleUserSessionState records active session counts reported by auth service.
