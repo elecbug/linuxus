@@ -11,8 +11,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/elecbug/linuxus/pkg/system_api => ../pkg/system_api
-
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
