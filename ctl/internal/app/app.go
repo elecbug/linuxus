@@ -6,7 +6,7 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/elecbug/linuxus/ctl/internal/config"
-	"github.com/elecbug/linuxus/pkg/system_api"
+	"github.com/elecbug/linuxus/ctl/internal/system_api"
 )
 
 // App stores runtime state, config, and Docker dependencies for linuxusctl.
