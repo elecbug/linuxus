@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/elecbug/linuxus/src/internal/auth/handler"
+	"github.com/elecbug/linuxus/src/internal/common/config"
 	"github.com/elecbug/linuxus/src/internal/common/user"
 )
 
@@ -30,90 +32,43 @@ func main() {
 func parseConfig() (*handler.AppConfig, error) {
 	var err error
 
-	authListFile, err := getEnv("AUTH_LIST")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	sessionSecret, err := getEnv("SESSION_SECRET")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	loginPath, err := getEnv("LOGIN_PATH")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	logoutPath, err := getEnv("LOGOUT_PATH")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	servicePath, err := getEnv("SERVICE_PATH")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	terminalPath, err := getEnv("TERMINAL_PATH")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	signupPath, err := getEnv("SIGNUP_PATH")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	userContainerNamePrefix, err := getEnv("USER_CONTAINER_NAME_PREFIX")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	trustedProxies := os.Getenv("TRUSTED_PROXIES")
-	managerBaseURL, err := getEnv("MANAGER_BASE_URL")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	managerTimeoutStr, err := getEnv("MANAGER_TIMEOUT")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	managerTimeout, err := time.ParseDuration(managerTimeoutStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse MANAGER_TIMEOUT: %v", err)
-	}
-	managerSessionSecret, err := getEnv("MANAGER_SESSION_SECRET")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	allowSignupStr, err := getEnv("ALLOW_SIGNUP")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get environment variable: %v", err)
-	}
-	allowSignup := false
-	if allowSignupStr != "" {
-		if allowSignupStr == fmt.Sprintf("%v", true) {
-			allowSignup = true
-		} else if allowSignupStr == fmt.Sprintf("%v", false) {
-			allowSignup = false
-		} else {
-			return nil, fmt.Errorf("invalid value for ALLOW_SIGNUP: %s", allowSignupStr)
-		}
+	env := os.Getenv("ENV")
+	if env == "" {
+		return nil, fmt.Errorf("ENV environment variable is required")
 	}
 
-	users, err := user.LoadUsers(authListFile)
+	var cfg config.Config
+
+	err = json.Unmarshal([]byte(env), &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse ENV variable as JSON: %v", err)
+	}
+
+	users, err := user.LoadUsers(cfg.AuthService.Mounts.ContainerAuthListPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load users: %v", err)
 	}
 
+	timeout, err := time.ParseDuration(cfg.ManagerService.AuthService.ConnectionTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse manager connection timeout: %v", err)
+	}
+
 	return &handler.AppConfig{
 		Users:                   users,
-		AuthListFile:            authListFile,
-		SessionKey:              []byte(sessionSecret),
-		LoginPath:               loginPath,
-		LogoutPath:              logoutPath,
-		ServicePath:             servicePath,
-		TerminalPath:            terminalPath,
-		SignupPath:              signupPath,
-		UserContainerNamePrefix: userContainerNamePrefix,
-		TrustedProxies:          trustProxiesToSlice(trustedProxies),
-		ManagerBaseURL:          managerBaseURL,
-		ManagerTimeout:          managerTimeout,
-		ManagerSessionSecret:    managerSessionSecret,
-		AllowSignup:             allowSignup,
+		AuthListFile:            cfg.AuthService.Mounts.ContainerAuthListPath,
+		SessionKey:              []byte(cfg.AuthService.Security.SessionSecret),
+		LoginPath:               cfg.AuthService.ServiceURL.Login,
+		LogoutPath:              cfg.AuthService.ServiceURL.Logout,
+		ServicePath:             cfg.AuthService.ServiceURL.Service,
+		TerminalPath:            cfg.AuthService.ServiceURL.Terminal,
+		SignupPath:              cfg.AuthService.ServiceURL.Signup,
+		UserContainerNamePrefix: cfg.UserService.Container.NamePrefix,
+		TrustedProxies:          trustProxiesToSlice(cfg.AuthService.Security.TrustedProxies),
+		ManagerBaseURL:          fmt.Sprintf("http://%s:5959", cfg.ManagerService.Container.Name),
+		ManagerTimeout:          timeout,
+		ManagerSessionSecret:    cfg.ManagerService.Security.SessionSecret,
+		AllowSignup:             cfg.AuthService.AllowSignup,
 	}, nil
 }
 
@@ -131,13 +86,4 @@ func trustProxiesToSlice(trustedProxies string) []string {
 	}
 
 	return trustedProxyCIDRs
-}
-
-// getEnv returns a required environment variable or an error if it is missing.
-func getEnv(key string) (string, error) {
-	value := os.Getenv(key)
-	if value == "" {
-		return "", fmt.Errorf("environment variable %s not set", key)
-	}
-	return value, nil
 }

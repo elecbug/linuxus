@@ -13,5 +13,7 @@ volumes/
 # Logs and temporary files.
 logs/
 tmp/
+temp/
 *.log
 *.tmp
+*.temp
