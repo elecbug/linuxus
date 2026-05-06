@@ -15,7 +15,11 @@ import (
 
 // ensureAuthContainer creates or recreates the auth runtime container.
 func (a *App) ensureAuthContainer() error {
-	return a.ensureContainer(a.buildAuthRuntimeSpec())
+	spec, err := a.buildAuthRuntimeSpec()
+	if err != nil {
+		return err
+	}
+	return a.ensureContainer(spec)
 }
 
 // ensureManagerContainer creates or recreates the manager runtime container.

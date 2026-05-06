@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/elecbug/linuxus/src/internal/common/config"
 	"github.com/elecbug/linuxus/src/internal/ctl/app"
 	"github.com/elecbug/linuxus/src/internal/ctl/cli"
-	"github.com/elecbug/linuxus/src/internal/ctl/config"
 	"github.com/elecbug/linuxus/src/internal/ctl/log"
 )
 

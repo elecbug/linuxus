@@ -1,12 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"time"
 
+	ctl_config "github.com/elecbug/linuxus/src/internal/common/config"
+	"github.com/elecbug/linuxus/src/internal/common/convert"
 	"github.com/elecbug/linuxus/src/internal/manager/config"
 	"github.com/elecbug/linuxus/src/internal/manager/handler"
 )
@@ -29,194 +32,100 @@ func main() {
 
 // parseConfigFromEnv reads required and optional manager settings from environment variables.
 func parseConfigFromEnv() (*config.Config, error) {
-	listenAddr := os.Getenv("LISTEN_ADDR")
-	if listenAddr == "" {
-		return nil, fmt.Errorf("LISTEN_ADDR is required")
+	var err error
+
+	env := os.Getenv("ENV")
+	if env == "" {
+		return nil, fmt.Errorf("ENV environment variable is required")
 	}
+
+	var cfg ctl_config.Config
+
+	err = json.Unmarshal([]byte(env), &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse ENV variable as JSON: %v", err)
+	}
+
 	userImage := os.Getenv("USER_IMAGE")
 	if userImage == "" {
-		return nil, fmt.Errorf("USER_IMAGE is required")
-	}
-	userContainerNamePrefix := os.Getenv("USER_CONTAINER_NAME_PREFIX")
-	if userContainerNamePrefix == "" {
-		return nil, fmt.Errorf("USER_CONTAINER_NAME_PREFIX is required")
-	}
-	networkPrefix := os.Getenv("NETWORK_PREFIX")
-	if networkPrefix == "" {
-		return nil, fmt.Errorf("NETWORK_PREFIX is required")
-	}
-	baseIP := os.Getenv("BASE_IP")
-	if baseIP == "" {
-		return nil, fmt.Errorf("BASE_IP is required")
-	}
-	authContainerName := os.Getenv("AUTH_CONTAINER_NAME")
-	if authContainerName == "" {
-		return nil, fmt.Errorf("AUTH_CONTAINER_NAME is required")
-	}
-	adminUserID := os.Getenv("ADMIN_USER_ID")
-	if adminUserID == "" {
-		return nil, fmt.Errorf("ADMIN_USER_ID is required")
-	}
-	managerSessionSecret := os.Getenv("MANAGER_SESSION_SECRET")
-
-	runtimeUser := os.Getenv("RUNTIME_USER")
-	if runtimeUser == "" {
-		return nil, fmt.Errorf("RUNTIME_USER is required")
-	}
-	containerRuntimeUser := os.Getenv("CONTAINER_RUNTIME_USER")
-	if containerRuntimeUser == "" {
-		return nil, fmt.Errorf("CONTAINER_RUNTIME_USER is required")
-	}
-	containerHostname := os.Getenv("CONTAINER_HOSTNAME")
-	if containerHostname == "" {
-		return nil, fmt.Errorf("CONTAINER_HOSTNAME is required")
-	}
-	workingDir := os.Getenv("WORKING_DIR")
-	if workingDir == "" {
-		return nil, fmt.Errorf("WORKING_DIR is required")
-	}
-	timezone := os.Getenv("USER_TZ")
-	if timezone == "" {
-		return nil, fmt.Errorf("USER_TZ is required")
-	}
-	readonlyRootFS := true
-
-	waitTimeStr := os.Getenv("MANAGER_WAIT_TIME")
-	if waitTimeStr == "" {
-		return nil, fmt.Errorf("MANAGER_WAIT_TIME is required")
-	}
-	waitTime, err := time.ParseDuration(waitTimeStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid MANAGER_WAIT_TIME: %w", err)
-	}
-	var containerTimeout time.Duration
-	containerTimeoutStr := os.Getenv("CONTAINER_USER_TIMEOUT")
-	if containerTimeoutStr != "" {
-		containerTimeout, err = time.ParseDuration(containerTimeoutStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid CONTAINER_USER_TIMEOUT: %w", err)
-		}
+		return nil, fmt.Errorf("USER_IMAGE environment variable is required")
 	}
 
-	hostHomesDir := os.Getenv("HOST_HOMES_DIR")
-	if hostHomesDir == "" {
-		return nil, fmt.Errorf("HOST_HOMES_DIR is required")
-	}
-	hostShareDir := os.Getenv("HOST_SHARE_DIR")
-	if hostShareDir == "" {
-		return nil, fmt.Errorf("HOST_SHARE_DIR is required")
-	}
-	hostReadonlyDir := os.Getenv("HOST_READONLY_DIR")
-	if hostReadonlyDir == "" {
-		return nil, fmt.Errorf("HOST_READONLY_DIR is required")
+	managerWaitTime, err := time.ParseDuration(cfg.ManagerService.AuthService.ConnectionTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ManagerService.AuthService.ConnectionTimeout: %v", err)
 	}
 
-	containerShareDir := os.Getenv("CONTAINER_SHARE_DIR")
-	if containerShareDir == "" {
-		return nil, fmt.Errorf("CONTAINER_SHARE_DIR is required")
-	}
-	containerReadonlyDir := os.Getenv("CONTAINER_READONLY_DIR")
-	if containerReadonlyDir == "" {
-		return nil, fmt.Errorf("CONTAINER_READONLY_DIR is required")
+	containerTimeout, err := time.ParseDuration(cfg.ManagerService.UserManagement.CleanupTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ManagerService.UserManagement.CleanupTimeout: %v", err)
 	}
 
-	userNanoCPUs, err := envInt64("USER_NANO_CPUS")
+	userCPUStr := fmt.Sprintf("%v", cfg.UserService.Limits.User.CPU)
+	userCPU, err := convert.NanoCPUsFromString(userCPUStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid USER_NANO_CPUS: %w", err)
-	}
-	userMemoryBytes, err := envInt64("USER_MEMORY_BYTES")
-	if err != nil {
-		return nil, fmt.Errorf("invalid USER_MEMORY_BYTES: %w", err)
-	}
-	userPidsLimit, err := envInt64("USER_PIDS_LIMIT")
-	if err != nil {
-		return nil, fmt.Errorf("invalid USER_PIDS_LIMIT: %w", err)
-	}
-	userNofileSoft, err := envInt64("USER_NOFILE_SOFT")
-	if err != nil {
-		return nil, fmt.Errorf("invalid USER_NOFILE_SOFT: %w", err)
-	}
-	userNofileHard, err := envInt64("USER_NOFILE_HARD")
-	if err != nil {
-		return nil, fmt.Errorf("invalid USER_NOFILE_HARD: %w", err)
+		return nil, fmt.Errorf("invalid UserService.Limits.User.CPU: %v", err)
 	}
 
-	adminNanoCPUs, err := envInt64("ADMIN_NANO_CPUS")
+	adminCPUStr := fmt.Sprintf("%v", cfg.UserService.Limits.Admin.CPU)
+	adminCPU, err := convert.NanoCPUsFromString(adminCPUStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid ADMIN_NANO_CPUS: %w", err)
+		return nil, fmt.Errorf("invalid UserService.Limits.Admin.CPU: %v", err)
 	}
-	adminMemoryBytes, err := envInt64("ADMIN_MEMORY_BYTES")
+
+	userMemBytes, err := convert.BytesFromString(cfg.UserService.Limits.User.Memory)
 	if err != nil {
-		return nil, fmt.Errorf("invalid ADMIN_MEMORY_BYTES: %w", err)
+		return nil, fmt.Errorf("invalid UserService.Limits.User.Memory: %v", err)
 	}
-	adminPidsLimit, err := envInt64("ADMIN_PIDS_LIMIT")
+
+	adminMemBytes, err := convert.BytesFromString(cfg.UserService.Limits.Admin.Memory)
 	if err != nil {
-		return nil, fmt.Errorf("invalid ADMIN_PIDS_LIMIT: %w", err)
-	}
-	adminNofileSoft, err := envInt64("ADMIN_NOFILE_SOFT")
-	if err != nil {
-		return nil, fmt.Errorf("invalid ADMIN_NOFILE_SOFT: %w", err)
-	}
-	adminNofileHard, err := envInt64("ADMIN_NOFILE_HARD")
-	if err != nil {
-		return nil, fmt.Errorf("invalid ADMIN_NOFILE_HARD: %w", err)
-	}
-	shareDiskLimit := os.Getenv("SHARE_DISK_LIMIT")
-	if shareDiskLimit == "" {
-		return nil, fmt.Errorf("SHARE_DISK_LIMIT is required")
-	}
-	userDiskLimit := os.Getenv("USER_DISK_LIMIT")
-	if userDiskLimit == "" {
-		return nil, fmt.Errorf("USER_DISK_LIMIT is required")
-	}
-	adminDiskLimit := os.Getenv("ADMIN_DISK_LIMIT")
-	if adminDiskLimit == "" {
-		return nil, fmt.Errorf("ADMIN_DISK_LIMIT is required")
+		return nil, fmt.Errorf("invalid UserService.Limits.Admin.Memory: %v", err)
 	}
 
 	return &config.Config{
-		ListenAddr:              listenAddr,
+		ListenAddr:              ":5959",
 		UserImage:               userImage,
-		UserContainerNamePrefix: userContainerNamePrefix,
-		NetworkPrefix:           networkPrefix,
-		BaseIP:                  baseIP,
-		AuthContainerName:       authContainerName,
-		AdminUserID:             adminUserID,
-		ManagerSessionSecret:    managerSessionSecret,
+		UserContainerNamePrefix: cfg.UserService.Container.NamePrefix,
+		NetworkPrefix:           cfg.UserService.Container.NetworkNamePrefix,
+		BaseIP:                  cfg.UserService.Container.BaseSubnet16,
+		AuthContainerName:       cfg.AuthService.Container.Name,
+		AdminUserID:             cfg.ManagerService.AdminID,
+		ManagerSessionSecret:    cfg.ManagerService.Security.SessionSecret,
 
-		RuntimeUser:          runtimeUser,
-		ContainerRuntimeUser: containerRuntimeUser,
-		ContainerHostname:    containerHostname,
-		WorkingDir:           workingDir,
-		Timezone:             timezone,
-		ReadOnlyRootFS:       readonlyRootFS,
-		ManagerWaitTime:      waitTime,
+		RuntimeUser:          fmt.Sprintf("%d:%d", cfg.UserService.Runtime.UID, cfg.UserService.Runtime.GID),
+		ContainerRuntimeUser: cfg.UserService.Runtime.LinuxUsername,
+		ContainerHostname:    cfg.UserService.Runtime.LinuxHostname,
+		WorkingDir:           "/home/" + cfg.UserService.Runtime.LinuxUsername,
+		Timezone:             cfg.UserService.Runtime.Timezone,
+		ReadOnlyRootFS:       true,
+		ManagerWaitTime:      managerWaitTime,
 		ContainerTimeout:     containerTimeout,
 
-		HostHomesDir:         hostHomesDir,
-		HostShareDir:         hostShareDir,
-		HostReadonlyDir:      hostReadonlyDir,
-		ContainerShareDir:    containerShareDir,
-		ContainerReadonlyDir: containerReadonlyDir,
+		HostHomesDir:         cfg.Volumes.Host.Homes,
+		HostShareDir:         cfg.Volumes.Host.Share,
+		HostReadonlyDir:      cfg.Volumes.Host.Readonly,
+		ContainerShareDir:    cfg.Volumes.Container.Share,
+		ContainerReadonlyDir: cfg.Volumes.Container.Readonly,
 
 		UserLimits: config.ResourceLimits{
-			NanoCPUs:    userNanoCPUs,
-			MemoryBytes: userMemoryBytes,
-			PidsLimit:   userPidsLimit,
-			NofileSoft:  userNofileSoft,
-			NofileHard:  userNofileHard,
+			NanoCPUs:    userCPU,
+			MemoryBytes: userMemBytes,
+			PidsLimit:   int64(cfg.UserService.Limits.User.PID),
+			NofileSoft:  int64(cfg.UserService.Limits.User.Ulimits.Nofile.Soft),
+			NofileHard:  int64(cfg.UserService.Limits.User.Ulimits.Nofile.Hard),
 		},
 		AdminLimits: config.ResourceLimits{
-			NanoCPUs:    adminNanoCPUs,
-			MemoryBytes: adminMemoryBytes,
-			PidsLimit:   adminPidsLimit,
-			NofileSoft:  adminNofileSoft,
-			NofileHard:  adminNofileHard,
+			NanoCPUs:    adminCPU,
+			MemoryBytes: adminMemBytes,
+			PidsLimit:   int64(cfg.UserService.Limits.Admin.PID),
+			NofileSoft:  int64(cfg.UserService.Limits.Admin.Ulimits.Nofile.Soft),
+			NofileHard:  int64(cfg.UserService.Limits.Admin.Ulimits.Nofile.Hard),
 		},
 
-		ShareDiskLimit: shareDiskLimit,
-		UserDiskLimit:  userDiskLimit,
-		AdminDiskLimit: adminDiskLimit,
+		ShareDiskLimit: cfg.Volumes.DiskLimit,
+		UserDiskLimit:  cfg.UserService.Limits.User.Disk,
+		AdminDiskLimit: cfg.UserService.Limits.Admin.Disk,
 	}, nil
 }
 

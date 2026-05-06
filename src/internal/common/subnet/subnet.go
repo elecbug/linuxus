@@ -3,8 +3,41 @@ package subnet
 import (
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 )
+
+// IsValidSubnet checks if the given string is a valid subnet in CIDR notation.
+func IsValidSubnet(subnet string) bool {
+	regex := regexp.MustCompile(`^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$`)
+	return regex.MatchString(subnet)
+}
+
+// IsValidSubnetList checks if the given string is a valid comma-separated list of CIDR blocks.
+// Empty string is considered valid (no proxies).
+func IsValidSubnetList(proxies string) error {
+	if proxies == "" {
+		return nil // Empty is allowed
+	}
+
+	proxyList := strings.Split(proxies, ",")
+
+	for _, proxy := range proxyList {
+		proxy = strings.TrimSpace(proxy)
+		if !IsValidSubnet(proxy) {
+			return fmt.Errorf("invalid CIDR block: %s", proxy)
+		}
+	}
+
+	return nil
+}
+
+// IsValidSubnet16 checks if the given string is a valid /16 subnet.
+// Like IsValidSubnet but specifically for /16 subnets in the form x.x.0.0.
+func IsValidSubnet16(subnet string) bool {
+	regex := regexp.MustCompile(`^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.0\.0$`)
+	return regex.MatchString(subnet)
+}
 
 // GetSubnetByIndex computes a /28 subnet string from base IP and slot index.
 func GetSubnetByIndex(baseIP string, index int) (string, error) {

@@ -1,32 +1,38 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 
-	"github.com/elecbug/linuxus/src/internal/common/convert"
 	"github.com/elecbug/linuxus/src/internal/ctl/spec"
 )
 
 // buildAuthRuntimeSpec builds the auth service container runtime specification.
-func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
+func (a *App) buildAuthRuntimeSpec() (spec.RuntimeContainerSpec, error) {
+	env, err := json.Marshal(a.Config)
+	if err != nil {
+		return spec.RuntimeContainerSpec{}, fmt.Errorf("failed to marshal config to JSON: %w", err)
+	}
+
 	return spec.RuntimeContainerSpec{
 		Image: a.authImageName(),
 		Name:  a.Config.AuthService.Container.Name,
 		Environment: []string{
+			"ENV=" + string(env),
 			"TZ=" + a.Config.AuthService.Runtime.Timezone,
-			"AUTH_LIST=" + a.Config.AuthService.Mounts.ContainerAuthListPath,
-			"SESSION_SECRET=" + a.Config.AuthService.Security.SessionSecret,
-			"LOGIN_PATH=" + a.Config.AuthService.ServiceURL.Login,
-			"LOGOUT_PATH=" + a.Config.AuthService.ServiceURL.Logout,
-			"SERVICE_PATH=" + a.Config.AuthService.ServiceURL.Service,
-			"TERMINAL_PATH=" + a.Config.AuthService.ServiceURL.Terminal,
-			"SIGNUP_PATH=" + a.Config.AuthService.ServiceURL.Signup,
-			"USER_CONTAINER_NAME_PREFIX=" + a.Config.UserService.Container.NamePrefix,
-			"TRUSTED_PROXIES=" + a.Config.AuthService.Security.TrustedProxies,
-			"MANAGER_BASE_URL=" + fmt.Sprintf("http://%s:5959", a.Config.ManagerService.Container.Name),
-			"MANAGER_TIMEOUT=" + a.Config.ManagerService.AuthService.ConnectionTimeout,
-			"MANAGER_SESSION_SECRET=" + a.Config.ManagerService.Security.SessionSecret,
-			"ALLOW_SIGNUP=" + fmt.Sprintf("%v", a.Config.AuthService.AllowSignup),
+			// "AUTH_LIST=" + a.Config.AuthService.Mounts.ContainerAuthListPath,
+			// "SESSION_SECRET=" + a.Config.AuthService.Security.SessionSecret,
+			// "LOGIN_PATH=" + a.Config.AuthService.ServiceURL.Login,
+			// "LOGOUT_PATH=" + a.Config.AuthService.ServiceURL.Logout,
+			// "SERVICE_PATH=" + a.Config.AuthService.ServiceURL.Service,
+			// "TERMINAL_PATH=" + a.Config.AuthService.ServiceURL.Terminal,
+			// "SIGNUP_PATH=" + a.Config.AuthService.ServiceURL.Signup,
+			// "USER_CONTAINER_NAME_PREFIX=" + a.Config.UserService.Container.NamePrefix,
+			// "TRUSTED_PROXIES=" + a.Config.AuthService.Security.TrustedProxies,
+			// "MANAGER_BASE_URL=" + fmt.Sprintf("http://%s:5959", a.Config.ManagerService.Container.Name),
+			// "MANAGER_TIMEOUT=" + a.Config.ManagerService.AuthService.ConnectionTimeout,
+			// "MANAGER_SESSION_SECRET=" + a.Config.ManagerService.Security.SessionSecret,
+			// "ALLOW_SIGNUP=" + fmt.Sprintf("%v", a.Config.AuthService.AllowSignup),
 		},
 		Volumes: []string{
 			fmt.Sprintf("%s:%s:rw", a.Config.AuthService.Mounts.HostAuthListPath, a.Config.AuthService.Mounts.ContainerAuthListPath),
@@ -39,74 +45,60 @@ func (a *App) buildAuthRuntimeSpec() spec.RuntimeContainerSpec {
 			a.Config.ManagerService.Container.Network,
 		},
 		Privileged: false,
-	}
+	}, nil
 }
 
 // buildManagerRuntimeSpec builds the manager service container runtime specification.
 func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
-	userCPUStr := fmt.Sprintf("%v", a.Config.UserService.Limits.User.CPU)
-	userNanoCPUs, err := convert.NanoCPUsFromString(userCPUStr)
+	env, err := json.Marshal(a.Config)
 	if err != nil {
-		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid user cpu limit: %w", err)
-	}
-	userMemBytes, err := convert.BytesFromString(a.Config.UserService.Limits.User.Memory)
-	if err != nil {
-		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid user memory limit: %w", err)
-	}
-
-	adminCPUStr := fmt.Sprintf("%v", a.Config.UserService.Limits.Admin.CPU)
-	adminNanoCPUs, err := convert.NanoCPUsFromString(adminCPUStr)
-	if err != nil {
-		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid admin cpu limit: %w", err)
-	}
-	adminMemBytes, err := convert.BytesFromString(a.Config.UserService.Limits.Admin.Memory)
-	if err != nil {
-		return spec.RuntimeContainerSpec{}, fmt.Errorf("invalid admin memory limit: %w", err)
+		return spec.RuntimeContainerSpec{}, fmt.Errorf("failed to marshal config to JSON: %w", err)
 	}
 
 	return spec.RuntimeContainerSpec{
 		Image: a.managerImageName(),
 		Name:  a.Config.ManagerService.Container.Name,
 		Environment: []string{
-			"USER_TZ=" + a.Config.UserService.Runtime.Timezone,
+			"ENV=" + string(env),
 			"USER_IMAGE=" + a.userImageName(),
-			"USER_CONTAINER_NAME_PREFIX=" + a.Config.UserService.Container.NamePrefix,
-			"NETWORK_PREFIX=" + a.Config.UserService.Container.NetworkNamePrefix,
-			"BASE_IP=" + a.Config.UserService.Container.BaseSubnet16,
-			"AUTH_CONTAINER_NAME=" + a.Config.AuthService.Container.Name,
-			"MANAGER_CONTAINER_NAME=" + a.Config.ManagerService.Container.Name,
-			"ADMIN_USER_ID=" + a.Config.ManagerService.AdminID,
+			// "USER_TZ=" + a.Config.UserService.Runtime.Timezone,
+			// "USER_CONTAINER_NAME_PREFIX=" + a.Config.UserService.Container.NamePrefix,
+			// "NETWORK_PREFIX=" + a.Config.UserService.Container.NetworkNamePrefix,
+			// "BASE_IP=" + a.Config.UserService.Container.BaseSubnet16,
+			// "AUTH_CONTAINER_NAME=" + a.Config.AuthService.Container.Name,
+			// "MANAGER_CONTAINER_NAME=" + a.Config.ManagerService.Container.Name,
+			// "ADMIN_USER_ID=" + a.Config.ManagerService.AdminID,
 
-			"RUNTIME_USER=" + fmt.Sprintf("%d:%d", a.Config.UserService.Runtime.UID, a.Config.UserService.Runtime.GID),
-			"CONTAINER_RUNTIME_USER=" + a.Config.UserService.Runtime.LinuxUsername,
-			"CONTAINER_HOSTNAME=" + a.Config.UserService.Runtime.LinuxHostname,
-			"WORKING_DIR=" + "/home/" + a.Config.UserService.Runtime.LinuxUsername,
+			// "RUNTIME_USER=" + fmt.Sprintf("%d:%d", a.Config.UserService.Runtime.UID, a.Config.UserService.Runtime.GID),
+			// "CONTAINER_RUNTIME_USER=" + a.Config.UserService.Runtime.LinuxUsername,
+			// "CONTAINER_HOSTNAME=" + a.Config.UserService.Runtime.LinuxHostname,
+			// "WORKING_DIR=" + "/home/" + a.Config.UserService.Runtime.LinuxUsername,
 
-			"HOST_HOMES_DIR=" + a.Config.Volumes.Host.Homes,
-			"HOST_SHARE_DIR=" + a.Config.Volumes.Host.Share,
-			"HOST_READONLY_DIR=" + a.Config.Volumes.Host.Readonly,
-			"CONTAINER_SHARE_DIR=" + a.Config.Volumes.Container.Share,
-			"CONTAINER_READONLY_DIR=" + a.Config.Volumes.Container.Readonly,
+			// "HOST_HOMES_DIR=" + a.Config.Volumes.Host.Homes,
+			// "HOST_SHARE_DIR=" + a.Config.Volumes.Host.Share,
+			// "HOST_READONLY_DIR=" + a.Config.Volumes.Host.Readonly,
+			// "CONTAINER_SHARE_DIR=" + a.Config.Volumes.Container.Share,
+			// "CONTAINER_READONLY_DIR=" + a.Config.Volumes.Container.Readonly,
 
-			"CONTAINER_USER_TIMEOUT=" + a.Config.ManagerService.UserManagement.CleanupTimeout,
-			"MANAGER_WAIT_TIME=" + a.Config.ManagerService.AuthService.ConnectionTimeout,
-			"MANAGER_SESSION_SECRET=" + a.Config.ManagerService.Security.SessionSecret,
-			"LISTEN_ADDR=:5959",
+			// "CONTAINER_USER_TIMEOUT=" + a.Config.ManagerService.UserManagement.CleanupTimeout,
+			// "MANAGER_WAIT_TIME=" + a.Config.ManagerService.AuthService.ConnectionTimeout,
+			// "MANAGER_SESSION_SECRET=" + a.Config.ManagerService.Security.SessionSecret,
+			// "LISTEN_ADDR=:5959",
 
-			"USER_NANO_CPUS=" + fmt.Sprintf("%d", userNanoCPUs),
-			"USER_MEMORY_BYTES=" + fmt.Sprintf("%d", userMemBytes),
-			"USER_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.User.PID),
-			"USER_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.User.Ulimits.Nofile.Soft),
-			"USER_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Limits.User.Ulimits.Nofile.Hard),
-			"ADMIN_NANO_CPUS=" + fmt.Sprintf("%d", adminNanoCPUs),
-			"ADMIN_MEMORY_BYTES=" + fmt.Sprintf("%d", adminMemBytes),
-			"ADMIN_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.PID),
-			"ADMIN_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Soft),
-			"ADMIN_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Hard),
+			// "USER_NANO_CPUS=" + fmt.Sprintf("%d", userNanoCPUs),
+			// "USER_MEMORY_BYTES=" + fmt.Sprintf("%d", userMemBytes),
+			// "USER_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.User.PID),
+			// "USER_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.User.Ulimits.Nofile.Soft),
+			// "USER_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Limits.User.Ulimits.Nofile.Hard),
+			// "ADMIN_NANO_CPUS=" + fmt.Sprintf("%d", adminNanoCPUs),
+			// "ADMIN_MEMORY_BYTES=" + fmt.Sprintf("%d", adminMemBytes),
+			// "ADMIN_PIDS_LIMIT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.PID),
+			// "ADMIN_NOFILE_SOFT=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Soft),
+			// "ADMIN_NOFILE_HARD=" + fmt.Sprintf("%d", a.Config.UserService.Limits.Admin.Ulimits.Nofile.Hard),
 
-			"SHARE_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
-			"USER_DISK_LIMIT=" + a.Config.UserService.Limits.User.Disk,
-			"ADMIN_DISK_LIMIT=" + a.Config.UserService.Limits.Admin.Disk,
+			// "SHARE_DISK_LIMIT=" + a.Config.Volumes.DiskLimit,
+			// "USER_DISK_LIMIT=" + a.Config.UserService.Limits.User.Disk,
+			// "ADMIN_DISK_LIMIT=" + a.Config.UserService.Limits.Admin.Disk,
 		},
 		Volumes: []string{
 			fmt.Sprintf("%s:%s", a.Config.Volumes.Host.Homes, a.Config.ManagerService.Container.HomesDir),
