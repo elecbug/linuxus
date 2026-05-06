@@ -167,6 +167,7 @@ func (a *App) ensureDiskAll() error {
 	return nil
 }
 
+// ensureDiskUser creates and mounts disks for the specified user.
 func (a *App) ensureDiskUser(userID string) error {
 	if !user.ExistsUser(a.UserIDs, userID) {
 		return fmt.Errorf("user ID not found in auth list: %s", userID)

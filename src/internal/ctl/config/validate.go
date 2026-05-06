@@ -3,12 +3,12 @@ package config
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/elecbug/linuxus/src/internal/common/convert"
 	"github.com/elecbug/linuxus/src/internal/common/ruleset"
+	"github.com/elecbug/linuxus/src/internal/common/subnet"
 )
 
 // ValidateConfig validates required config values before runtime operations.
@@ -29,7 +29,7 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.UserService.Container.BaseSubnet16 == "" {
 		errMsgs = append(errMsgs, "user_service.container.base_subnet_16 is required")
-	} else if !isValidSubnet16(cfg.UserService.Container.BaseSubnet16) {
+	} else if !subnet.IsValidSubnet16(cfg.UserService.Container.BaseSubnet16) {
 		errMsgs = append(errMsgs, "user_service.container.base_subnet_16 must be a valid /16 subnet (x.x.0.0)")
 	}
 
@@ -59,11 +59,11 @@ func ValidateConfig(cfg *Config) error {
 		errMsgs = append(errMsgs, "user_service.runtime.timezone is required")
 	}
 
-	if err := isValidLimits(cfg.UserService.Limits.User); err != nil {
+	if err := validateLimits(cfg.UserService.Limits.User); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("user_service.limits.user (%v)", err))
 	}
 
-	if err := isValidLimits(cfg.UserService.Limits.Admin); err != nil {
+	if err := validateLimits(cfg.UserService.Limits.Admin); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("user_service.limits.admin (%v)", err))
 	}
 
@@ -103,13 +103,13 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.AuthService.Mounts.HostAuthListPath == "" {
 		errMsgs = append(errMsgs, "auth_service.mounts.host_auth_list_path is required")
-	} else if err := usablePath(cfg.AuthService.Mounts.HostAuthListPath); err != nil {
+	} else if err := UsablePath(cfg.AuthService.Mounts.HostAuthListPath); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("auth_service.mounts.host_auth_list_path (%v)", err))
 	}
 
 	if cfg.AuthService.Mounts.ContainerAuthListPath == "" {
 		errMsgs = append(errMsgs, "auth_service.mounts.container_auth_list_path is required")
-	} else if !isAbsolutePath(cfg.AuthService.Mounts.ContainerAuthListPath) {
+	} else if !strings.HasPrefix(cfg.AuthService.Mounts.ContainerAuthListPath, "/") {
 		errMsgs = append(errMsgs, "auth_service.mounts.container_auth_list_path must start with '/'")
 	}
 
@@ -117,7 +117,7 @@ func ValidateConfig(cfg *Config) error {
 		errMsgs = append(errMsgs, "auth_service.security.session_secret is required")
 	}
 
-	if err := isValidTrustedProxies(cfg.AuthService.Security.TrustedProxies); err != nil {
+	if err := subnet.IsValidSubnetList(cfg.AuthService.Security.TrustedProxies); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("auth_service.security.trusted_proxies (%v)", err))
 	}
 
@@ -139,25 +139,25 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.ManagerService.Container.Subnet == "" {
 		errMsgs = append(errMsgs, "manager_service.container.subnet is required")
-	} else if !isValidSubnet(cfg.ManagerService.Container.Subnet) {
+	} else if !subnet.IsValidSubnet(cfg.ManagerService.Container.Subnet) {
 		errMsgs = append(errMsgs, "manager_service.container.subnet must be a valid subnet")
 	}
 
 	if cfg.ManagerService.Container.HomesDir == "" {
 		errMsgs = append(errMsgs, "manager_service.container.homes_dir is required")
-	} else if !isAbsolutePath(cfg.ManagerService.Container.HomesDir) {
+	} else if !strings.HasPrefix(cfg.ManagerService.Container.HomesDir, "/") {
 		errMsgs = append(errMsgs, "manager_service.container.homes_dir must start with '/'")
 	}
 
 	if cfg.ManagerService.Container.ShareDir == "" {
 		errMsgs = append(errMsgs, "manager_service.container.share_dir is required")
-	} else if !isAbsolutePath(cfg.ManagerService.Container.ShareDir) {
+	} else if !strings.HasPrefix(cfg.ManagerService.Container.ShareDir, "/") {
 		errMsgs = append(errMsgs, "manager_service.container.share_dir must start with '/'")
 	}
 
 	if cfg.ManagerService.Container.ReadonlyDir == "" {
 		errMsgs = append(errMsgs, "manager_service.container.readonly_dir is required")
-	} else if !isAbsolutePath(cfg.ManagerService.Container.ReadonlyDir) {
+	} else if !strings.HasPrefix(cfg.ManagerService.Container.ReadonlyDir, "/") {
 		errMsgs = append(errMsgs, "manager_service.container.readonly_dir must start with '/'")
 	}
 
@@ -197,37 +197,37 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.Volumes.Host.Volumes == "" {
 		errMsgs = append(errMsgs, "volumes.host.volumes is required")
-	} else if err := usablePath(cfg.Volumes.Host.Volumes); err != nil {
+	} else if err := UsablePath(cfg.Volumes.Host.Volumes); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.volumes (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Homes == "" {
 		errMsgs = append(errMsgs, "volumes.host.homes is required")
-	} else if err := usablePath(cfg.Volumes.Host.Homes); err != nil {
+	} else if err := UsablePath(cfg.Volumes.Host.Homes); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.homes (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Share == "" {
 		errMsgs = append(errMsgs, "volumes.host.share is required")
-	} else if err := usablePath(cfg.Volumes.Host.Share); err != nil {
+	} else if err := UsablePath(cfg.Volumes.Host.Share); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.share (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Readonly == "" {
 		errMsgs = append(errMsgs, "volumes.host.readonly is required")
-	} else if err := usablePath(cfg.Volumes.Host.Readonly); err != nil {
+	} else if err := UsablePath(cfg.Volumes.Host.Readonly); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.readonly (%v)", err))
 	}
 
 	if cfg.Volumes.Container.Share == "" {
 		errMsgs = append(errMsgs, "volumes.container.share_dir is required")
-	} else if !isAbsolutePath(cfg.Volumes.Container.Share) {
+	} else if !strings.HasPrefix(cfg.Volumes.Container.Share, "/") {
 		errMsgs = append(errMsgs, "volumes.container.share_dir must start with '/'")
 	}
 
 	if cfg.Volumes.Container.Readonly == "" {
 		errMsgs = append(errMsgs, "volumes.container.readonly_dir is required")
-	} else if !isAbsolutePath(cfg.Volumes.Container.Readonly) {
+	} else if !strings.HasPrefix(cfg.Volumes.Container.Readonly, "/") {
 		errMsgs = append(errMsgs, "volumes.container.readonly_dir must start with '/'")
 	}
 
@@ -244,8 +244,8 @@ func ValidateConfig(cfg *Config) error {
 	return nil
 }
 
-// usablePath checks if the given path is usable (exists or can be created).
-func usablePath(path string) error {
+// UsablePath checks if the given path is usable (exists or can be created).
+func UsablePath(path string) error {
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(path, 0755); err != nil {
@@ -261,25 +261,8 @@ func usablePath(path string) error {
 	return nil
 }
 
-// isAbsolutePath checks if the given path is an absolute path.
-func isAbsolutePath(path string) bool {
-	return strings.HasPrefix(path, "/")
-}
-
-// isValidSubnet checks if the given string is a valid subnet in CIDR notation.
-func isValidSubnet(subnet string) bool {
-	regex := regexp.MustCompile(`^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$`)
-	return regex.MatchString(subnet)
-}
-
-// isValidSubnet16 checks if the given string is a valid /16 subnet.
-func isValidSubnet16(subnet string) bool {
-	regex := regexp.MustCompile(`^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.0\.0$`)
-	return regex.MatchString(subnet)
-}
-
-// isValidLimits checks if at least one limit value is non-zero.
-func isValidLimits(l Limits) error {
+// validateLimits checks if at least one limit value is non-zero.
+func validateLimits(l Limits) error {
 	errMsgs := []string{}
 
 	nanoCPU, err := convert.NanoCPUsFromString(fmt.Sprintf("%v", l.CPU))
@@ -319,24 +302,6 @@ func isValidLimits(l Limits) error {
 
 	if len(errMsgs) > 0 {
 		return fmt.Errorf(strings.Join(errMsgs, "; "))
-	}
-
-	return nil
-}
-
-// isValidTrustedProxies checks if the given string is a valid comma-separated list of CIDR blocks.
-func isValidTrustedProxies(proxies string) error {
-	if proxies == "" {
-		return nil // Empty is allowed
-	}
-
-	proxyList := strings.Split(proxies, ",")
-
-	for _, proxy := range proxyList {
-		proxy = strings.TrimSpace(proxy)
-		if !isValidSubnet(proxy) {
-			return fmt.Errorf("invalid CIDR block: %s", proxy)
-		}
 	}
 
 	return nil
