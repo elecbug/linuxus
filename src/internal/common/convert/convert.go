@@ -2,7 +2,6 @@ package convert
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -44,21 +43,6 @@ func FormatUserName(containerNamePrefix, authContainerName, managerContainerName
 		return "<MANAGER SERVICE>"
 	}
 	return "-"
-}
-
-// PathToAbs resolves a path relative to the configured source directory.
-func PathToAbs(path string) string {
-	if path == "" {
-		return path
-	}
-	if filepath.IsAbs(path) {
-		return path
-	}
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return path
-	}
-	return filepath.Clean(absPath)
 }
 
 // NanoCPUsFromString converts a CPU value to Docker NanoCPUs.

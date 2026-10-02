@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 )
 
 // LoadUsers reads user credentials from the auth list file.
@@ -34,7 +37,7 @@ func LoadUsers(path string) (map[string]string, error) {
 		id := strings.TrimSpace(parts[0])
 		hash := strings.TrimSpace(parts[1])
 
-		if id == "" || hash == "" {
+		if !ruleset.AllowedUserID(id) || hash == "" {
 			return nil, fmt.Errorf("invalid line in auths file: %s", line)
 		}
 
@@ -54,7 +57,7 @@ func AddUser(path string, users map[string]string, id, password string) error {
 		return fmt.Errorf("user '%s' already exists", id)
 	}
 
-	if id == "" || password == "" {
+	if !ruleset.AllowedUserID(id) || password == "" {
 		return fmt.Errorf("invalid user ID or password")
 	}
 
@@ -63,17 +66,33 @@ func AddUser(path string, users map[string]string, id, password string) error {
 		return fmt.Errorf("failed to hash password: %v", err)
 	}
 
-	users[id] = string(hash)
-
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+	if err := EnsureFile(path); err != nil {
+		return err
+	}
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_RDWR, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open auth file: %v", err)
 	}
 	defer file.Close()
 
-	if _, err := file.WriteString(fmt.Sprintf("%s:%s\n", id, string(hash))); err != nil {
+	prefix := ""
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if info.Size() > 0 {
+		last := make([]byte, 1)
+		if _, err := file.ReadAt(last, info.Size()-1); err != nil {
+			return err
+		}
+		if last[0] != '\n' {
+			prefix = "\n"
+		}
+	}
+	if _, err := file.WriteString(fmt.Sprintf("%s%s:%s\n", prefix, id, string(hash))); err != nil {
 		return fmt.Errorf("failed to write to auth file: %v", err)
 	}
+	users[id] = string(hash)
 
 	return nil
 }
@@ -83,8 +102,6 @@ func RemoveUser(path string, users map[string]string, id string) error {
 	if _, ok := users[id]; !ok {
 		return fmt.Errorf("user '%s' does not exist", id)
 	}
-
-	delete(users, id)
 
 	file, err := os.OpenFile(path, os.O_RDWR, 0600)
 	if err != nil {
@@ -135,6 +152,7 @@ func RemoveUser(path string, users map[string]string, id string) error {
 	if err := writer.Flush(); err != nil {
 		return fmt.Errorf("failed to flush auth file: %v", err)
 	}
+	delete(users, id)
 
 	return nil
 }
@@ -146,16 +164,9 @@ func SyncUsers(users map[string]string, authListPath string) error {
 		return fmt.Errorf("failed to sync users: %v", err)
 	}
 
-	if len(loadedUsers) > len(users) {
-		for id, hash := range loadedUsers {
-			users[id] = hash
-		}
-	} else if len(loadedUsers) < len(users) {
-		for id := range users {
-			if _, exists := loadedUsers[id]; !exists {
-				delete(users, id)
-			}
-		}
+	clear(users)
+	for id, hash := range loadedUsers {
+		users[id] = hash
 	}
 
 	return nil
@@ -165,4 +176,19 @@ func SyncUsers(users map[string]string, authListPath string) error {
 func ExistsUser(users map[string]string, id string) bool {
 	_, ok := users[id]
 	return ok
+}
+
+// EnsureFile initializes a new deployment without truncating existing credentials.
+func EnsureFile(path string) error {
+	if path == "" {
+		return fmt.Errorf("auth list path is empty")
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return fmt.Errorf("create auth directory: %w", err)
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("initialize auth list: %w", err)
+	}
+	return f.Close()
 }

@@ -33,12 +33,12 @@ func ValidateConfig(cfg *Config) error {
 		errMsgs = append(errMsgs, "user_service.container.base_subnet_16 must be a valid /16 subnet (x.x.0.0)")
 	}
 
-	if cfg.UserService.Runtime.UID == 0 {
-		errMsgs = append(errMsgs, "user_service.runtime.uid is required and must be non-zero")
+	if cfg.UserService.Runtime.UID <= 0 {
+		errMsgs = append(errMsgs, "user_service.runtime.uid must be greater than zero")
 	}
 
-	if cfg.UserService.Runtime.GID == 0 {
-		errMsgs = append(errMsgs, "user_service.runtime.gid is required and must be non-zero")
+	if cfg.UserService.Runtime.GID <= 0 {
+		errMsgs = append(errMsgs, "user_service.runtime.gid must be greater than zero")
 	}
 
 	if cfg.UserService.Runtime.LinuxUsername == "" {
@@ -244,21 +244,13 @@ func ValidateConfig(cfg *Config) error {
 	return nil
 }
 
-// UsablePath checks if the given path is usable (exists or can be created).
+// UsablePath validates a path without creating or removing directories.
 func UsablePath(path string) error {
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			if err := os.MkdirAll(path, 0755); err != nil {
-				return fmt.Errorf("path does not exist and cannot be created: %s", path)
-			} else {
-				// Clean up the created directory if it was just for validation
-				defer os.RemoveAll(path)
-			}
-			return nil
-		}
-		return err
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil
 	}
-	return nil
+	return err
 }
 
 // validateLimits checks if at least one limit value is non-zero.
@@ -301,7 +293,7 @@ func validateLimits(l Limits) error {
 	}
 
 	if len(errMsgs) > 0 {
-		return fmt.Errorf(strings.Join(errMsgs, "; "))
+		return fmt.Errorf("%s", strings.Join(errMsgs, "; "))
 	}
 
 	return nil

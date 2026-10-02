@@ -20,6 +20,12 @@ func (a *App) ServiceUp(params *cli.Parameters) error {
 	if err := a.buildRuntimeImages(); err != nil {
 		return err
 	}
+	if err := user.EnsureFile(a.Config.AuthService.Mounts.HostAuthListPath); err != nil {
+		return err
+	}
+	if err := a.ensureDiskAll(); err != nil {
+		return err
+	}
 	if err := a.ensureRuntimeNetworks(); err != nil {
 		return err
 	}
@@ -221,7 +227,7 @@ func (a *App) ServiceAddUser(params *cli.Parameters) error {
 		return fmt.Errorf("failed to add user: %w", err)
 	}
 
-	if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
+	if err := a.ensureDiskUser(userID); err != nil {
 		return fmt.Errorf("failed to create user disk: %w", err)
 	}
 

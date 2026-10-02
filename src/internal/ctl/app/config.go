@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
-	"github.com/elecbug/linuxus/src/internal/common/convert"
 	"github.com/elecbug/linuxus/src/internal/common/user"
 	"gopkg.in/yaml.v3"
 )
@@ -22,6 +22,10 @@ func (a *App) LoadConfig() error {
 	a.normalizeConfigPaths()
 
 	a.UserIDs, err = user.LoadUsers(a.Config.AuthService.Mounts.HostAuthListPath)
+	if os.IsNotExist(err) {
+		a.UserIDs = make(map[string]string)
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load user IDs from auth list: %w", err)
 	}
@@ -29,12 +33,17 @@ func (a *App) LoadConfig() error {
 	return nil
 }
 
-// normalizeConfigPaths resolves source-relative paths to absolute paths.
+// normalizeConfigPaths resolves host paths relative to the deployment directory.
 func (a *App) normalizeConfigPaths() {
-	a.Config.AuthService.Mounts.HostAuthListPath = convert.PathToAbs(a.Config.AuthService.Mounts.HostAuthListPath)
-
-	a.Config.Volumes.Host.Homes = convert.PathToAbs(a.Config.Volumes.Host.Homes)
-	a.Config.Volumes.Host.Share = convert.PathToAbs(a.Config.Volumes.Host.Share)
-	a.Config.Volumes.Host.Readonly = convert.PathToAbs(a.Config.Volumes.Host.Readonly)
-	a.Config.Volumes.Host.Volumes = convert.PathToAbs(a.Config.Volumes.Host.Volumes)
+	resolve := func(path string) string {
+		if path == "" || filepath.IsAbs(path) {
+			return path
+		}
+		return filepath.Join(a.runtimeRoot, path)
+	}
+	a.Config.AuthService.Mounts.HostAuthListPath = resolve(a.Config.AuthService.Mounts.HostAuthListPath)
+	a.Config.Volumes.Host.Homes = resolve(a.Config.Volumes.Host.Homes)
+	a.Config.Volumes.Host.Share = resolve(a.Config.Volumes.Host.Share)
+	a.Config.Volumes.Host.Readonly = resolve(a.Config.Volumes.Host.Readonly)
+	a.Config.Volumes.Host.Volumes = resolve(a.Config.Volumes.Host.Volumes)
 }

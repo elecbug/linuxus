@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/elecbug/linuxus/src/internal/auth"
 	"github.com/elecbug/linuxus/src/internal/common/config"
 	"github.com/elecbug/linuxus/src/internal/ctl/app"
 	"github.com/elecbug/linuxus/src/internal/ctl/cli"
 	"github.com/elecbug/linuxus/src/internal/ctl/log"
+	"github.com/elecbug/linuxus/src/internal/manager"
 )
 
 // main executes the CLI entrypoint and prints user-friendly errors.
@@ -43,9 +45,14 @@ type Options struct {
 
 // run initializes the application and executes selected runtime operations.
 func run() error {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return err
+	// Containers run the same binary without host-side configuration files.
+	if len(os.Args) == 2 {
+		switch os.Args[1] {
+		case "serve-auth":
+			return auth.Run()
+		case "serve-manager":
+			return manager.Run()
+		}
 	}
 
 	execPath, err := os.Executable()
@@ -58,9 +65,8 @@ func run() error {
 		return err
 	}
 
-	repoDir := filepath.Dir(execPath)
-	sourceDir := filepath.Join(repoDir, "src")
-	configFile := filepath.Join(repoDir, "cfg", "config.yml")
+	runtimeRoot := filepath.Dir(execPath)
+	configFile := filepath.Join(runtimeRoot, "cfg", "config.yml")
 
 	opt, err := parseArgs(os.Args[0], os.Args[1:])
 	if err != nil {
@@ -72,10 +78,12 @@ func run() error {
 		return nil
 	}
 
-	a, err := app.CreateApp(currentDir, execPath, repoDir, sourceDir, configFile)
+	a, err := app.CreateApp(execPath, runtimeRoot, configFile)
 	if err != nil {
 		return err
 	}
+
+	defer a.Close()
 
 	if err := a.LoadConfig(); err != nil {
 		return err

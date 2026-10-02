@@ -1,3 +1,4 @@
+# Relative host paths are resolved from the directory containing linuxusctl.
 user_service:
   container:
     name_prefix: linuxus_user_
@@ -58,6 +59,8 @@ manager_service:
     name: linuxus_manager
     network: linuxus_manager_net
     subnet: "10.11.0.0/24"
+    # Legacy Manager mount paths, retained for config compatibility.
+    # Docker receives the host paths from volumes.host directly.
     homes_dir: /vol/homes
     share_dir: /vol/share
     readonly_dir: /vol/readonly

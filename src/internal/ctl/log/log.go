@@ -90,7 +90,7 @@ func DockerBuildLog(level LogLevel, r io.Reader, imageName string) error {
 
 		if msg.Error != "" {
 			Log(ERROR_PREFIX, "%s", msg.Error)
-			return fmt.Errorf(msg.Error)
+			return fmt.Errorf("%s", msg.Error)
 		}
 
 		text := strings.TrimSpace(msg.Stream)

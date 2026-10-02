@@ -2,13 +2,13 @@ package app
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/elecbug/linuxus/src/internal/common/convert"
+	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 	"github.com/elecbug/linuxus/src/internal/common/user"
 	"github.com/elecbug/linuxus/src/internal/ctl/log"
 )
@@ -42,16 +42,14 @@ func (a *App) cleanVolumesAll() error {
 	for _, dir := range homeMounts {
 		err = a.umountDisk(dir)
 		if err != nil {
-			log.Log(log.ERROR_PREFIX, "Failed to unmount home disk at %s: %v", dir, err)
-			continue
+			return fmt.Errorf("unmount home disk %s: %w", dir, err)
 		}
 	}
 
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
 		err = a.umountDisk(mountPoint)
 		if err != nil {
-			log.Log(log.ERROR_PREFIX, "Failed to unmount shared disk at %s: %v", mountPoint, err)
-			continue
+			return fmt.Errorf("unmount shared disk %s: %w", mountPoint, err)
 		}
 	}
 
@@ -69,7 +67,7 @@ func (a *App) cleanVolumesAll() error {
 		}
 	}
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
-		devs, err := a.findLoopDevicesForImages(filepath.Dir(mountPoint))
+		devs, err := a.findLoopDevicesForImages(mountPoint + ".img")
 		if err != nil {
 			return err
 		}
@@ -85,8 +83,7 @@ func (a *App) cleanVolumesAll() error {
 		log.Log(log.DETAIL_PREFIX, "Detaching loop device: %s", dev)
 		err = a.detachLoopDevice(dev)
 		if err != nil {
-			log.Log(log.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
-			continue
+			return fmt.Errorf("detach loop device %s: %w", dev, err)
 		}
 	}
 
@@ -99,8 +96,10 @@ func (a *App) cleanVolumesAll() error {
 	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Readonly); err != nil {
 		return fmt.Errorf("failed to remove readonly dir: %w", err)
 	}
-	if err := a.systemAPI.RemoveAll(a.Config.Volumes.Host.Volumes); err != nil {
-		return fmt.Errorf("failed to remove volumes dir: %w", err)
+	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
+		if err := a.systemAPI.Remove(mountPoint + ".img"); err != nil {
+			return fmt.Errorf("remove shared disk image: %w", err)
+		}
 	}
 
 	log.Log(log.DETAIL_PREFIX, "Volume clean completed.")
@@ -109,16 +108,19 @@ func (a *App) cleanVolumesAll() error {
 
 // cleanVolumeUser unmounts and removes the specified user's disk and home directory.
 func (a *App) cleanVolumeUser(userID string) error {
+	if !ruleset.AllowedUserID(userID) {
+		return fmt.Errorf("invalid user ID: %q", userID)
+	}
 	log.Log(log.RUN_PREFIX, "Cleaning volume for user: %s...", userID)
 
 	if err := a.umountDisk(filepath.Join(a.Config.Volumes.Host.Homes, userID)); err != nil {
-		log.Log(log.ERROR_PREFIX, "Failed to unmount home disk for user %s: %v", userID, err)
+		return fmt.Errorf("unmount home disk for %s: %w", userID, err)
 	}
 
 	userHome := filepath.Join(a.Config.Volumes.Host.Homes, userID)
 	userImg := filepath.Join(a.Config.Volumes.Host.Homes, userID+".img")
 
-	homeDev, err := a.findLoopDevicesForImages(userHome)
+	homeDev, err := a.findLoopDevicesForImages(userImg)
 	if err != nil {
 		return fmt.Errorf("failed to find loop devices for user %s: %w", userID, err)
 	}
@@ -127,8 +129,7 @@ func (a *App) cleanVolumeUser(userID string) error {
 		log.Log(log.DETAIL_PREFIX, "Detaching loop device: %s", dev)
 		err = a.detachLoopDevice(dev)
 		if err != nil {
-			log.Log(log.ERROR_PREFIX, "Failed to detach loop device %s: %v", dev, err)
-			continue
+			return fmt.Errorf("detach loop device %s: %w", dev, err)
 		}
 	}
 
@@ -158,7 +159,7 @@ func (a *App) ensureDiskAll() error {
 		return err
 	}
 
-	for userID, _ := range a.UserIDs {
+	for userID := range a.UserIDs {
 		if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
 			return err
 		}
@@ -274,6 +275,9 @@ func (a *App) createSharedDisk(path string) error {
 
 // createUserDisk creates and mounts a per-user loopback disk.
 func (a *App) createUserDisk(userID string, isAdmin bool) error {
+	if !ruleset.AllowedUserID(userID) {
+		return fmt.Errorf("invalid user ID: %q", userID)
+	}
 	sizeStr := a.Config.UserService.Limits.User.Disk
 	if isAdmin {
 		sizeStr = a.Config.UserService.Limits.Admin.Disk
@@ -368,22 +372,18 @@ func (a *App) listMountedDirsDeepestFirst(root string) ([]string, error) {
 
 	err = filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			return nil
+			return walkErr
 		}
-		if path == root {
-			return nil
-		}
-		if !d.IsDir() {
+		if path == root || !d.IsDir() {
 			return nil
 		}
 
 		mounted, err := a.systemAPI.IsMountPoint(path)
 		if err != nil {
-			return nil
+			return err
 		}
 		if mounted {
 			dirs = append(dirs, path)
-			return fs.SkipDir
 		}
 		return nil
 	})

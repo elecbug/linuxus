@@ -20,7 +20,9 @@ var dummyHash = []byte("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17
 
 // handleLogin serves the login page and processes login submissions.
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
+	a.usersMu.Lock()
 	err := user.SyncUsers(a.users, a.authListFile)
+	a.usersMu.Unlock()
 	if err != nil {
 		a.renderError(w, "Failed to load user data", http.StatusInternalServerError)
 		return
@@ -49,7 +51,9 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 2) Look up user
+		a.usersMu.Lock()
 		hash, ok := a.users[id]
+		a.usersMu.Unlock()
 		if !ok {
 			hash = string(dummyHash)
 		}

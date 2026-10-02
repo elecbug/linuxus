@@ -6,67 +6,50 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
-	"path/filepath"
+	"runtime"
+	"strconv"
 
 	"github.com/docker/docker/api/types/build"
+	assets "github.com/elecbug/linuxus/src/docker"
 	"github.com/elecbug/linuxus/src/internal/ctl/log"
 )
 
-// buildRuntimeImages builds all runtime images required by services.
+// buildRuntimeImages assembles runtime images from the executable and embedded assets.
 func (a *App) buildRuntimeImages() error {
-	log.Log(log.DETAIL_PREFIX, "Building runtime images...")
-
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("runtime images require a Linux linuxusctl binary")
+	}
 	if a.dockerClient == nil {
 		return fmt.Errorf("Docker client is not initialized")
 	}
-
-	if err := a.buildImage(path.Join(a.sourceDir, "docker/auth.Dockerfile"), a.authImageName(), nil); err != nil {
+	log.Log(log.DETAIL_PREFIX, "Building runtime images...")
+	if err := a.buildImage("auth.Dockerfile", a.authImageName(), nil); err != nil {
 		return fmt.Errorf("failed to build auth image: %w", err)
 	}
-
-	if err := a.buildImage(path.Join(a.sourceDir, "docker/manager.Dockerfile"), a.managerImageName(), nil); err != nil {
+	if err := a.buildImage("manager.Dockerfile", a.managerImageName(), nil); err != nil {
 		return fmt.Errorf("failed to build manager image: %w", err)
 	}
-
-	if err := a.buildImage(path.Join(a.sourceDir, "docker/user.Dockerfile"), a.userImageName(), map[string]*string{
+	uid := strconv.Itoa(a.Config.UserService.Runtime.UID)
+	gid := strconv.Itoa(a.Config.UserService.Runtime.GID)
+	if err := a.buildImage("user.Dockerfile", a.userImageName(), map[string]*string{
 		"CONTAINER_RUNTIME_USER": &a.Config.UserService.Runtime.LinuxUsername,
+		"CONTAINER_UID":          &uid,
+		"CONTAINER_GID":          &gid,
 	}); err != nil {
 		return fmt.Errorf("failed to build user image: %w", err)
 	}
-
 	return nil
 }
 
-// buildImage builds a Docker image using the given Dockerfile.
-func (a *App) buildImage(dockerfilePath string, tag string, buildArgs map[string]*string) error {
-	if dockerfilePath == "" {
-		return fmt.Errorf("Dockerfile path is empty")
-	}
-
-	if tag == "" {
-		return fmt.Errorf("image tag is empty")
-	}
-
-	if _, err := os.Stat(dockerfilePath); err != nil {
-		return fmt.Errorf("Dockerfile not found: %s: %w", dockerfilePath, err)
-	}
-
-	contextDir := a.sourceDir
-
-	relDockerfile, err := filepath.Rel(contextDir, dockerfilePath)
-	if err != nil {
-		return fmt.Errorf("failed to get relative Dockerfile path: %w", err)
-	}
-
-	buildCtx, err := tarBuildContext(contextDir)
+func (a *App) buildImage(dockerfile, tag string, buildArgs map[string]*string) error {
+	buildCtx, err := tarRuntimeContext(dockerfile, a.execPath)
 	if err != nil {
 		return fmt.Errorf("failed to create Docker build context: %w", err)
 	}
-
 	resp, err := a.dockerClient.ImageBuild(a.context, buildCtx, build.ImageBuildOptions{
 		Tags:       []string{tag},
-		Dockerfile: filepath.ToSlash(relDockerfile),
+		Dockerfile: "Dockerfile",
+		Platform:   "linux/" + runtime.GOARCH,
 		Remove:     true,
 		BuildArgs:  buildArgs,
 	})
@@ -74,109 +57,65 @@ func (a *App) buildImage(dockerfilePath string, tag string, buildArgs map[string
 		return fmt.Errorf("failed to build image %s: %w", tag, err)
 	}
 	defer resp.Body.Close()
-
-	if err := log.DockerBuildLog(log.DETAIL_PREFIX, resp.Body, tag); err != nil {
-		return fmt.Errorf("failed to process Docker build log for image %s: %w", tag, err)
-	}
-
-	return nil
+	return log.DockerBuildLog(log.DETAIL_PREFIX, resp.Body, tag)
 }
 
-// tarBuildContext creates an in-memory tar archive for Docker build context.
-func tarBuildContext(dir string) (io.Reader, error) {
+// tarRuntimeContext uses an explicit allowlist so credentials, source and disks
+// cannot enter a Docker build context. The running binary also serves auth/manager.
+func tarRuntimeContext(dockerfile, executable string) (io.Reader, error) {
+	switch dockerfile {
+	case "auth.Dockerfile", "manager.Dockerfile", "user.Dockerfile":
+	default:
+		return nil, fmt.Errorf("unknown runtime Dockerfile: %s", dockerfile)
+	}
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
-
-	visited := make(map[string]bool)
-
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-
-		relPath, err := filepath.Rel(dir, path)
-		if err != nil {
+	add := func(name string, mode int64, data []byte) error {
+		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(data))}); err != nil {
 			return err
 		}
-		if relPath == "." {
-			return nil
-		}
-
-		if info.Mode()&os.ModeSymlink != 0 {
-			target, err := filepath.EvalSymlinks(path)
-			if err != nil {
-				return err
-			}
-
-			if visited[target] {
-				return nil
-			}
-			visited[target] = true
-
-			targetInfo, err := os.Stat(target)
-			if err != nil {
-				return err
-			}
-
-			if targetInfo.IsDir() {
-				return filepath.Walk(target, func(p string, ti os.FileInfo, err error) error {
-					if err != nil {
-						return err
-					}
-
-					relSub, err := filepath.Rel(target, p)
-					if err != nil {
-						return err
-					}
-
-					newPath := filepath.Join(relPath, relSub)
-					return addFileToTar(tw, p, newPath, ti)
-				})
-			}
-
-			return addFileToTar(tw, target, relPath, targetInfo)
-		}
-
-		return addFileToTar(tw, path, relPath, info)
-	})
-
+		_, err := tw.Write(data)
+		return err
+	}
+	definition, err := assets.Files.ReadFile(dockerfile)
 	if err != nil {
-		_ = tw.Close()
 		return nil, err
 	}
-
+	if err := add("Dockerfile", 0644, definition); err != nil {
+		return nil, err
+	}
+	if dockerfile == "user.Dockerfile" {
+		script, err := assets.Files.ReadFile("start.sh")
+		if err != nil {
+			return nil, err
+		}
+		if err := add("start.sh", 0755, script); err != nil {
+			return nil, err
+		}
+	} else {
+		binary, err := os.Open(executable)
+		if err != nil {
+			return nil, err
+		}
+		defer binary.Close()
+		info, err := binary.Stat()
+		if err != nil {
+			return nil, err
+		}
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("executable is not a regular file: %s", executable)
+		}
+		if err := tw.WriteHeader(&tar.Header{Name: "linuxusctl", Mode: 0755, Size: info.Size()}); err != nil {
+			return nil, err
+		}
+		if _, err := io.Copy(tw, binary); err != nil {
+			return nil, err
+		}
+	}
 	if err := tw.Close(); err != nil {
 		return nil, err
 	}
-
 	return buf, nil
-}
-
-// addFileToTar adds a file or directory to the tar archive.
-func addFileToTar(tw *tar.Writer, realPath, tarPath string, info os.FileInfo) error {
-	header, err := tar.FileInfoHeader(info, "")
-	if err != nil {
-		return err
-	}
-	header.Name = filepath.ToSlash(tarPath)
-
-	if err := tw.WriteHeader(header); err != nil {
-		return err
-	}
-
-	if info.Mode().IsRegular() {
-		f, err := os.Open(realPath)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		if _, err := io.Copy(tw, f); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // authImageName returns the auth runtime image tag.

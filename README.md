@@ -13,6 +13,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 🌐 Web-based shell access (no SSH required)  
 📁 Per-user persistent storage  
 🔒 Resource and permission control  
+📦 Single binary deployment with root-level data and volumes<br>
 ⚙️ Fully configurable via YAML  
 
 ---

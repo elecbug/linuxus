@@ -18,6 +18,8 @@ import (
 type App struct {
 	// users maps user IDs to bcrypt password hashes.
 	users map[string]string
+	// usersMu protects credential reloads, lookups and signup writes.
+	usersMu sync.Mutex
 	// authListFile is the path to the auth list file in container.
 	authListFile string
 	// sessionKey is used to sign session cookie payloads.

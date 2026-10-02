@@ -1,6 +1,7 @@
 package system_api
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -190,50 +191,55 @@ func (LinuxSystemAPI) Unmount(target string) error {
 	return nil
 }
 
-// FindLoopDevicesForImages returns a list of loop devices currently attached to image files under the specified directory.
-func (LinuxSystemAPI) FindLoopDevicesForImages(dir string) ([]string, error) {
-	out, err := exec.Command("losetup", "-a").Output()
+// FindLoopDevicesForImages accepts either an exact image path or a directory.
+func (LinuxSystemAPI) FindLoopDevicesForImages(path string) ([]string, error) {
+	out, err := exec.Command("losetup", "--json", "--output", "NAME,BACK-FILE").Output()
 	if err != nil {
-		return nil, fmt.Errorf("losetup -a failed: %w", err)
+		return nil, fmt.Errorf("list loop devices: %w", err)
 	}
+	return loopDevicesForPath(out, path)
+}
 
-	absDir, err := filepath.Abs(dir)
+func loopDevicesForPath(data []byte, path string) ([]string, error) {
+	absPath, err := canonicalLoopPath(path)
 	if err != nil {
 		return nil, err
 	}
-
+	var listing struct {
+		Devices []struct {
+			Name     string `json:"name"`
+			BackFile string `json:"back-file"`
+		} `json:"loopdevices"`
+	}
+	if err := json.Unmarshal(data, &listing); err != nil {
+		return nil, fmt.Errorf("parse loop devices: %w", err)
+	}
 	var devices []string
-
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
+	for _, dev := range listing.Devices {
+		if dev.BackFile == "" || dev.Name == "" {
 			continue
 		}
-
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		dev := strings.TrimSpace(parts[0])
-
-		start := strings.LastIndex(line, "(")
-		end := strings.LastIndex(line, ")")
-		if start == -1 || end == -1 || end <= start+1 {
-			continue
-		}
-
-		imgPath := line[start+1 : end]
-		absImgPath, err := filepath.Abs(imgPath)
+		image, err := canonicalLoopPath(dev.BackFile)
 		if err != nil {
-			continue
+			return nil, err
 		}
-
-		if strings.HasPrefix(absImgPath, absDir+string(os.PathSeparator)) {
-			devices = append(devices, dev)
+		if image == absPath || strings.HasPrefix(image, absPath+string(os.PathSeparator)) {
+			devices = append(devices, dev.Name)
 		}
 	}
-
 	return devices, nil
+}
+
+// losetup reports canonical backing paths, including when the deployment uses
+// a volumes symlink to storage outside the deployment directory.
+func canonicalLoopPath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if os.IsNotExist(err) {
+		return abs, nil
+	}
+	return resolved, err
 }

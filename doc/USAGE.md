@@ -11,7 +11,7 @@ cd linuxus
 
 ## 1. Install Dependencies
 
-### Go
+### Go (build machine only)
 
 ```bash
 sudo snap install go --classic
@@ -27,11 +27,16 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 
 ## 2. Build Controller
 
-Build the control CLI:
+Build the single Linux executable (Go 1.26.1 or newer):
 
 ```bash
 ./shell/build_ctl.sh
 ```
+
+The script can be invoked from any working directory. It builds a static Linux
+binary for the current architecture; set `GOARCH=arm64` to cross-compile.
+`linuxusctl` includes the Auth and Manager service modes, Dockerfiles, user
+startup script, and web assets. No Go compiler or source tree is required at runtime.
 
 Generated executable:
 
@@ -53,10 +58,49 @@ After enabling completion, you can use `TAB` to automatically complete commands 
 
 ## 3. Run Service
 
-> [!IMPORTANT]
-> `linuxusctl` is a project-local control binary.
-> Do not move `linuxusctl` outside the Linuxus project root.
-> It depends on `./src`, `./cfg`, and `./volume` relative to the project root.
+Copy `linuxusctl` and `cfg/config.yml` into a deployment directory:
+
+```text
+linuxus/
+├── linuxusctl
+├── cfg/
+│   └── config.yml
+├── data/
+│   └── AUTH_LIST
+└── volumes/
+```
+
+`data/` and `volumes/` are initialized when starting a fresh deployment. All
+relative host paths in the YAML are resolved against the directory containing
+the executable, even when invoked from another working directory. Absolute
+paths remain unchanged. When invoking a symlink to `linuxusctl`, the real
+executable's directory is used.
+
+For example, prepare a separate deployment without copying `src/`:
+
+```bash
+mkdir -p deploy/cfg
+cp linuxusctl deploy/
+cp cfg/config.yml deploy/cfg/
+sudo ./deploy/linuxusctl up
+```
+
+The runtime host needs Linux, a local Docker daemon, `mkfs.ext4` (e2fsprogs),
+and `losetup` (util-linux). Disk operations require root privileges. Images use
+the executable's architecture. The first image build needs access to the base
+images and Ubuntu/Debian package repositories; it does not download Go modules.
+
+Before starting, set the two session secrets in `cfg/config.yml` to your own
+values. `up` creates a missing auth file without overwriting existing accounts,
+prepares shared disks and registered users' disks, and starts the services.
+A fresh auth file has no accounts; `admin_id` designates an account's privileges
+and does not create the account automatically.
+
+Host directories can also point to an external storage location through absolute
+YAML paths or root-level `data/` and `volumes/` symlinks. Manager passes the
+resolved host paths to Docker; it does not need its own copies of the volumes.
+The legacy `manager_service.container.{homes_dir,share_dir,readonly_dir}` fields
+are retained for configuration compatibility but are no longer mounted into Manager.
 
 ### 3.1 Start / Manage Services
 
@@ -83,8 +127,8 @@ After enabling completion, you can use `TAB` to automatically complete commands 
 ### 3.2 Example Usage
 
 ```bash
-./linuxusctl up                    # Build and start
-./linuxusctl restart               # Restart
+sudo ./linuxusctl up               # Assemble images, prepare disks and start
+sudo ./linuxusctl restart          # Restart
 ./linuxusctl ps network            # Show network status of linuxus service
 ```
 
@@ -127,13 +171,13 @@ A **Signup** link will appear on the login page.
 After signup, the host must initialize user environments:
 
 ```bash
-./linuxusctl ensure-disk <USERNAME>
+sudo ./linuxusctl ensure-disk --user <USERNAME>
 ```
 
 or initialize all missed user environments:
 
 ```bash
-./linuxusctl ensure-disk --all
+sudo ./linuxusctl ensure-disk --all
 ```
 
 This step:
@@ -161,9 +205,38 @@ manager_service:
 ```
 volumes/
 ├── homes/
+│   ├── alice.img      # ext4 disk image
+│   └── alice/         # mounted home
+├── share.img
 ├── share/
+├── readonly.img
 └── readonly/
 ```
+
+---
+
+Containers may be removed and recreated while these disk images retain data.
+After a host reboot, run `sudo ./linuxusctl up` to remount them before using the
+service. `down` removes containers and networks but preserves disks.
+`clean-volume` removes data; it stops on unmount or loop-device errors rather
+than continuing deletion. Cleaning all volumes leaves unrelated files in the
+volume root untouched.
+
+### Migrating an existing source-relative deployment
+
+Existing `src/data` and `src/volumes` are not moved automatically. Before changing
+paths, stop the old services and back up `AUTH_LIST` and all disk images.
+
+To keep existing storage in place, configure its absolute host paths in the new
+YAML, or link the deployment's `data/` and `volumes/` to those locations. Keep the
+storage directories even if you remove the rest of the source checkout.
+
+To relocate storage completely, stop the services, unmount the old user/shared
+disks, and detach their loop devices before moving the directories. Copy the
+`AUTH_LIST` and `.img` files into the new root's `data/` and `volumes/`, preserving
+ownership and permissions. Then run `sudo ./linuxusctl up` to attach and mount
+the existing images at the new paths. Do not use `clean-volume` for migration;
+it deletes the images and their contents.
 
 ---
 
@@ -172,7 +245,7 @@ volumes/
 ### 👤 User (`homes/<USER>`)
 
 * Private
-* Mounted to `/home/<USER>`
+* Mounted to `/home/<linux_username>` inside each user container (default: `/home/user`)
 
 ### 📂 Share
 
