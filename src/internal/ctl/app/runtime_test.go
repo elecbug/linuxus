@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/elecbug/linuxus/src/internal/common/config"
+	"github.com/elecbug/linuxus/src/internal/common/diskservice"
 )
 
 func TestDeploymentPathsIndependentOfWorkingDirectory(t *testing.T) {
@@ -127,5 +128,31 @@ func TestRuntimeBuildContextsContainOnlyDeploymentAssets(t *testing.T) {
 				t.Fatal("binary missing or changed")
 			}
 		})
+	}
+}
+
+func TestAutoEnsureManagerSpec(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		a := &App{}
+		a.Config.Volumes.AutoEnsure = enabled
+		a.Config.AuthService.Mounts.HostAuthListPath = filepath.Join(t.TempDir(), "AUTH_LIST")
+		spec, err := a.buildManagerRuntimeSpec()
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []string{"/var/run/docker.sock:/var/run/docker.sock:rw"}
+		if enabled {
+			want = append(want, a.diskServiceDir()+":"+diskservice.ContainerDir+":ro")
+		}
+		if !reflect.DeepEqual(spec.Volumes, want) || spec.Privileged {
+			t.Fatalf("invalid manager spec: %+v", spec)
+		}
+		var cfg config.Config
+		if err := json.Unmarshal([]byte(strings.TrimPrefix(spec.Environment[0], "ENV=")), &cfg); err != nil {
+			t.Fatal(err)
+		}
+		if cfg.Volumes.AutoEnsure != enabled {
+			t.Fatal("auto-ensure was lost in transport")
+		}
 	}
 }

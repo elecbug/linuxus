@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	ctl_config "github.com/elecbug/linuxus/src/internal/common/config"
@@ -51,6 +52,10 @@ func parseConfigFromEnv() (*config.Config, error) {
 		return nil, fmt.Errorf("USER_IMAGE environment variable is required")
 	}
 
+	diskSocket := os.Getenv("DISK_SERVICE_SOCKET")
+	if cfg.Volumes.AutoEnsure && !filepath.IsAbs(diskSocket) {
+		return nil, fmt.Errorf("DISK_SERVICE_SOCKET must be absolute when volumes.auto-ensure is enabled")
+	}
 	managerWaitTime, err := time.ParseDuration(cfg.ManagerService.AuthService.ConnectionTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ManagerService.AuthService.ConnectionTimeout: %v", err)
@@ -84,6 +89,8 @@ func parseConfigFromEnv() (*config.Config, error) {
 	}
 
 	return &config.Config{
+		AutoEnsure:              cfg.Volumes.AutoEnsure,
+		DiskServiceSocket:       diskSocket,
 		ListenAddr:              ":5959",
 		UserImage:               userImage,
 		UserContainerNamePrefix: cfg.UserService.Container.NamePrefix,

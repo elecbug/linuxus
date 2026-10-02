@@ -31,10 +31,16 @@ func (a *App) cleanVolumesAll() error {
 	if err := a.removeManagedContainers(); err != nil {
 		return err
 	}
+	if err := a.stopDiskService(); err != nil {
+		return err
+	}
 	if err := a.removeManagedNetworks(); err != nil {
 		return err
 	}
+	return a.withDiskLock(a.cleanVolumesAllUnlocked)
+}
 
+func (a *App) cleanVolumesAllUnlocked() error {
 	homeMounts, err := a.listMountedDirsDeepestFirst(a.Config.Volumes.Host.Homes)
 	if err != nil {
 		return err
@@ -111,6 +117,10 @@ func (a *App) cleanVolumeUser(userID string) error {
 	if !ruleset.AllowedUserID(userID) {
 		return fmt.Errorf("invalid user ID: %q", userID)
 	}
+	return a.withDiskLock(func() error { return a.cleanVolumeUserUnlocked(userID) })
+}
+
+func (a *App) cleanVolumeUserUnlocked(userID string) error {
 	log.Log(log.RUN_PREFIX, "Cleaning volume for user: %s...", userID)
 
 	if err := a.umountDisk(filepath.Join(a.Config.Volumes.Host.Homes, userID)); err != nil {
@@ -148,6 +158,10 @@ func (a *App) cleanVolumeUser(userID string) error {
 
 // ensureDiskAll creates and mounts disks for all users and shared volumes.
 func (a *App) ensureDiskAll() error {
+	return a.withDiskLock(a.ensureDiskAllUnlocked)
+}
+
+func (a *App) ensureDiskAllUnlocked() error {
 	if err := a.systemAPI.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {
 		return err
 	}
@@ -170,6 +184,13 @@ func (a *App) ensureDiskAll() error {
 
 // ensureDiskUser creates and mounts disks for the specified user.
 func (a *App) ensureDiskUser(userID string) error {
+	if !ruleset.AllowedUserID(userID) {
+		return fmt.Errorf("invalid user ID")
+	}
+	return a.withDiskLock(func() error { return a.ensureDiskUserUnlocked(userID) })
+}
+
+func (a *App) ensureDiskUserUnlocked(userID string) error {
 	if !user.ExistsUser(a.UserIDs, userID) {
 		return fmt.Errorf("user ID not found in auth list: %s", userID)
 	}

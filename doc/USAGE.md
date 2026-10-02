@@ -161,14 +161,37 @@ A **Signup** link will appear on the login page.
 3. Enters ID and password
 4. Account is registered
 
-> [!IMPORTANT]
-> Newly registered users are **not immediately usable**
+With `volumes.auto-ensure: true`, the first shell access prepares the newly registered user's disk automatically. With the setting omitted or false, initialize new users manually as shown below.
 
 ---
 
 ### 4.3 Activate User Environment
 
-After signup, the host must initialize user environments:
+Enable automatic disk activation in `cfg/config.yml`:
+
+```yaml
+volumes:
+  auto-ensure: true
+```
+
+Apply the setting with `sudo ./linuxusctl restart`. `up` starts the private host
+`linuxusctl serve-disks` process; `down` stops it. Manager requests disk preparation
+over a Unix socket before creating or restarting a user container. Disk errors
+prevent the shell from starting, and existing images are reused rather than
+formatted again. Manual `ensure-disk` remains available.
+
+The host process runs with the mounting privileges of `sudo linuxusctl up`.
+Its socket has mode 0600 in a mode-0700 `.disk-service` directory beside `AUTH_LIST`.
+Only Manager receives that directory as a read-only mount. There is no TCP
+listener. Requests accept a registered user ID only; paths and disk limits come
+from the deployment configuration. Manager's container capabilities are unchanged.
+The default service log is `data/.disk-service/service.log`. Run `sudo ./linuxusctl up`
+after a host reboot to restore mounts and the host process; Docker container
+restart policies alone do not restart this process. As with the existing deployment,
+Docker must run locally on the Linux host.
+
+When `auto-ensure` is omitted or false, users registered after startup need manual
+activation:
 
 ```bash
 sudo ./linuxusctl ensure-disk --user <USERNAME>

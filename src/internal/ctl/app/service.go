@@ -26,6 +26,13 @@ func (a *App) ServiceUp(params *cli.Parameters) error {
 	if err := a.ensureDiskAll(); err != nil {
 		return err
 	}
+	if a.Config.Volumes.AutoEnsure {
+		if err := a.startDiskService(); err != nil {
+			return err
+		}
+	} else if err := a.stopDiskService(); err != nil {
+		return err
+	}
 	if err := a.ensureRuntimeNetworks(); err != nil {
 		return err
 	}
@@ -51,10 +58,12 @@ func (a *App) ServiceDown(params *cli.Parameters) error {
 	if err := a.removeManagedContainers(); err != nil {
 		return err
 	}
+	if err := a.stopDiskService(); err != nil {
+		return err
+	}
 	if err := a.removeManagedNetworks(); err != nil {
 		return err
 	}
-
 	log.Log(log.DETAIL_PREFIX, "Runtime services stopped.")
 	return nil
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -48,6 +49,7 @@ func TestUserDiskCleanupStopsBeforeDeletingAttachedData(t *testing.T) {
 				api.detachErr = failure
 			}
 			a := &App{systemAPI: api}
+			a.Config.AuthService.Mounts.HostAuthListPath = filepath.Join(t.TempDir(), "AUTH_LIST")
 			a.Config.Volumes.Host.Homes = "/deployment/volumes/homes"
 			err := a.cleanVolumeUser("alice")
 			want := []string{"unmount:/deployment/volumes/homes/alice"}

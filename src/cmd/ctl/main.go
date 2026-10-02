@@ -35,6 +35,7 @@ const (
 	ADD_USER
 	REMOVE_USER
 	HELP
+	SERVE_DISKS
 )
 
 // Options encapsulates the selected operations and their parameters.
@@ -94,6 +95,8 @@ func run() error {
 	}
 
 	switch opt.Option {
+	case SERVE_DISKS:
+		return a.ServeDisks()
 	case UP:
 		if err := a.ServiceUp(opt.Params); err != nil {
 			return err
@@ -166,6 +169,8 @@ func parseArgs(bin string, args []string) (Options, error) {
 		result.Option = REMOVE_USER
 	case "help":
 		result.Option = HELP
+	case "serve-disks":
+		result.Option = SERVE_DISKS
 	default:
 		return result, fmt.Errorf("invalid parameter: '%s'\n\n%s", args[0], usageText(bin, true, true, false))
 	}

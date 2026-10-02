@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
+	"github.com/elecbug/linuxus/src/internal/common/diskservice"
 	"github.com/elecbug/linuxus/src/internal/common/http_helper"
 	"github.com/elecbug/linuxus/src/internal/manager/config"
 )
@@ -25,6 +26,10 @@ type Server struct {
 	mux *http.ServeMux
 	// cfg is the active runtime configuration.
 	cfg *config.Config
+
+	// prepareMu serializes disk preparation and runtime allocation.
+	prepareMu  sync.Mutex
+	diskClient *http.Client
 
 	// mu protects runtimes map access.
 	mu sync.Mutex
@@ -52,8 +57,9 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}
 
 	return &Server{
-		docker: cli,
-		cfg:    cfg,
+		docker:     cli,
+		diskClient: diskservice.NewClient(cfg.DiskServiceSocket, cfg.ManagerWaitTime),
+		cfg:        cfg,
 
 		mu:       sync.Mutex{},
 		runtimes: make(map[string]*RuntimeState),
@@ -108,6 +114,9 @@ func (s *Server) Close() error {
 		return nil
 	}
 
+	if s.diskClient != nil {
+		s.diskClient.CloseIdleConnections()
+	}
 	return s.docker.Close()
 }
 

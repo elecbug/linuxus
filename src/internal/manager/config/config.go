@@ -18,6 +18,8 @@ type ResourceLimits struct {
 
 // Config contains all runtime settings for the manager service.
 type Config struct {
+	AutoEnsure        bool
+	DiskServiceSocket string
 	// ListenAddr is the HTTP server bind address.
 	ListenAddr string
 	// UserImage is the Docker image used for user runtimes.

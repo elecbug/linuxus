@@ -39,6 +39,9 @@ func (a *App) ensureUserContainerReady(ctx context.Context, userID string) (stri
 		return "", fmt.Errorf("failed to build manager request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if a.managerSessionSecret != "" {
+		req.Header.Set("X-Manager-Session-Secret", a.managerSessionSecret)
+	}
 
 	resp, err := a.managerClient.Do(req)
 	if err != nil {

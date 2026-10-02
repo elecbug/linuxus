@@ -128,6 +128,9 @@ type Config struct {
 
 	// Volumes configures host/container volume paths and default disk size.
 	Volumes struct {
+		// AutoEnsure prepares user disks on demand through the host disk service.
+		AutoEnsure bool `yaml:"auto-ensure"`
+
 		// Host contains host-side directories.
 		Host struct {
 			// Volumes is the root host directory for managed volume data.

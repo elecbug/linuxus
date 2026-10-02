@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,13 +14,14 @@ import (
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/elecbug/linuxus/src/internal/common/diskservice"
 	"github.com/elecbug/linuxus/src/internal/common/http_helper"
 	"github.com/elecbug/linuxus/src/internal/common/packet"
 	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 	"github.com/elecbug/linuxus/src/internal/common/subnet"
-	"github.com/elecbug/linuxus/src/internal/manager/config"
 )
 
 // HandleUserUp handles user runtime preparation requests.
@@ -32,6 +34,12 @@ func (s *Server) HandleUserUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s.cfg.ManagerSessionSecret != "" && subtle.ConstantTimeCompare(
+		[]byte(r.Header.Get("X-Manager-Session-Secret")), []byte(s.cfg.ManagerSessionSecret),
+	) != 1 {
+		http_helper.WriteJSONViaHTTP(w, http.StatusUnauthorized, packet.UserUpResponse{OK: false, Message: "unauthorized"})
+		return
+	}
 	var req packet.UserUpRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http_helper.WriteJSONViaHTTP(w, http.StatusBadRequest, packet.UserUpResponse{
@@ -81,6 +89,11 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (*pa
 		return nil, fmt.Errorf("user_id contains invalid characters")
 	}
 
+	s.prepareMu.Lock()
+	defer s.prepareMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	containerName := s.cfg.UserContainerNamePrefix + userID
 
 	if _, err := s.docker.ImageInspect(ctx, s.cfg.UserImage, client.ImageInspectWithRawResponse(nil)); err != nil {
@@ -92,6 +105,11 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (*pa
 		return nil, err
 	}
 
+	if s.cfg.AutoEnsure && !running {
+		if err := diskservice.Ensure(ctx, s.diskClient, userID); err != nil {
+			return nil, fmt.Errorf("disk preparation failed: %w", err)
+		}
+	}
 	if exists {
 		networkName, subnet, err := s.ensureExistingContainerNetworkAndAuth(ctx, containerName)
 		if err != nil {
@@ -252,10 +270,11 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 	}
 
 	hostCfg := &container.HostConfig{
-		Binds: []string{
-			fmt.Sprintf("%s:/home/%s:rw", homeDir, s.cfg.ContainerRuntimeUser),
-			fmt.Sprintf("%s:%s:rw", s.cfg.HostShareDir, s.cfg.ContainerShareDir),
-			getReadonlyBind(userID, s.cfg),
+		// Missing sources must fail instead of creating an unlimited home directory.
+		Mounts: []mount.Mount{
+			{Type: mount.TypeBind, Source: homeDir, Target: "/home/" + s.cfg.ContainerRuntimeUser},
+			{Type: mount.TypeBind, Source: s.cfg.HostShareDir, Target: s.cfg.ContainerShareDir},
+			{Type: mount.TypeBind, Source: s.cfg.HostReadonlyDir, Target: s.cfg.ContainerReadonlyDir, ReadOnly: userID != s.cfg.AdminUserID},
 		},
 		Tmpfs: map[string]string{
 			"/tmp":     "rw,noexec,nosuid,nodev,size=64m",
@@ -308,15 +327,6 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 	}
 
 	return nil
-}
-
-// getReadonlyBind returns readonly/shared bind mode based on user privilege.
-func getReadonlyBind(userID string, cfg *config.Config) string {
-	if userID == cfg.AdminUserID {
-		return fmt.Sprintf("%s:%s:rw", cfg.HostReadonlyDir, cfg.ContainerReadonlyDir)
-	} else {
-		return fmt.Sprintf("%s:%s:ro", cfg.HostReadonlyDir, cfg.ContainerReadonlyDir)
-	}
 }
 
 // waitForContainerIP polls until a container obtains an IPv4 on the target network.

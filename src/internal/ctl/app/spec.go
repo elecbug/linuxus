@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/elecbug/linuxus/src/internal/common/diskservice"
 	"github.com/elecbug/linuxus/src/internal/ctl/spec"
 )
 
@@ -41,6 +42,10 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("failed to marshal config to JSON: %w", err)
 	}
+	volumes := []string{"/var/run/docker.sock:/var/run/docker.sock:rw"}
+	if a.Config.Volumes.AutoEnsure {
+		volumes = append(volumes, a.diskServiceDir()+":"+diskservice.ContainerDir+":ro")
+	}
 
 	return spec.RuntimeContainerSpec{
 		Image: a.managerImageName(),
@@ -48,10 +53,9 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 		Environment: []string{
 			"ENV=" + string(env),
 			"USER_IMAGE=" + a.userImageName(),
+			"DISK_SERVICE_SOCKET=" + diskservice.ContainerSocket,
 		},
-		Volumes: []string{
-			"/var/run/docker.sock:/var/run/docker.sock:rw",
-		},
+		Volumes: volumes,
 		Restart: "unless-stopped",
 		Networks: []string{
 			a.Config.ManagerService.Container.Network,

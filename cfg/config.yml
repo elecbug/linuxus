@@ -73,6 +73,8 @@ manager_service:
   admin_id: alpha
 
 volumes:
+  # Prepare new users' disks automatically on first shell access.
+  auto-ensure: true
   host:
     volumes: volumes
     homes: volumes/homes
