@@ -111,7 +111,7 @@ func AddUser(path string, users map[string]string, id, password string) error {
 			prefix = "\n"
 		}
 	}
-	entry := []byte(fmt.Sprintf("%s%s:%s\n", prefix, id, string(hash)))
+	entry := fmt.Appendf(nil, "%s%s:%s\n", prefix, id, string(hash))
 	if err := appendAuthEntry(file, info.Size(), entry); err != nil {
 		return err
 	}
