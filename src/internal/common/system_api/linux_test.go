@@ -59,3 +59,28 @@ func TestLoopDevicesResolveVolumeSymlink(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateEmptyFilePreservesExistingData(t *testing.T) {
+	api := LinuxSystemAPI{}
+	path := filepath.Join(t.TempDir(), "disk.img")
+	if err := os.WriteFile(path, []byte("existing disk data"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := api.CreateEmptyFile(path, 1024); err == nil {
+		t.Error("overwrote an existing image")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || string(data) != "existing disk data" {
+		t.Fatalf("existing image was modified (size=%d, error=%v)", len(data), err)
+	}
+}
+
+func TestCreateEmptyFileFailureLeavesNoImage(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "disk.img")
+	if err := (LinuxSystemAPI{}).CreateEmptyFile(path, -1); err == nil {
+		t.Fatal("accepted negative image size")
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("failed image remains: %v", err)
+	}
+}

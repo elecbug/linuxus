@@ -92,7 +92,7 @@ func (a *App) ensureUserContainerReady(ctx context.Context, userID string) (stri
 }
 
 // reportSessionState sends the current active session count for a user to the manager.
-func (a *App) reportSessionState(id string, active int) error {
+func (a *App) reportSessionState(id string, active int, observedAt time.Time) error {
 	if a.managerBaseURL == "" {
 		return nil
 	}
@@ -100,7 +100,7 @@ func (a *App) reportSessionState(id string, active int) error {
 	payload := packet.SessionStateReport{
 		UserID:         id,
 		ActiveSessions: active,
-		ObservedAt:     time.Now(),
+		ObservedAt:     observedAt,
 	}
 
 	body, err := json.Marshal(payload)

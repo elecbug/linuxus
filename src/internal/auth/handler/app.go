@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"crypto/hmac"
-	"encoding/base64"
 	"html/template"
 	"log"
 	"net"
@@ -143,6 +141,9 @@ func NewApp(config *AppConfig) *App {
 		timeout = 10 * time.Second
 	}
 
+	if config.Users == nil {
+		config.Users = make(map[string]string)
+	}
 	app := &App{
 		users:                   config.Users,
 		authListFile:            config.AuthListFile,
@@ -217,7 +218,8 @@ func (a *App) SignupPath() string {
 // Start launches the HTTP server using the configured route multiplexer.
 func (a *App) Start(addr string) error {
 	log.Printf("Auth server listening on %s", addr)
-	return http.ListenAndServe(addr, a.mux)
+	server := &http.Server{Addr: addr, Handler: a.mux, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
+	return server.ListenAndServe()
 }
 
 // Stop signals background maintenance routines to terminate.
@@ -283,32 +285,4 @@ func (a *App) evictStaleEntries() {
 			delete(a.userFails, id)
 		}
 	}
-}
-
-// getSessionID validates the signed session cookie and returns the user ID.
-func (a *App) getSessionID(r *http.Request) (string, bool) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		return "", false
-	}
-
-	raw, err := base64.StdEncoding.DecodeString(cookie.Value)
-	if err != nil {
-		return "", false
-	}
-
-	parts := strings.SplitN(string(raw), "|", 2)
-	if len(parts) != 2 {
-		return "", false
-	}
-
-	id := parts[0]
-	signature := parts[1]
-
-	expected := a.sign(id)
-	if !hmac.Equal([]byte(signature), []byte(expected)) {
-		return "", false
-	}
-
-	return id, true
 }

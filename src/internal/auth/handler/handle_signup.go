@@ -12,14 +12,6 @@ import (
 
 // handleSignup processes GET and POST requests to the signup endpoint for user registration.
 func (a *App) handleSignup(w http.ResponseWriter, r *http.Request) {
-	a.usersMu.Lock()
-	defer a.usersMu.Unlock()
-	err := user.SyncUsers(a.users, a.authListFile)
-	if err != nil {
-		a.renderError(w, "Failed to load user data", http.StatusInternalServerError)
-		return
-	}
-
 	if !a.allowSignup {
 		a.renderError(w, "User signup is currently disabled.", http.StatusForbidden)
 		return
@@ -31,6 +23,7 @@ func (a *App) handleSignup(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case http.MethodPost:
+		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 		if err := r.ParseForm(); err != nil {
 			a.renderError(w, "Bad request", http.StatusBadRequest)
 			return
@@ -56,13 +49,26 @@ func (a *App) handleSignup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if _, exists := a.users[id]; exists {
-			a.renderSignup(w, "This ID is already registered.")
+		if len(password) > 72 {
+			a.renderSignup(w, "Password must be at most 72 bytes.")
 			return
 		}
 
-		if err := user.AddUser(a.authListFile, a.users, id, password); err != nil {
+		// Read request bodies before taking the credential mutex: a slow
+		// signup request must not block other users from signing in.
+		a.usersMu.Lock()
+		err := user.SyncUsers(a.users, a.authListFile)
+		_, exists := a.users[id]
+		if err == nil && !exists {
+			err = user.AddUser(a.authListFile, a.users, id, password)
+		}
+		a.usersMu.Unlock()
+		if err != nil {
 			a.renderSignup(w, "Failed to create user.")
+			return
+		}
+		if exists {
+			a.renderSignup(w, "This ID is already registered.")
 			return
 		}
 

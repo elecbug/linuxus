@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -23,7 +24,7 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if s.cfg.ManagerSessionSecret != "" {
-		if r.Header.Get("X-Manager-Session-Secret") != s.cfg.ManagerSessionSecret {
+		if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Manager-Session-Secret")), []byte(s.cfg.ManagerSessionSecret)) != 1 {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -35,8 +36,8 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if req.UserID == "" {
-		http.Error(w, "missing user_id", http.StatusBadRequest)
+	if !ruleset.AllowedUserID(req.UserID) {
+		http.Error(w, "invalid user_id", http.StatusBadRequest)
 		return
 	}
 
@@ -67,6 +68,9 @@ func (s *Server) updateSessionState(userID string, active int, observedAt time.T
 		s.runtimes[userID] = rt
 	}
 
+	if observedAt.Before(rt.LastObservedAt) {
+		return
+	}
 	prev := rt.ActiveSessions
 
 	rt.ActiveSessions = active
@@ -79,6 +83,9 @@ func (s *Server) updateSessionState(userID string, active int, observedAt time.T
 			rt.IdleSince = observedAt
 		} else if rt.IdleSince.IsZero() {
 			rt.IdleSince = observedAt
+		}
+		if rt.IdleSince.Before(rt.LastPreparedAt) {
+			rt.IdleSince = rt.LastPreparedAt
 		}
 	}
 }
@@ -150,7 +157,8 @@ func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (st
 // disconnectAuthFromUserNetwork detaches the auth container from a user network.
 func (s *Server) disconnectAuthFromUserNetwork(ctx context.Context, networkName string) error {
 	if err := s.docker.NetworkDisconnect(ctx, networkName, s.cfg.AuthContainerName, true); err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "not found") ||
+		if errdefs.IsNotFound(err) || strings.Contains(strings.ToLower(err.Error()), "not found") ||
+			strings.Contains(strings.ToLower(err.Error()), "not connected") ||
 			strings.Contains(strings.ToLower(err.Error()), "already disconnected") {
 			return nil
 		}
@@ -163,7 +171,7 @@ func (s *Server) disconnectAuthFromUserNetwork(ctx context.Context, networkName 
 // removeNetwork removes a user network if present.
 func (s *Server) removeNetwork(ctx context.Context, name string) error {
 	if err := s.docker.NetworkRemove(ctx, name); err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+		if errdefs.IsNotFound(err) || strings.Contains(strings.ToLower(err.Error()), "not found") {
 			return nil
 		}
 		return fmt.Errorf("network remove failed: %w", err)

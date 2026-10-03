@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/elecbug/linuxus/src/internal/auth"
 	"github.com/elecbug/linuxus/src/internal/common/config"
+	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 	"github.com/elecbug/linuxus/src/internal/ctl/app"
 	"github.com/elecbug/linuxus/src/internal/ctl/cli"
 	"github.com/elecbug/linuxus/src/internal/ctl/log"
@@ -181,8 +183,37 @@ func parseArgs(bin string, args []string) (Options, error) {
 		params = append(params, args[1:]...)
 	}
 
-	result.Params = cli.ParseParams(params)
-
+	parsed, err := cli.ParseParams(params)
+	if err != nil {
+		return result, err
+	}
+	result.Params = parsed
+	switch result.Option {
+	case UP, DOWN, RESTART, HELP, SERVE_DISKS:
+		if len(params) != 0 {
+			return result, fmt.Errorf("%s does not accept arguments", args[0])
+		}
+	case PS:
+		if len(parsed.Params) != 0 {
+			return result, fmt.Errorf("ps only accepts container, network, all, c, n, or a")
+		}
+		switch strings.ToLower(parsed.MainParam) {
+		case "", "container", "network", "all", "c", "n", "a":
+		default:
+			return result, fmt.Errorf("ps only accepts container, network, all, c, n, or a")
+		}
+	case ADD_USER, REMOVE_USER, CLEAN_VOLUME, ENSURE_DISK:
+		if parsed.MainParam != "" || len(parsed.Params) != 1 {
+			return result, fmt.Errorf("%s requires exactly one --user <USERNAME> or supported --all option", args[0])
+		}
+		if id, ok := parsed.Params["user"]; ok {
+			if !ruleset.AllowedUserID(id) {
+				return result, fmt.Errorf("invalid user ID: %q", id)
+			}
+		} else if result.Option == ADD_USER || result.Option == REMOVE_USER {
+			return result, fmt.Errorf("%s requires --user <USERNAME>", args[0])
+		}
+	}
 	return result, nil
 }
 

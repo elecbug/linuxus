@@ -81,24 +81,8 @@ func ValidateConfig(cfg *Config) error {
 		errMsgs = append(errMsgs, "auth_service.runtime.timezone is required")
 	}
 
-	if cfg.AuthService.ServiceURL.Login == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.login is required")
-	}
-
-	if cfg.AuthService.ServiceURL.Logout == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.logout is required")
-	}
-
-	if cfg.AuthService.ServiceURL.Service == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.service is required")
-	}
-
-	if cfg.AuthService.ServiceURL.Terminal == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.terminal is required")
-	}
-
-	if cfg.AuthService.ServiceURL.Signup == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.signup is required")
+	if err := ValidateAuthRoutes(cfg); err != nil {
+		errMsgs = append(errMsgs, err.Error())
 	}
 
 	if cfg.AuthService.Mounts.HostAuthListPath == "" {
@@ -175,14 +159,14 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.ManagerService.UserManagement.CleanupTimeout == "" {
 		errMsgs = append(errMsgs, "manager_service.user_management.cleanup_timeout is required")
-	} else if _, err := time.ParseDuration(cfg.ManagerService.UserManagement.CleanupTimeout); err != nil {
-		errMsgs = append(errMsgs, "manager_service.user_management.cleanup_timeout must be a valid duration string (e.g., 30s, 5m)")
+	} else if duration, err := time.ParseDuration(cfg.ManagerService.UserManagement.CleanupTimeout); err != nil || duration < 0 {
+		errMsgs = append(errMsgs, "manager_service.user_management.cleanup_timeout must be a non-negative duration (0 disables cleanup)")
 	}
 
 	if cfg.ManagerService.AuthService.ConnectionTimeout == "" {
 		errMsgs = append(errMsgs, "manager_service.auth_service.connection_timeout is required")
-	} else if _, err := time.ParseDuration(cfg.ManagerService.AuthService.ConnectionTimeout); err != nil {
-		errMsgs = append(errMsgs, "manager_service.auth_service.connection_timeout must be a valid duration string (e.g., 30s, 5m)")
+	} else if duration, err := time.ParseDuration(cfg.ManagerService.AuthService.ConnectionTimeout); err != nil || duration <= 0 {
+		errMsgs = append(errMsgs, "manager_service.auth_service.connection_timeout must be a positive duration (e.g., 30s, 5m)")
 	}
 
 	if cfg.ManagerService.Security.SessionSecret == "" {
@@ -233,8 +217,12 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.Volumes.DiskLimit == "" {
 		errMsgs = append(errMsgs, "volumes.disk_limit is required")
-	} else if _, err := convert.BytesFromString(cfg.Volumes.DiskLimit); err != nil {
-		errMsgs = append(errMsgs, "volumes.disk_limit must be a valid size string (e.g., 1g, 512m)")
+	} else if size, err := convert.BytesFromString(cfg.Volumes.DiskLimit); err != nil || size <= 1024*1024 {
+		errMsgs = append(errMsgs, "volumes.disk_limit must be a valid size greater than 1MiB (e.g., 1g, 512m)")
+	}
+
+	if err := validateVolumePaths(cfg); err != nil {
+		errMsgs = append(errMsgs, err.Error())
 	}
 
 	if len(errMsgs) > 0 {
@@ -278,8 +266,8 @@ func validateLimits(l Limits) error {
 	disk, err := convert.BytesFromString(l.Disk)
 	if err != nil {
 		errMsgs = append(errMsgs, "disk limit must be a valid size string (e.g., 1g, 512m)")
-	} else if disk <= 0 {
-		errMsgs = append(errMsgs, "disk limit must be greater than zero")
+	} else if disk <= 1024*1024 {
+		errMsgs = append(errMsgs, "disk limit must be greater than 1MiB")
 	}
 
 	if l.Ulimits.Nofile.Soft <= 0 {

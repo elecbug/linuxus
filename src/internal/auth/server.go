@@ -42,6 +42,10 @@ func parseConfig() (*handler.AppConfig, error) {
 		return nil, fmt.Errorf("failed to parse ENV variable as JSON: %v", err)
 	}
 
+	if err := config.ValidateAuthRoutes(&cfg); err != nil {
+		return nil, err
+	}
+
 	users, err := user.LoadUsers(cfg.AuthService.Mounts.ContainerAuthListPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load users: %v", err)

@@ -1,8 +1,8 @@
 package app
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -53,7 +53,7 @@ func (a *App) cleanVolumesAllUnlocked() error {
 	}
 
 	for _, mountPoint := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
-		err = a.umountDisk(mountPoint)
+		err = a.unmountDiskTree(mountPoint)
 		if err != nil {
 			return fmt.Errorf("unmount shared disk %s: %w", mountPoint, err)
 		}
@@ -123,7 +123,7 @@ func (a *App) cleanVolumeUser(userID string) error {
 func (a *App) cleanVolumeUserUnlocked(userID string) error {
 	log.Log(log.RUN_PREFIX, "Cleaning volume for user: %s...", userID)
 
-	if err := a.umountDisk(filepath.Join(a.Config.Volumes.Host.Homes, userID)); err != nil {
+	if err := a.unmountDiskTree(filepath.Join(a.Config.Volumes.Host.Homes, userID)); err != nil {
 		return fmt.Errorf("unmount home disk for %s: %w", userID, err)
 	}
 
@@ -214,7 +214,7 @@ func (a *App) ensureDiskUserUnlocked(userID string) error {
 }
 
 // createSharedDisk creates and mounts a shared loopback disk at the target path.
-func (a *App) createSharedDisk(path string) error {
+func (a *App) createSharedDisk(path string) (retErr error) {
 	sizeStr := a.Config.Volumes.DiskLimit
 	size, err := convert.BytesFromString(sizeStr)
 	if err != nil {
@@ -246,10 +246,7 @@ func (a *App) createSharedDisk(path string) error {
 	} else if !exists {
 		log.Log(log.DETAIL_PREFIX, "Creating shared disk for %s (%s)", mountPoint, sizeStr)
 
-		if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
-			return err
-		}
-		if err := a.systemAPI.FormatExt4(img); err != nil {
+		if err := a.createFormattedImage(img, size); err != nil {
 			return err
 		}
 	}
@@ -265,13 +262,9 @@ func (a *App) createSharedDisk(path string) error {
 
 	mounted := false
 	defer func() {
-		if err == nil {
-			return
+		if retErr != nil {
+			retErr = errors.Join(retErr, a.rollbackDiskMount(loopdev, mountPoint, mounted))
 		}
-		if mounted {
-			_ = a.systemAPI.Unmount(mountPoint)
-		}
-		_ = a.systemAPI.DetachLoopDevice(loopdev)
 	}()
 
 	if err = a.systemAPI.Mount(loopdev, mountPoint); err != nil {
@@ -279,23 +272,11 @@ func (a *App) createSharedDisk(path string) error {
 	}
 	mounted = true
 
-	if err = a.systemAPI.Chown(
-		mountPoint,
-		a.Config.UserService.Runtime.UID,
-		a.Config.UserService.Runtime.GID,
-	); err != nil {
-		return err
-	}
-
-	if err = a.systemAPI.Chmod(mountPoint, 0755); err != nil {
-		return err
-	}
-
-	return nil
+	return a.setDiskPermissions(mountPoint)
 }
 
 // createUserDisk creates and mounts a per-user loopback disk.
-func (a *App) createUserDisk(userID string, isAdmin bool) error {
+func (a *App) createUserDisk(userID string, isAdmin bool) (retErr error) {
 	if !ruleset.AllowedUserID(userID) {
 		return fmt.Errorf("invalid user ID: %q", userID)
 	}
@@ -331,10 +312,7 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	} else if !exists {
 		log.Log(log.DETAIL_PREFIX, "Creating disk for %s (%s)", userID, sizeStr)
 
-		if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
-			return err
-		}
-		if err := a.systemAPI.FormatExt4(img); err != nil {
+		if err := a.createFormattedImage(img, size); err != nil {
 			return err
 		}
 	}
@@ -350,13 +328,9 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 
 	mounted := false
 	defer func() {
-		if err == nil {
-			return
+		if retErr != nil {
+			retErr = errors.Join(retErr, a.rollbackDiskMount(loopdev, mountPoint, mounted))
 		}
-		if mounted {
-			_ = a.systemAPI.Unmount(mountPoint)
-		}
-		_ = a.systemAPI.DetachLoopDevice(loopdev)
 	}()
 
 	if err = a.systemAPI.Mount(loopdev, mountPoint); err != nil {
@@ -364,50 +338,44 @@ func (a *App) createUserDisk(userID string, isAdmin bool) error {
 	}
 	mounted = true
 
-	if err = a.systemAPI.Chown(
-		mountPoint,
-		a.Config.UserService.Runtime.UID,
-		a.Config.UserService.Runtime.GID,
-	); err != nil {
+	return a.setDiskPermissions(mountPoint)
+}
+
+// createFormattedImage removes only the new image when formatting fails, so a
+// retry can initialize it again. Existing images never pass through this path.
+func (a *App) createFormattedImage(img string, size int64) error {
+	if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
 		return err
 	}
+	if err := a.systemAPI.FormatExt4(img); err != nil {
+		return errors.Join(err, a.systemAPI.Remove(img))
+	}
+	return nil
+}
 
-	if err = a.systemAPI.Chmod(mountPoint, 0755); err != nil {
+func (a *App) setDiskPermissions(path string) error {
+	if err := a.systemAPI.Chown(path, a.Config.UserService.Runtime.UID, a.Config.UserService.Runtime.GID); err != nil {
 		return err
 	}
+	return a.systemAPI.Chmod(path, 0755)
+}
 
+func (a *App) rollbackDiskMount(loopdev, mountPoint string, mounted bool) error {
+	if mounted {
+		if err := a.systemAPI.Unmount(mountPoint); err != nil {
+			// The loop device still backs a mounted filesystem; leave it attached.
+			return fmt.Errorf("rollback unmount %s: %w", mountPoint, err)
+		}
+	}
+	if err := a.systemAPI.DetachLoopDevice(loopdev); err != nil {
+		return fmt.Errorf("rollback detach %s: %w", loopdev, err)
+	}
 	return nil
 }
 
 // listMountedDirsDeepestFirst returns mounted directories under root from deepest to shallowest.
 func (a *App) listMountedDirsDeepestFirst(root string) ([]string, error) {
-	var dirs []string
-
-	exists, err := a.systemAPI.Exists(root)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, nil
-	}
-
-	err = filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if path == root || !d.IsDir() {
-			return nil
-		}
-
-		mounted, err := a.systemAPI.IsMountPoint(path)
-		if err != nil {
-			return err
-		}
-		if mounted {
-			dirs = append(dirs, path)
-		}
-		return nil
-	})
+	dirs, err := a.systemAPI.MountPointsUnder(root)
 	if err != nil {
 		return nil, err
 	}
@@ -442,4 +410,18 @@ func (a *App) umountDisk(mountPoint string) error {
 // detachLoopDevice detaches the specified loop device.
 func (a *App) detachLoopDevice(dev string) error {
 	return a.systemAPI.DetachLoopDevice(dev)
+}
+
+// Nested bind mounts must be released before their parent filesystem.
+func (a *App) unmountDiskTree(root string) error {
+	mounted, err := a.listMountedDirsDeepestFirst(root)
+	if err != nil {
+		return err
+	}
+	for _, path := range mounted {
+		if err := a.umountDisk(path); err != nil {
+			return err
+		}
+	}
+	return a.umountDisk(root)
 }

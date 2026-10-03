@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -28,6 +29,8 @@ type runtimeDocker struct {
 	mutations       []string
 	hostConfig      container.HostConfig
 	beforeMutation  func()
+	failPath        string
+	existingNetwork string
 }
 
 func (d *runtimeDocker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -35,13 +38,24 @@ func (d *runtimeDocker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer d.mu.Unlock()
 	path := strings.TrimPrefix(r.URL.Path, "/v1.47")
 	w.Header().Set("Content-Type", "application/json")
-	if r.Method == http.MethodPost {
+	if r.Method == http.MethodPost || r.Method == http.MethodDelete {
 		if d.beforeMutation != nil {
 			d.beforeMutation()
 		}
 		d.mutations = append(d.mutations, path)
 	}
+	if path == d.failPath {
+		w.WriteHeader(500)
+		w.Write([]byte(`{"message":"injected failure"}`))
+		return
+	}
 	switch {
+	case r.Method == http.MethodDelete:
+		if strings.HasPrefix(path, "/containers/") {
+			d.exists = false
+			d.running = false
+		}
+		w.WriteHeader(http.StatusNoContent)
 	case path == "/images/test-user/json":
 		json.NewEncoder(w).Encode(map[string]any{"Id": "image-id"})
 	case path == "/containers/user_alice/json":
@@ -55,7 +69,11 @@ func (d *runtimeDocker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"NetworkSettings": map[string]any{"Networks": map[string]any{"net_alice": map[string]string{"IPAddress": "10.10.0.2"}}},
 		})
 	case path == "/networks":
-		w.Write([]byte("[]"))
+		if d.existingNetwork != "" {
+			json.NewEncoder(w).Encode([]map[string]string{{"Name": d.existingNetwork, "Id": "existing-id"}})
+		} else {
+			w.Write([]byte("[]"))
+		}
 	case path == "/networks/create":
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(`{"Id":"network-id"}`))
@@ -237,5 +255,69 @@ func TestUserUpRequiresSharedSecret(t *testing.T) {
 		if w.Code != http.StatusUnauthorized {
 			t.Fatalf("status=%d", w.Code)
 		}
+	}
+}
+
+func TestFailedNewRuntimeIsRolledBack(t *testing.T) {
+	for _, failPath := range []string{"/containers/create", "/containers/user-id/start", "/networks/net_alice"} {
+		t.Run(failPath, func(t *testing.T) {
+			d := &runtimeDocker{failPath: failPath}
+			s := runtimeTestServer(t, d, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
+			if _, err := s.ensureUserRuntimeReady(context.Background(), "alice"); err == nil {
+				t.Fatal("expected preparation failure")
+			}
+			d.mu.Lock()
+			defer d.mu.Unlock()
+			if d.exists {
+				t.Fatal("failed preparation left a container behind")
+			}
+			if !slices.Contains(d.mutations, "/networks/network-id") {
+				t.Fatalf("new network leaked: %v", d.mutations)
+			}
+			if failPath != "/containers/create" && !slices.Contains(d.mutations, "/containers/user-id") {
+				t.Fatalf("container was not removed by ID: %v", d.mutations)
+			}
+		})
+	}
+}
+
+func TestExistingRuntimeFailureDoesNotDeleteResources(t *testing.T) {
+	d := &runtimeDocker{exists: true, failPath: "/containers/user_alice/start"}
+	s := runtimeTestServer(t, d, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
+	if _, err := s.ensureUserRuntimeReady(context.Background(), "alice"); err == nil {
+		t.Fatal("expected start failure")
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !d.exists || len(d.mutations) != 1 {
+		t.Fatalf("modified existing runtime during rollback: %v", d.mutations)
+	}
+}
+
+func TestNetworkNameCollisionDoesNotJoinExistingNetwork(t *testing.T) {
+	d := &runtimeDocker{existingNetwork: "net_alice"}
+	s := runtimeTestServer(t, d, nil)
+	if _, err := s.createNetwork(context.Background(), "net_alice", "10.10.0.0/28"); err == nil {
+		t.Fatal("reused another network with the same name")
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if len(d.mutations) != 0 {
+		t.Fatal("changed an existing network")
+	}
+}
+
+func TestRuntimeRollbackSurvivesRequestCancellation(t *testing.T) {
+	d := &runtimeDocker{exists: true}
+	s := runtimeTestServer(t, d, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := s.rollbackNewRuntime(ctx, "user-id", "network-id", false); err != nil {
+		t.Fatal(err)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.exists || !slices.Contains(d.mutations, "/networks/network-id") {
+		t.Fatalf("cancellation prevented cleanup: %v", d.mutations)
 	}
 }

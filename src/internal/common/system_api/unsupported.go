@@ -109,3 +109,7 @@ func (u UnsupportedSystemAPI) Unmount(mountPoint string) error {
 func (u UnsupportedSystemAPI) FindLoopDevicesForImages(dir string) ([]string, error) {
 	return nil, fmt.Errorf("loop device listing is unsupported on %s", u.OS)
 }
+
+func (u UnsupportedSystemAPI) MountPointsUnder(root string) ([]string, error) {
+	return nil, fmt.Errorf("mount point listing is unsupported on %s", u.OS)
+}

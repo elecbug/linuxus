@@ -350,3 +350,44 @@ func TestDiskServiceShutdownWaitsForActivePreparation(t *testing.T) {
 		}
 	}
 }
+
+func TestServiceDownStopsDiskServiceWhenDockerFails(t *testing.T) {
+	dir, err := os.MkdirTemp("", "linuxus-down-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	a := &App{} // No Docker client: container cleanup fails immediately.
+	a.Config.AuthService.Mounts.HostAuthListPath = filepath.Join(dir, "AUTH_LIST")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- a.serveDisks(ctx) }()
+	client := diskservice.NewClient(a.diskSocket(), time.Second)
+	defer client.CloseIdleConnections()
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		resp, err := client.Get("http://disk-service/healthz")
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == 200 {
+				break
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("service did not become healthy")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := a.ServiceDown(nil); err == nil {
+		t.Fatal("lost the Docker cleanup error")
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Docker failure left the disk service running")
+	}
+}

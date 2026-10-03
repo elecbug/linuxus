@@ -156,3 +156,42 @@ func TestAutoEnsureManagerSpec(t *testing.T) {
 		}
 	}
 }
+
+func TestAbsoluteHostPathsAreCleanedBeforeDiskOperations(t *testing.T) {
+	a := &App{runtimeRoot: t.TempDir()}
+	a.Config.Volumes.Host.Share = "/storage/share/"
+	a.Config.Volumes.Host.Readonly = "/storage/unused/../readonly/"
+	a.normalizeConfigPaths()
+	if a.Config.Volumes.Host.Share != "/storage/share" || a.Config.Volumes.Host.Readonly != "/storage/readonly" {
+		t.Fatal("absolute path suffixes would change disk image locations")
+	}
+}
+
+func TestConfigRejectsTyposAndMultipleDocuments(t *testing.T) {
+	for _, tc := range []struct {
+		name, contents string
+		valid          bool
+	}{
+		{"hyphenated key", "volumes:\n  auto-ensure: true\n", true},
+		{"misspelled key", "volumes:\n  auto_ensure: true\n", false},
+		{"unknown section", "unknown: true\n", false},
+		{"duplicate documents", "volumes:\n  auto-ensure: true\n---\nvolumes:\n  auto-ensure: false\n", false},
+		{"trailing empty document", "volumes: {}\n---\n", false},
+		{"empty file", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			a := &App{runtimeRoot: root, configFile: filepath.Join(root, "config.yml")}
+			if err := os.WriteFile(a.configFile, []byte(tc.contents), 0600); err != nil {
+				t.Fatal(err)
+			}
+			err := a.LoadConfig()
+			if (err == nil) != tc.valid {
+				t.Fatalf("accepted=%t, want %t: %v", err == nil, tc.valid, err)
+			}
+			if tc.valid && !a.Config.Volumes.AutoEnsure {
+				t.Fatal("auto-ensure was not loaded")
+			}
+		})
+	}
+}

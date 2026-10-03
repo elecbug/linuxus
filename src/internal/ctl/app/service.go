@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -55,10 +56,9 @@ func (a *App) ServiceDown(params *cli.Parameters) error {
 
 	log.Log(log.RUN_PREFIX, "Stopping runtime-managed containers...")
 
-	if err := a.removeManagedContainers(); err != nil {
-		return err
-	}
-	if err := a.stopDiskService(); err != nil {
+	containerErr := a.removeManagedContainers()
+	diskErr := a.stopDiskService()
+	if err := errors.Join(containerErr, diskErr); err != nil {
 		return err
 	}
 	if err := a.removeManagedNetworks(); err != nil {

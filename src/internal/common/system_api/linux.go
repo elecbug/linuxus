@@ -2,6 +2,7 @@ package system_api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -51,18 +52,25 @@ func (LinuxSystemAPI) Exists(path string) (bool, error) {
 }
 
 // CreateEmptyFile creates an empty file at the specified path with the given size in bytes.
-func (LinuxSystemAPI) CreateEmptyFile(path string, sizeBytes int64) error {
+func (LinuxSystemAPI) CreateEmptyFile(path string, sizeBytes int64) (retErr error) {
 	path = filepath.Clean(path)
 	di := filepath.Dir(path)
 	if err := os.MkdirAll(di, 0755); err != nil {
 		return fmt.Errorf("failed to create parent directories for %s: %w", path, err)
 	}
 
-	f, err := os.Create(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close image %s: %w", path, err))
+		}
+		if retErr != nil {
+			retErr = errors.Join(retErr, os.Remove(path))
+		}
+	}()
 
 	if sizeBytes != 0 {
 		if err := f.Truncate(sizeBytes); err != nil {
@@ -103,35 +111,6 @@ func (LinuxSystemAPI) FormatExt4(path string) error {
 	}
 
 	return nil
-}
-
-// IsMountPoint checks if the specified path is a mount point by comparing device and inode numbers with its parent.
-func (LinuxSystemAPI) IsMountPoint(path string) (bool, error) {
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return false, err
-	}
-
-	var st syscall.Stat_t
-	var parent syscall.Stat_t
-
-	if err := syscall.Stat(path, &st); err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, fmt.Errorf("stat failed: %s: %w", path, err)
-	}
-
-	parentPath := filepath.Dir(path)
-	if parentPath == path {
-		return true, nil
-	}
-
-	if err := syscall.Stat(parentPath, &parent); err != nil {
-		return false, fmt.Errorf("parent stat failed: %s: %w", parentPath, err)
-	}
-
-	return st.Dev != parent.Dev || st.Ino == parent.Ino, nil
 }
 
 // AttachLoopDevice attaches the specified image file to a free loop device and returns its path.

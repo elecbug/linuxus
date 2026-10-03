@@ -2,9 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"net"
 	"net/http"
 	"strconv"
@@ -34,6 +31,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case http.MethodPost:
+		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 		if err := r.ParseForm(); err != nil {
 			a.renderError(w, "Bad request", http.StatusBadRequest)
 			return
@@ -77,7 +75,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 		// 6) Success
 		a.clearFail(ip, id)
-		a.setSessionCookie(w, id)
+		a.setSessionCookie(w, r, id, hash)
 		http.Redirect(w, r, "/"+a.servicePath+"/", http.StatusSeeOther)
 		return
 
@@ -132,29 +130,6 @@ func (a *App) renderError(w http.ResponseWriter, errMsg string, statusCode int) 
 
 	w.WriteHeader(statusCode)
 	_, _ = buf.WriteTo(w)
-}
-
-// setSessionCookie creates and sets a signed session cookie for the given user.
-func (a *App) setSessionCookie(w http.ResponseWriter, id string) {
-	signature := a.sign(id)
-	payload := id + "|" + signature
-	value := base64.StdEncoding.EncodeToString([]byte(payload))
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    value,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Now().Add(12 * time.Hour),
-	})
-}
-
-// sign creates a base64 HMAC signature for a session value.
-func (a *App) sign(value string) string {
-	mac := hmac.New(sha256.New, a.sessionKey)
-	mac.Write([]byte(value))
-	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
 // recordFail updates per-IP and optional per-user failure counters and lock states.
@@ -214,11 +189,21 @@ func (a *App) clientIP(r *http.Request) string {
 	if a.isTrustedProxy(remoteHost) {
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 			parts := strings.Split(xff, ",")
-			return strings.TrimSpace(parts[0])
+			// Walk from the nearest hop. Entries before the first untrusted
+			// address may have been supplied by the client itself.
+			for i := len(parts) - 1; i >= 0; i-- {
+				ip := net.ParseIP(strings.TrimSpace(parts[i]))
+				if ip == nil {
+					return remoteHost
+				}
+				if !a.isTrustedProxy(ip.String()) || i == 0 {
+					return ip.String()
+				}
+			}
 		}
 
-		if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
-			return strings.TrimSpace(xrip)
+		if ip := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); ip != nil {
+			return ip.String()
 		}
 	}
 

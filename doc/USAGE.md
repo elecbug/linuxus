@@ -99,6 +99,24 @@ and does not create the account automatically.
 Host directories can also point to an external storage location through absolute
 YAML paths or root-level `data/` and `volumes/` symlinks. Manager passes the
 resolved host paths to Docker; it does not need its own copies of the volumes.
+The home, shared, and readonly host paths must not overlap or resolve to the
+filesystem root. Keep `AUTH_LIST` outside these disk directories and images.
+Connection timeouts must be positive; a cleanup timeout of `0s` disables idle
+cleanup, and disk sizes must be greater than 1 MiB.
+Unknown YAML keys (including `auto_ensure` instead of `auto-ensure`) and multiple
+YAML documents are rejected. Auth route paths must be distinct, clean paths
+without leading/trailing slashes or wildcard patterns; `static/` and
+`favicon.ico` are reserved. Nested paths such as `auth/login` are supported.
+Docker subnet allocation checks all existing Docker IPAM ranges to avoid
+conflicts with other projects. Trusted proxy CIDRs support both IPv4 and IPv6.
+
+When HTTPS terminates at a reverse proxy, include its source address in
+`auth_service.security.trusted_proxies` and configure it to overwrite
+`X-Forwarded-Proto` with the external scheme (`https` or `http`). Auth then sets
+`Secure` on HTTPS session cookies and preserves that scheme for the terminal.
+The Auth session cookie is removed before forwarding to a user's container.
+
+
 The legacy `manager_service.container.{homes_dir,share_dir,readonly_dir}` fields
 are retained for configuration compatibility but are no longer mounted into Manager.
 
@@ -153,6 +171,12 @@ auth_service:
 A **Signup** link will appear on the login page.
 
 ---
+
+Session cookies expire after 12 hours and are checked against the current account
+on each authenticated request. Removing or changing an account invalidates its
+previous cookies. Upgrading from the older cookie format requires users to log in
+again once. CLI and Auth account updates use the same file lock while preserving
+the auth file's Docker bind mount.
 
 ### 4.2 User Registration Flow
 

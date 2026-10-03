@@ -1,10 +1,13 @@
 package app
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/elecbug/linuxus/src/internal/common/config"
 	"github.com/elecbug/linuxus/src/internal/common/user"
 	"gopkg.in/yaml.v3"
 )
@@ -13,11 +16,22 @@ import (
 func (a *App) LoadConfig() error {
 	data, err := os.ReadFile(a.configFile)
 	if err != nil {
-		return fmt.Errorf("config file not found: %s", a.configFile)
+		return fmt.Errorf("read config %s: %w", a.configFile, err)
 	}
-	if err := yaml.Unmarshal(data, &a.Config); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	var parsed config.Config
+	if err := decoder.Decode(&parsed); err != nil {
 		return fmt.Errorf("failed to parse yaml config: %w", err)
 	}
+	var extra yaml.Node
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err != nil {
+			return fmt.Errorf("failed to parse trailing yaml: %w", err)
+		}
+		return fmt.Errorf("config must contain exactly one YAML document")
+	}
+	a.Config = parsed
 
 	a.normalizeConfigPaths()
 
@@ -36,8 +50,11 @@ func (a *App) LoadConfig() error {
 // normalizeConfigPaths resolves host paths relative to the deployment directory.
 func (a *App) normalizeConfigPaths() {
 	resolve := func(path string) string {
-		if path == "" || filepath.IsAbs(path) {
-			return path
+		if path == "" {
+			return ""
+		}
+		if filepath.IsAbs(path) {
+			return filepath.Clean(path)
 		}
 		return filepath.Join(a.runtimeRoot, path)
 	}

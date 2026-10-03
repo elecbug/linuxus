@@ -27,8 +27,8 @@ type Server struct {
 	// cfg is the active runtime configuration.
 	cfg *config.Config
 
-	// prepareMu serializes disk preparation and runtime allocation.
-	prepareMu  sync.Mutex
+	// prepareMu serializes disk preparation, runtime allocation and idle cleanup.
+	prepareMu  runtimeLock
 	diskClient *http.Client
 
 	// mu protects runtimes map access.
@@ -45,6 +45,8 @@ type RuntimeState struct {
 	ActiveSessions int
 	// LastObservedAt is the most recent session state observation time.
 	LastObservedAt time.Time
+	// LastPreparedAt protects a newly prepared runtime until session reporting starts.
+	LastPreparedAt time.Time
 	// IdleSince is when active sessions dropped to zero.
 	IdleSince time.Time
 }
@@ -174,25 +176,58 @@ func (s *Server) reapIdleContainers(ctx context.Context) {
 	s.mu.Unlock()
 
 	for _, userID := range candidates {
-		s.mu.Lock()
-		rt, ok := s.runtimes[userID]
-		if !ok || rt == nil || rt.ActiveSessions > 0 || rt.IdleSince.IsZero() ||
-			time.Since(rt.IdleSince) <= s.cfg.ContainerTimeout {
-			s.mu.Unlock()
-			continue
-		}
-		s.mu.Unlock()
-
-		if err := s.stopAndRemoveUserContainerAndNetwork(ctx, userID); err != nil {
+		if err := s.reapIdleUser(ctx, userID); err != nil {
 			log.Printf("idle cleanup failed for %s: %v", userID, err)
-			continue
 		}
+	}
+}
 
-		s.mu.Lock()
-		delete(s.runtimes, userID)
+func (s *Server) reapIdleUser(ctx context.Context, userID string) error {
+	if err := s.prepareMu.LockContext(ctx); err != nil {
+		return err
+	}
+	defer s.prepareMu.Unlock()
+
+	// A user-up request may have refreshed the idle deadline after selection.
+	s.mu.Lock()
+	rt, ok := s.runtimes[userID]
+	if !ok || rt == nil || rt.ActiveSessions > 0 || rt.IdleSince.IsZero() ||
+		time.Since(rt.IdleSince) <= s.cfg.ContainerTimeout {
 		s.mu.Unlock()
+		return nil
+	}
+	s.mu.Unlock()
 
-		log.Printf("idle container cleaned up for %s", userID)
+	if err := s.stopAndRemoveUserContainerAndNetwork(ctx, userID); err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	// Preserve a session update that arrived during the Docker calls.
+	if current := s.runtimes[userID]; current == rt && current.ActiveSessions == 0 &&
+		!current.IdleSince.IsZero() && time.Since(current.IdleSince) > s.cfg.ContainerTimeout {
+		delete(s.runtimes, userID)
+	}
+	s.mu.Unlock()
+	log.Printf("idle container cleaned up for %s", userID)
+	return nil
+}
+
+// markRuntimeReady grants time for Auth to establish and report the WebSocket.
+func (s *Server) markRuntimeReady(userID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.runtimes == nil {
+		s.runtimes = make(map[string]*RuntimeState)
+	}
+	rt := s.runtimes[userID]
+	if rt == nil {
+		rt = &RuntimeState{UserID: userID}
+		s.runtimes[userID] = rt
+	}
+	rt.LastPreparedAt = time.Now()
+	if rt.ActiveSessions == 0 {
+		rt.IdleSince = rt.LastPreparedAt
 	}
 }
 
