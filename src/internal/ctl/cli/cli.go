@@ -1,6 +1,9 @@
 package cli
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 const TRUE_STR = "true"
 const FALSE_STR = "false"
@@ -30,33 +33,53 @@ func IsKeyword(s string) bool {
 }
 
 // ParseParams converts CLI arguments into a structured Parameters instance, separating key-value pairs and the main parameter.
-func ParseParams(params []string) *Parameters {
-	result := make(map[string]string)
-	mainParam := ""
-
+func ParseParams(params []string) (*Parameters, error) {
+	result := NewParameters()
 	for i := 0; i < len(params); i++ {
 		param := params[i]
-
-		if IsKeyword(param) {
-			key := strings.TrimLeft(param, "-")
-
-			if i+1 < len(params) && !IsKeyword(params[i+1]) {
-				result[key] = params[i+1]
-				i++
-			} else {
-				result[key] = TRUE_STR
+		if !strings.HasPrefix(param, "-") {
+			if result.MainParam != "" || param == "" {
+				return nil, fmt.Errorf("unexpected positional argument %q", param)
 			}
-
+			result.MainParam = param
 			continue
 		}
-
-		if mainParam == "" {
-			mainParam = param
+		key, value, hasValue := strings.Cut(param, "=")
+		switch key {
+		case "--replace":
+			key = "replace"
+			if hasValue {
+				return nil, fmt.Errorf("--replace does not accept a value")
+			}
+			value = TRUE_STR
+		case "--all", "-a":
+			key = "all"
+			if hasValue {
+				return nil, fmt.Errorf("--all does not accept a value")
+			}
+			value = TRUE_STR
+		case "--user", "-u", "--file", "--output", "--template", "--class":
+			key = strings.TrimPrefix(key, "--")
+			if key == "-u" {
+				key = "user"
+			}
+			if !hasValue {
+				if i+1 == len(params) || strings.HasPrefix(params[i+1], "-") {
+					return nil, fmt.Errorf("--%s requires a value", key)
+				}
+				i++
+				value = params[i]
+			}
+			if value == "" {
+				return nil, fmt.Errorf("--%s requires a value", key)
+			}
+		default:
+			return nil, fmt.Errorf("unknown option %q", key)
 		}
+		if _, exists := result.Params[key]; exists {
+			return nil, fmt.Errorf("duplicate option --%s", key)
+		}
+		result.Params[key] = value
 	}
-
-	return &Parameters{
-		Params:    result,
-		MainParam: mainParam,
-	}
+	return result, nil
 }

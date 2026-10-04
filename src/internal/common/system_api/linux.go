@@ -1,6 +1,8 @@
 package system_api
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -50,18 +52,25 @@ func (LinuxSystemAPI) Exists(path string) (bool, error) {
 }
 
 // CreateEmptyFile creates an empty file at the specified path with the given size in bytes.
-func (LinuxSystemAPI) CreateEmptyFile(path string, sizeBytes int64) error {
+func (LinuxSystemAPI) CreateEmptyFile(path string, sizeBytes int64) (retErr error) {
 	path = filepath.Clean(path)
 	di := filepath.Dir(path)
 	if err := os.MkdirAll(di, 0755); err != nil {
 		return fmt.Errorf("failed to create parent directories for %s: %w", path, err)
 	}
 
-	f, err := os.Create(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close image %s: %w", path, err))
+		}
+		if retErr != nil {
+			retErr = errors.Join(retErr, os.Remove(path))
+		}
+	}()
 
 	if sizeBytes != 0 {
 		if err := f.Truncate(sizeBytes); err != nil {
@@ -102,35 +111,6 @@ func (LinuxSystemAPI) FormatExt4(path string) error {
 	}
 
 	return nil
-}
-
-// IsMountPoint checks if the specified path is a mount point by comparing device and inode numbers with its parent.
-func (LinuxSystemAPI) IsMountPoint(path string) (bool, error) {
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return false, err
-	}
-
-	var st syscall.Stat_t
-	var parent syscall.Stat_t
-
-	if err := syscall.Stat(path, &st); err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, fmt.Errorf("stat failed: %s: %w", path, err)
-	}
-
-	parentPath := filepath.Dir(path)
-	if parentPath == path {
-		return true, nil
-	}
-
-	if err := syscall.Stat(parentPath, &parent); err != nil {
-		return false, fmt.Errorf("parent stat failed: %s: %w", parentPath, err)
-	}
-
-	return st.Dev != parent.Dev || st.Ino == parent.Ino, nil
 }
 
 // AttachLoopDevice attaches the specified image file to a free loop device and returns its path.
@@ -190,50 +170,55 @@ func (LinuxSystemAPI) Unmount(target string) error {
 	return nil
 }
 
-// FindLoopDevicesForImages returns a list of loop devices currently attached to image files under the specified directory.
-func (LinuxSystemAPI) FindLoopDevicesForImages(dir string) ([]string, error) {
-	out, err := exec.Command("losetup", "-a").Output()
+// FindLoopDevicesForImages accepts either an exact image path or a directory.
+func (LinuxSystemAPI) FindLoopDevicesForImages(path string) ([]string, error) {
+	out, err := exec.Command("losetup", "--json", "--output", "NAME,BACK-FILE").Output()
 	if err != nil {
-		return nil, fmt.Errorf("losetup -a failed: %w", err)
+		return nil, fmt.Errorf("list loop devices: %w", err)
 	}
+	return loopDevicesForPath(out, path)
+}
 
-	absDir, err := filepath.Abs(dir)
+func loopDevicesForPath(data []byte, path string) ([]string, error) {
+	absPath, err := canonicalLoopPath(path)
 	if err != nil {
 		return nil, err
 	}
-
+	var listing struct {
+		Devices []struct {
+			Name     string `json:"name"`
+			BackFile string `json:"back-file"`
+		} `json:"loopdevices"`
+	}
+	if err := json.Unmarshal(data, &listing); err != nil {
+		return nil, fmt.Errorf("parse loop devices: %w", err)
+	}
 	var devices []string
-
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
+	for _, dev := range listing.Devices {
+		if dev.BackFile == "" || dev.Name == "" {
 			continue
 		}
-
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		dev := strings.TrimSpace(parts[0])
-
-		start := strings.LastIndex(line, "(")
-		end := strings.LastIndex(line, ")")
-		if start == -1 || end == -1 || end <= start+1 {
-			continue
-		}
-
-		imgPath := line[start+1 : end]
-		absImgPath, err := filepath.Abs(imgPath)
+		image, err := canonicalLoopPath(dev.BackFile)
 		if err != nil {
-			continue
+			return nil, err
 		}
-
-		if strings.HasPrefix(absImgPath, absDir+string(os.PathSeparator)) {
-			devices = append(devices, dev)
+		if image == absPath || strings.HasPrefix(image, absPath+string(os.PathSeparator)) {
+			devices = append(devices, dev.Name)
 		}
 	}
-
 	return devices, nil
+}
+
+// losetup reports canonical backing paths, including when the deployment uses
+// a volumes symlink to storage outside the deployment directory.
+func canonicalLoopPath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if os.IsNotExist(err) {
+		return abs, nil
+	}
+	return resolved, err
 }

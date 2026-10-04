@@ -14,227 +14,218 @@ import (
 // ValidateConfig validates required config values before runtime operations.
 func ValidateConfig(cfg *Config) error {
 	errMsgs := []string{}
+	if err := validateOperations(cfg); err != nil {
+		errMsgs = append(errMsgs, err.Error())
+	}
 
 	if cfg.UserService.Container.NamePrefix == "" {
-		errMsgs = append(errMsgs, "user_service.container.name_prefix is required")
+		errMsgs = append(errMsgs, "USER_SERVICE_CONTAINER_NAME_PREFIX is required")
 	} else if !ruleset.AllowedDockerPrefix(cfg.UserService.Container.NamePrefix) {
-		errMsgs = append(errMsgs, "user_service.container.name_prefix must be a valid Docker prefix")
+		errMsgs = append(errMsgs, "USER_SERVICE_CONTAINER_NAME_PREFIX must be a valid Docker prefix")
 	}
 
 	if cfg.UserService.Container.NetworkNamePrefix == "" {
-		errMsgs = append(errMsgs, "user_service.container.network_name_prefix is required")
+		errMsgs = append(errMsgs, "USER_SERVICE_CONTAINER_NETWORK_NAME_PREFIX is required")
 	} else if !ruleset.AllowedDockerPrefix(cfg.UserService.Container.NetworkNamePrefix) {
-		errMsgs = append(errMsgs, "user_service.container.network_name_prefix must be a valid Docker prefix")
+		errMsgs = append(errMsgs, "USER_SERVICE_CONTAINER_NETWORK_NAME_PREFIX must be a valid Docker prefix")
 	}
 
 	if cfg.UserService.Container.BaseSubnet16 == "" {
-		errMsgs = append(errMsgs, "user_service.container.base_subnet_16 is required")
+		errMsgs = append(errMsgs, "USER_SERVICE_CONTAINER_BASE_SUBNET_16 is required")
 	} else if !subnet.IsValidSubnet16(cfg.UserService.Container.BaseSubnet16) {
-		errMsgs = append(errMsgs, "user_service.container.base_subnet_16 must be a valid /16 subnet (x.x.0.0)")
+		errMsgs = append(errMsgs, "USER_SERVICE_CONTAINER_BASE_SUBNET_16 must be a valid /16 subnet (x.x.0.0)")
 	}
 
-	if cfg.UserService.Runtime.UID == 0 {
-		errMsgs = append(errMsgs, "user_service.runtime.uid is required and must be non-zero")
+	if cfg.UserService.Runtime.UID <= 0 {
+		errMsgs = append(errMsgs, "USER_SERVICE_RUNTIME_UID must be greater than zero")
 	}
 
-	if cfg.UserService.Runtime.GID == 0 {
-		errMsgs = append(errMsgs, "user_service.runtime.gid is required and must be non-zero")
+	if cfg.UserService.Runtime.GID <= 0 {
+		errMsgs = append(errMsgs, "USER_SERVICE_RUNTIME_GID must be greater than zero")
 	}
 
 	if cfg.UserService.Runtime.LinuxUsername == "" {
-		errMsgs = append(errMsgs, "user_service.runtime.linux_username is required")
+		errMsgs = append(errMsgs, "USER_SERVICE_RUNTIME_LINUX_USERNAME is required")
 	} else if cfg.UserService.Runtime.LinuxUsername == "root" {
-		errMsgs = append(errMsgs, "user_service.runtime.linux_username cannot be 'root'")
+		errMsgs = append(errMsgs, "USER_SERVICE_RUNTIME_LINUX_USERNAME cannot be 'root'")
 	} else if !ruleset.AllowedDockerID(cfg.UserService.Runtime.LinuxUsername) {
-		errMsgs = append(errMsgs, "user_service.runtime.linux_username must be a valid Docker ID")
+		errMsgs = append(errMsgs, "USER_SERVICE_RUNTIME_LINUX_USERNAME must be a valid Docker ID")
 	}
 
 	if cfg.UserService.Runtime.LinuxHostname == "" {
-		errMsgs = append(errMsgs, "user_service.runtime.linux_hostname is required")
+		errMsgs = append(errMsgs, "USER_SERVICE_RUNTIME_LINUX_HOSTNAME is required")
 	} else if !ruleset.AllowedDockerID(cfg.UserService.Runtime.LinuxHostname) {
-		errMsgs = append(errMsgs, "user_service.runtime.linux_hostname must be a valid Docker ID")
+		errMsgs = append(errMsgs, "USER_SERVICE_RUNTIME_LINUX_HOSTNAME must be a valid Docker ID")
 	}
 
 	if cfg.UserService.Runtime.Timezone == "" {
-		errMsgs = append(errMsgs, "user_service.runtime.timezone is required")
+		errMsgs = append(errMsgs, "USER_SERVICE_RUNTIME_TIMEZONE is required")
 	}
 
 	if err := validateLimits(cfg.UserService.Limits.User); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("user_service.limits.user (%v)", err))
+		errMsgs = append(errMsgs, fmt.Sprintf("USER_SERVICE_LIMITS_USER (%v)", err))
 	}
 
 	if err := validateLimits(cfg.UserService.Limits.Admin); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("user_service.limits.admin (%v)", err))
+		errMsgs = append(errMsgs, fmt.Sprintf("USER_SERVICE_LIMITS_ADMIN (%v)", err))
 	}
 
 	if cfg.AuthService.Container.Name == "" {
-		errMsgs = append(errMsgs, "auth_service.container.name is required")
+		errMsgs = append(errMsgs, "AUTH_SERVICE_CONTAINER_NAME is required")
 	} else if !ruleset.AllowedDockerID(cfg.AuthService.Container.Name) {
-		errMsgs = append(errMsgs, "auth_service.container.name must be a valid Docker ID")
+		errMsgs = append(errMsgs, "AUTH_SERVICE_CONTAINER_NAME must be a valid Docker ID")
 	}
 
 	if cfg.AuthService.Container.ExternalPort <= 0 || cfg.AuthService.Container.ExternalPort > 65535 {
-		errMsgs = append(errMsgs, "auth_service.container.external_port must be a valid port number (1-65535)")
+		errMsgs = append(errMsgs, "AUTH_SERVICE_CONTAINER_EXTERNAL_PORT must be a valid port number (1-65535)")
 	}
 
 	if cfg.AuthService.Runtime.Timezone == "" {
-		errMsgs = append(errMsgs, "auth_service.runtime.timezone is required")
+		errMsgs = append(errMsgs, "AUTH_SERVICE_RUNTIME_TIMEZONE is required")
 	}
 
-	if cfg.AuthService.ServiceURL.Login == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.login is required")
-	}
-
-	if cfg.AuthService.ServiceURL.Logout == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.logout is required")
-	}
-
-	if cfg.AuthService.ServiceURL.Service == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.service is required")
-	}
-
-	if cfg.AuthService.ServiceURL.Terminal == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.terminal is required")
-	}
-
-	if cfg.AuthService.ServiceURL.Signup == "" {
-		errMsgs = append(errMsgs, "auth_service.service_url.signup is required")
+	if err := ValidateAuthRoutes(cfg); err != nil {
+		errMsgs = append(errMsgs, err.Error())
 	}
 
 	if cfg.AuthService.Mounts.HostAuthListPath == "" {
-		errMsgs = append(errMsgs, "auth_service.mounts.host_auth_list_path is required")
-	} else if err := UsablePath(cfg.AuthService.Mounts.HostAuthListPath); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("auth_service.mounts.host_auth_list_path (%v)", err))
+		errMsgs = append(errMsgs, "AUTH_SERVICE_MOUNTS_HOST_AUTH_LIST_PATH is required")
+	} else if err := usableStoragePath(cfg.AuthService.Mounts.HostAuthListPath, false); err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("AUTH_SERVICE_MOUNTS_HOST_AUTH_LIST_PATH (%v)", err))
 	}
 
 	if cfg.AuthService.Mounts.ContainerAuthListPath == "" {
-		errMsgs = append(errMsgs, "auth_service.mounts.container_auth_list_path is required")
+		errMsgs = append(errMsgs, "AUTH_SERVICE_MOUNTS_CONTAINER_AUTH_LIST_PATH is required")
 	} else if !strings.HasPrefix(cfg.AuthService.Mounts.ContainerAuthListPath, "/") {
-		errMsgs = append(errMsgs, "auth_service.mounts.container_auth_list_path must start with '/'")
+		errMsgs = append(errMsgs, "AUTH_SERVICE_MOUNTS_CONTAINER_AUTH_LIST_PATH must start with '/'")
 	}
 
 	if cfg.AuthService.Security.SessionSecret == "" {
-		errMsgs = append(errMsgs, "auth_service.security.session_secret is required")
+		errMsgs = append(errMsgs, "AUTH_SERVICE_SECURITY_SESSION_SECRET is required")
 	}
 
 	if err := subnet.IsValidSubnetList(cfg.AuthService.Security.TrustedProxies); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("auth_service.security.trusted_proxies (%v)", err))
+		errMsgs = append(errMsgs, fmt.Sprintf("AUTH_SERVICE_SECURITY_TRUSTED_PROXIES (%v)", err))
 	}
 
 	if cfg.ManagerService.Container.Name == "" {
-		errMsgs = append(errMsgs, "manager_service.container.name is required")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NAME is required")
 	} else if !ruleset.AllowedDockerID(cfg.ManagerService.Container.Name) {
-		errMsgs = append(errMsgs, "manager_service.container.name must be a valid Docker ID")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NAME must be a valid Docker ID")
 	} else if cfg.ManagerService.Container.Name == cfg.AuthService.Container.Name {
-		errMsgs = append(errMsgs, "manager_service.container.name cannot be the same as auth_service.container.name")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NAME cannot be the same as AUTH_SERVICE_CONTAINER_NAME")
 	}
 
 	if cfg.ManagerService.Container.Network == "" {
-		errMsgs = append(errMsgs, "manager_service.container.network is required")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NETWORK is required")
 	} else if !ruleset.AllowedDockerID(cfg.ManagerService.Container.Network) {
-		errMsgs = append(errMsgs, "manager_service.container.network must be a valid Docker ID")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NETWORK must be a valid Docker ID")
 	} else if cfg.ManagerService.Container.Network == cfg.UserService.Container.NetworkNamePrefix {
-		errMsgs = append(errMsgs, "manager_service.container.network cannot be the same as user_service.container.network_name_prefix")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NETWORK cannot be the same as USER_SERVICE_CONTAINER_NETWORK_NAME_PREFIX")
 	}
 
 	if cfg.ManagerService.Container.Subnet == "" {
-		errMsgs = append(errMsgs, "manager_service.container.subnet is required")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_SUBNET is required")
 	} else if !subnet.IsValidSubnet(cfg.ManagerService.Container.Subnet) {
-		errMsgs = append(errMsgs, "manager_service.container.subnet must be a valid subnet")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_SUBNET must be a valid subnet")
 	}
 
 	if cfg.ManagerService.Container.HomesDir == "" {
-		errMsgs = append(errMsgs, "manager_service.container.homes_dir is required")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_HOMES_DIR is required")
 	} else if !strings.HasPrefix(cfg.ManagerService.Container.HomesDir, "/") {
-		errMsgs = append(errMsgs, "manager_service.container.homes_dir must start with '/'")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_HOMES_DIR must start with '/'")
 	}
 
 	if cfg.ManagerService.Container.ShareDir == "" {
-		errMsgs = append(errMsgs, "manager_service.container.share_dir is required")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_SHARE_DIR is required")
 	} else if !strings.HasPrefix(cfg.ManagerService.Container.ShareDir, "/") {
-		errMsgs = append(errMsgs, "manager_service.container.share_dir must start with '/'")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_SHARE_DIR must start with '/'")
 	}
 
 	if cfg.ManagerService.Container.ReadonlyDir == "" {
-		errMsgs = append(errMsgs, "manager_service.container.readonly_dir is required")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_READONLY_DIR is required")
 	} else if !strings.HasPrefix(cfg.ManagerService.Container.ReadonlyDir, "/") {
-		errMsgs = append(errMsgs, "manager_service.container.readonly_dir must start with '/'")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_READONLY_DIR must start with '/'")
 	}
 
 	if cfg.ManagerService.Container.HomesDir != "" && cfg.ManagerService.Container.ShareDir != "" && cfg.ManagerService.Container.HomesDir == cfg.ManagerService.Container.ShareDir {
-		errMsgs = append(errMsgs, "manager_service.container.homes_dir and manager_service.container.share_dir cannot be the same")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_HOMES_DIR and MANAGER_SERVICE_CONTAINER_SHARE_DIR cannot be the same")
 	}
 
 	if cfg.ManagerService.Container.HomesDir != "" && cfg.ManagerService.Container.ReadonlyDir != "" && cfg.ManagerService.Container.HomesDir == cfg.ManagerService.Container.ReadonlyDir {
-		errMsgs = append(errMsgs, "manager_service.container.homes_dir and manager_service.container.readonly_dir cannot be the same")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_HOMES_DIR and MANAGER_SERVICE_CONTAINER_READONLY_DIR cannot be the same")
 	}
 
 	if cfg.ManagerService.Container.ShareDir != "" && cfg.ManagerService.Container.ReadonlyDir != "" && cfg.ManagerService.Container.ShareDir == cfg.ManagerService.Container.ReadonlyDir {
-		errMsgs = append(errMsgs, "manager_service.container.share_dir and manager_service.container.readonly_dir cannot be the same")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_SHARE_DIR and MANAGER_SERVICE_CONTAINER_READONLY_DIR cannot be the same")
 	}
 
 	if cfg.ManagerService.UserManagement.CleanupTimeout == "" {
-		errMsgs = append(errMsgs, "manager_service.user_management.cleanup_timeout is required")
-	} else if _, err := time.ParseDuration(cfg.ManagerService.UserManagement.CleanupTimeout); err != nil {
-		errMsgs = append(errMsgs, "manager_service.user_management.cleanup_timeout must be a valid duration string (e.g., 30s, 5m)")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_USER_MANAGEMENT_CLEANUP_TIMEOUT is required")
+	} else if duration, err := time.ParseDuration(cfg.ManagerService.UserManagement.CleanupTimeout); err != nil || duration < 0 {
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_USER_MANAGEMENT_CLEANUP_TIMEOUT must be a non-negative duration (0 disables cleanup)")
 	}
 
 	if cfg.ManagerService.AuthService.ConnectionTimeout == "" {
-		errMsgs = append(errMsgs, "manager_service.auth_service.connection_timeout is required")
-	} else if _, err := time.ParseDuration(cfg.ManagerService.AuthService.ConnectionTimeout); err != nil {
-		errMsgs = append(errMsgs, "manager_service.auth_service.connection_timeout must be a valid duration string (e.g., 30s, 5m)")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_AUTH_SERVICE_CONNECTION_TIMEOUT is required")
+	} else if duration, err := time.ParseDuration(cfg.ManagerService.AuthService.ConnectionTimeout); err != nil || duration <= 0 {
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_AUTH_SERVICE_CONNECTION_TIMEOUT must be a positive duration (e.g., 30s, 5m)")
 	}
 
 	if cfg.ManagerService.Security.SessionSecret == "" {
-		errMsgs = append(errMsgs, "manager_service.security.session_secret is required")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_SECURITY_SESSION_SECRET is required")
 	}
 
 	if cfg.ManagerService.AdminID == "" {
-		errMsgs = append(errMsgs, "manager_service.admin_id is required")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_ADMIN_ID is required")
 	} else if !ruleset.AllowedDockerID(cfg.ManagerService.AdminID) {
-		errMsgs = append(errMsgs, "manager_service.admin_id must be a valid Docker ID")
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_ADMIN_ID must be a valid Docker ID")
 	}
 
 	if cfg.Volumes.Host.Volumes == "" {
-		errMsgs = append(errMsgs, "volumes.host.volumes is required")
-	} else if err := UsablePath(cfg.Volumes.Host.Volumes); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.volumes (%v)", err))
+		errMsgs = append(errMsgs, "VOLUMES_HOST_VOLUMES is required")
+	} else if err := usableStoragePath(cfg.Volumes.Host.Volumes, true); err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("VOLUMES_HOST_VOLUMES (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Homes == "" {
-		errMsgs = append(errMsgs, "volumes.host.homes is required")
-	} else if err := UsablePath(cfg.Volumes.Host.Homes); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.homes (%v)", err))
+		errMsgs = append(errMsgs, "VOLUMES_HOST_HOMES is required")
+	} else if err := usableStoragePath(cfg.Volumes.Host.Homes, true); err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("VOLUMES_HOST_HOMES (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Share == "" {
-		errMsgs = append(errMsgs, "volumes.host.share is required")
-	} else if err := UsablePath(cfg.Volumes.Host.Share); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.share (%v)", err))
+		errMsgs = append(errMsgs, "VOLUMES_HOST_SHARE is required")
+	} else if err := usableStoragePath(cfg.Volumes.Host.Share, true); err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("VOLUMES_HOST_SHARE (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Readonly == "" {
-		errMsgs = append(errMsgs, "volumes.host.readonly is required")
-	} else if err := UsablePath(cfg.Volumes.Host.Readonly); err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("volumes.host.readonly (%v)", err))
+		errMsgs = append(errMsgs, "VOLUMES_HOST_READONLY is required")
+	} else if err := usableStoragePath(cfg.Volumes.Host.Readonly, true); err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("VOLUMES_HOST_READONLY (%v)", err))
 	}
 
 	if cfg.Volumes.Container.Share == "" {
-		errMsgs = append(errMsgs, "volumes.container.share_dir is required")
+		errMsgs = append(errMsgs, "VOLUMES_CONTAINER_SHARE is required")
 	} else if !strings.HasPrefix(cfg.Volumes.Container.Share, "/") {
-		errMsgs = append(errMsgs, "volumes.container.share_dir must start with '/'")
+		errMsgs = append(errMsgs, "VOLUMES_CONTAINER_SHARE must start with '/'")
 	}
 
 	if cfg.Volumes.Container.Readonly == "" {
-		errMsgs = append(errMsgs, "volumes.container.readonly_dir is required")
+		errMsgs = append(errMsgs, "VOLUMES_CONTAINER_READONLY is required")
 	} else if !strings.HasPrefix(cfg.Volumes.Container.Readonly, "/") {
-		errMsgs = append(errMsgs, "volumes.container.readonly_dir must start with '/'")
+		errMsgs = append(errMsgs, "VOLUMES_CONTAINER_READONLY must start with '/'")
 	}
 
 	if cfg.Volumes.DiskLimit == "" {
-		errMsgs = append(errMsgs, "volumes.disk_limit is required")
-	} else if _, err := convert.BytesFromString(cfg.Volumes.DiskLimit); err != nil {
-		errMsgs = append(errMsgs, "volumes.disk_limit must be a valid size string (e.g., 1g, 512m)")
+		errMsgs = append(errMsgs, "VOLUMES_DISK_LIMIT is required")
+	} else if size, err := convert.BytesFromString(cfg.Volumes.DiskLimit); err != nil || size <= 1024*1024 {
+		errMsgs = append(errMsgs, "VOLUMES_DISK_LIMIT must be a valid size greater than 1MiB (e.g., 1g, 512m)")
+	}
+
+	if err := validateVolumePaths(cfg); err != nil {
+		errMsgs = append(errMsgs, err.Error())
 	}
 
 	if len(errMsgs) > 0 {
@@ -244,19 +235,29 @@ func ValidateConfig(cfg *Config) error {
 	return nil
 }
 
-// UsablePath checks if the given path is usable (exists or can be created).
+// UsablePath validates a path without creating or removing directories.
 func UsablePath(path string) error {
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			if err := os.MkdirAll(path, 0755); err != nil {
-				return fmt.Errorf("path does not exist and cannot be created: %s", path)
-			} else {
-				// Clean up the created directory if it was just for validation
-				defer os.RemoveAll(path)
-			}
-			return nil
-		}
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
+// Missing paths are prepared by up. Existing paths must have the right type.
+func usableStoragePath(path string, directory bool) error {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
 		return err
+	}
+	if directory && !info.IsDir() {
+		return fmt.Errorf("must be a directory")
+	}
+	if !directory && !info.Mode().IsRegular() {
+		return fmt.Errorf("must be a regular file")
 	}
 	return nil
 }
@@ -286,8 +287,8 @@ func validateLimits(l Limits) error {
 	disk, err := convert.BytesFromString(l.Disk)
 	if err != nil {
 		errMsgs = append(errMsgs, "disk limit must be a valid size string (e.g., 1g, 512m)")
-	} else if disk <= 0 {
-		errMsgs = append(errMsgs, "disk limit must be greater than zero")
+	} else if disk <= 1024*1024 {
+		errMsgs = append(errMsgs, "disk limit must be greater than 1MiB")
 	}
 
 	if l.Ulimits.Nofile.Soft <= 0 {
@@ -301,7 +302,7 @@ func validateLimits(l Limits) error {
 	}
 
 	if len(errMsgs) > 0 {
-		return fmt.Errorf(strings.Join(errMsgs, "; "))
+		return fmt.Errorf("%s", strings.Join(errMsgs, "; "))
 	}
 
 	return nil

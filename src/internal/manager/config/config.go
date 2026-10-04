@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	commonconfig "github.com/elecbug/linuxus/src/internal/common/config"
+	"time"
+)
 
 // ResourceLimits defines Docker resource constraints for a runtime container.
 type ResourceLimits struct {
@@ -18,6 +21,15 @@ type ResourceLimits struct {
 
 // Config contains all runtime settings for the manager service.
 type Config struct {
+	AuthListFile string
+	MaxRunning   int
+	MaxPending   int
+	MinFreeBytes int64
+	Templates    map[string]commonconfig.Template
+	Classes      map[string]string
+
+	AutoEnsure        bool
+	DiskServiceSocket string
 	// ListenAddr is the HTTP server bind address.
 	ListenAddr string
 	// UserImage is the Docker image used for user runtimes.

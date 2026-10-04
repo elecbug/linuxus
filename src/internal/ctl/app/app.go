@@ -18,27 +18,20 @@ type App struct {
 	// systemAPI abstracts OS-specific operations for better testability and error handling.
 	systemAPI system_api.API
 
-	// currentDir is the directory where the CLI command was executed.
-	currentDir string
 	// execPath is the absolute executable path for the running binary.
 	execPath string
-	// repoDir is the repository root resolved from the executable location.
-	repoDir string
-	// sourceDir points to the repository source directory.
-	sourceDir string
 	// configFile points to the runtime configuration file.
 	configFile string
+	supervised bool
 
 	// Config stores the parsed application configuration.
 	Config config.Config
 	// UserIDs stores raw user IDs parsed from auth list.
 	UserIDs map[string]string
-	// seen tracks deduplication of user IDs while parsing auth data.
-	seen map[string]struct{}
 }
 
 // CreateApp creates an App instance and initializes the Docker client.
-func CreateApp(currentDir, execDir, repoDir, sourceDir, configFile string) (*App, error) {
+func CreateApp(execPath, configFile string) (*App, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
@@ -48,14 +41,15 @@ func CreateApp(currentDir, execDir, repoDir, sourceDir, configFile string) (*App
 		dockerClient: cli,
 		context:      context.Background(),
 		systemAPI:    system_api.NewSystemAPI(),
-		currentDir:   currentDir,
-		execPath:     execDir,
-		repoDir:      repoDir,
-		sourceDir:    sourceDir,
+		execPath:     execPath,
 		configFile:   configFile,
-		seen:         make(map[string]struct{}),
 		UserIDs:      nil,
 	}
 
 	return app, nil
+}
+
+// Close releases the Docker client resources.
+func (a *App) Close() error {
+	return a.dockerClient.Close()
 }

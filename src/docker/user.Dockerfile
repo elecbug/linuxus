@@ -12,17 +12,18 @@ RUN rm -rf /var/lib/apt/lists/*
 RUN locale-gen en_US.UTF-8
 
 ARG CONTAINER_RUNTIME_USER=linuxus
+ARG CONTAINER_UID=1000
+ARG CONTAINER_GID=1000
 
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
 # Create a fixed runtime user at build time
-RUN groupadd -g 1000 $CONTAINER_RUNTIME_USER && useradd -m -u 1000 -g 1000 -s /bin/bash $CONTAINER_RUNTIME_USER
+RUN groupadd -g "$CONTAINER_GID" "$CONTAINER_RUNTIME_USER" && useradd -m -u "$CONTAINER_UID" -g "$CONTAINER_GID" -s /bin/bash "$CONTAINER_RUNTIME_USER"
 
-COPY docker/start.sh /start.sh
+COPY start.sh /start.sh
+COPY templates /opt/linuxus/templates
 RUN chmod +x /start.sh
 
 CMD ["/start.sh"]

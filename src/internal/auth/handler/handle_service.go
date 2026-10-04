@@ -24,9 +24,11 @@ func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Pragma", "no-cache")
 
 	data := struct {
-		ID string
+		ID      string
+		IsAdmin bool
 	}{
-		ID: id,
+		ID:      id,
+		IsAdmin: a.adminID != "" && id == a.adminID,
 	}
 
 	if err := a.serviceTmpl.Execute(w, data); err != nil {

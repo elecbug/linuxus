@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -17,7 +18,23 @@ func (a *App) ServiceUp(params *cli.Parameters) error {
 
 	log.Log(log.RUN_PREFIX, "Starting runtime-managed containers...")
 
-	if err := a.buildRuntimeImages(); err != nil {
+	if err := a.checkSupervisor(); err != nil {
+		return err
+	}
+	build := a.buildRuntimeImages
+	if a.supervised {
+		build = a.ensureCachedImages
+	}
+	if err := build(); err != nil {
+		return err
+	}
+	if err := user.EnsureFile(a.Config.AuthService.Mounts.HostAuthListPath); err != nil {
+		return err
+	}
+	if err := a.ensureDiskAll(); err != nil {
+		return err
+	}
+	if err := a.startDiskService(); err != nil {
 		return err
 	}
 	if err := a.ensureRuntimeNetworks(); err != nil {
@@ -36,19 +53,23 @@ func (a *App) ServiceUp(params *cli.Parameters) error {
 
 // ServiceDown stops and removes all runtime-managed services.
 func (a *App) ServiceDown(params *cli.Parameters) error {
+	if err := a.checkSupervisor(); err != nil {
+		return err
+	}
 	if params != nil && (len(params.Params) > 0 || params.MainParam != "") {
 		return fmt.Errorf("service down option does not accept any parameters, please remove any provided parameters")
 	}
 
 	log.Log(log.RUN_PREFIX, "Stopping runtime-managed containers...")
 
-	if err := a.removeManagedContainers(); err != nil {
+	containerErr := a.removeManagedContainers()
+	diskErr := a.stopDiskService()
+	if err := errors.Join(containerErr, diskErr); err != nil {
 		return err
 	}
 	if err := a.removeManagedNetworks(); err != nil {
 		return err
 	}
-
 	log.Log(log.DETAIL_PREFIX, "Runtime services stopped.")
 	return nil
 }
@@ -117,6 +138,10 @@ func (a *App) ServicePS(params *cli.Parameters) error {
 
 // ServiceCleanVolume unmounts and removes managed volume data and loop devices.
 func (a *App) ServiceCleanVolume(params *cli.Parameters) error {
+	return a.withMaintenanceLock(func() error { return a.cleanVolumeServiceLocked(params) })
+}
+
+func (a *App) cleanVolumeServiceLocked(params *cli.Parameters) error {
 	if len(params.Params) > 1 || (len(params.Params) == 1 && params.MainParam != "") {
 		return fmt.Errorf("too many parameters for volume clean option, please specify only one '--user <USERNAME>' or use '--all' to clean volumes for all users")
 	}
@@ -221,7 +246,7 @@ func (a *App) ServiceAddUser(params *cli.Parameters) error {
 		return fmt.Errorf("failed to add user: %w", err)
 	}
 
-	if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
+	if err := a.ensureDiskUser(userID); err != nil {
 		return fmt.Errorf("failed to create user disk: %w", err)
 	}
 
@@ -263,12 +288,19 @@ func (a *App) ServiceRemoveUser(params *cli.Parameters) error {
 		return nil
 	}
 
-	if err := user.RemoveUser(a.Config.AuthService.Mounts.HostAuthListPath, a.UserIDs, userID); err != nil {
-		return fmt.Errorf("failed to remove user: %w", err)
-	}
-
-	if err := a.cleanVolumeUser(userID); err != nil {
-		return fmt.Errorf("failed to clean user volumes: %w", err)
+	if err := a.withMaintenanceLock(func() error {
+		if err := a.checkPendingRestore(userID); err != nil {
+			return err
+		}
+		if err := user.RemoveUser(a.Config.AuthService.Mounts.HostAuthListPath, a.UserIDs, userID); err != nil {
+			return fmt.Errorf("failed to remove user: %w", err)
+		}
+		if err := a.stopUserRuntime(userID); err != nil {
+			return fmt.Errorf("account removed; home data retained because runtime shutdown failed: %w", err)
+		}
+		return a.cleanVolumeUser(userID)
+	}); err != nil {
+		return err
 	}
 
 	log.Log(log.DETAIL_PREFIX, "User %s removed successfully.", userID)

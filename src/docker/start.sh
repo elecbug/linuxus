@@ -2,14 +2,20 @@
 
 set -e
 
-echo "ENVIRONMENT VARIABLES:"
-env | sort
-
 HOME_DIR="/home/${CONTAINER_RUNTIME_USER}"
+
+# Seed only missing files; changing templates never overwrites student work.
+if [ -n "${LINUXUS_TEMPLATE_SEED:-}" ]; then
+    if [ ! -d "$LINUXUS_TEMPLATE_SEED" ]; then
+        echo "Template seed directory is missing" >&2
+        exit 1
+    fi
+    cp -an -- "$LINUXUS_TEMPLATE_SEED/." "$HOME_DIR/"
+fi
 
 BASHRC="$HOME_DIR/.bashrc"
 if ! grep -q 'Welcome to the linuxus service shell' "$BASHRC" 2>/dev/null; then
-    cat > "$BASHRC" <<EOF
+    cat >> "$BASHRC" <<EOF
 echo "+---------------------------------------------------+"
 echo "|       Welcome to the linuxus service shell.       |"
 echo "+---------------------------------------------------+"

@@ -1,8 +1,7 @@
 package handler
 
 import (
-	"crypto/hmac"
-	"encoding/base64"
+	"context"
 	"html/template"
 	"log"
 	"net"
@@ -12,12 +11,18 @@ import (
 	"time"
 
 	"github.com/elecbug/linuxus/src/internal/auth/page"
+	commonconfig "github.com/elecbug/linuxus/src/internal/common/config"
 )
 
 // App holds auth server state, templates, and manager integration clients.
 type App struct {
+	adminID   string
+	templates map[string]commonconfig.Template
+	classes   map[string]string
 	// users maps user IDs to bcrypt password hashes.
 	users map[string]string
+	// usersMu protects credential reloads, lookups and signup writes.
+	usersMu sync.Mutex
 	// authListFile is the path to the auth list file in container.
 	authListFile string
 	// sessionKey is used to sign session cookie payloads.
@@ -61,7 +66,9 @@ type App struct {
 	userFails map[string]*loginAttempt
 
 	// done signals background goroutines to stop.
-	done chan struct{}
+	done           chan struct{}
+	stopOnce       sync.Once
+	sessionCancels map[*http.Request]context.CancelFunc
 
 	// mux is the HTTP request multiplexer.
 	mux *http.ServeMux
@@ -80,6 +87,9 @@ type App struct {
 
 // AppConfig defines all configuration values required to initialize an App.
 type AppConfig struct {
+	AdminID   string
+	Templates map[string]commonconfig.Template
+	Classes   map[string]string
 	// Users maps user IDs to bcrypt password hashes.
 	Users map[string]string
 	// AuthListFile is the path to the auth list file in container.
@@ -141,7 +151,11 @@ func NewApp(config *AppConfig) *App {
 		timeout = 10 * time.Second
 	}
 
+	if config.Users == nil {
+		config.Users = make(map[string]string)
+	}
 	app := &App{
+		adminID: config.AdminID, templates: config.Templates, classes: config.Classes,
 		users:                   config.Users,
 		authListFile:            config.AuthListFile,
 		sessionKey:              config.SessionKey,
@@ -163,7 +177,8 @@ func NewApp(config *AppConfig) *App {
 		ipFails:   make(map[string]*loginAttempt),
 		userFails: make(map[string]*loginAttempt),
 
-		done: make(chan struct{}),
+		done:           make(chan struct{}),
+		sessionCancels: make(map[*http.Request]context.CancelFunc),
 
 		sessionMu:            sync.Mutex{},
 		activeSessions:       make(map[string]int),
@@ -215,12 +230,14 @@ func (a *App) SignupPath() string {
 // Start launches the HTTP server using the configured route multiplexer.
 func (a *App) Start(addr string) error {
 	log.Printf("Auth server listening on %s", addr)
-	return http.ListenAndServe(addr, a.mux)
+	go a.sessionReporter()
+	server := &http.Server{Addr: addr, Handler: a.mux, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
+	return server.ListenAndServe()
 }
 
 // Stop signals background maintenance routines to terminate.
 func (a *App) Stop() {
-	close(a.done)
+	a.stopOnce.Do(func() { close(a.done) })
 }
 
 // RegisterRoutes compiles templates and binds HTTP handlers.
@@ -251,6 +268,10 @@ func (a *App) RegisterRoutes() {
 	a.signupTmpl = signupTmpl
 
 	a.mux.HandleFunc("/", a.handleRoot)
+	a.mux.HandleFunc("/admin", a.handleAdmin)
+	a.mux.HandleFunc("/admin/", a.handleAdmin)
+	a.mux.HandleFunc("/admin/api/users", a.handleAdminUsers)
+	a.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 	a.mux.HandleFunc("/"+a.loginPath, a.handleLogin)
 	a.mux.HandleFunc("/"+a.logoutPath, a.handleLogout)
 	a.mux.HandleFunc("/"+a.signupPath, a.handleSignup)
@@ -281,32 +302,4 @@ func (a *App) evictStaleEntries() {
 			delete(a.userFails, id)
 		}
 	}
-}
-
-// getSessionID validates the signed session cookie and returns the user ID.
-func (a *App) getSessionID(r *http.Request) (string, bool) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		return "", false
-	}
-
-	raw, err := base64.StdEncoding.DecodeString(cookie.Value)
-	if err != nil {
-		return "", false
-	}
-
-	parts := strings.SplitN(string(raw), "|", 2)
-	if len(parts) != 2 {
-		return "", false
-	}
-
-	id := parts[0]
-	signature := parts[1]
-
-	expected := a.sign(id)
-	if !hmac.Equal([]byte(signature), []byte(expected)) {
-		return "", false
-	}
-
-	return id, true
 }

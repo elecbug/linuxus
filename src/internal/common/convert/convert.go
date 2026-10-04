@@ -2,7 +2,7 @@ package convert
 
 import (
 	"fmt"
-	"path/filepath"
+	"math"
 	"strconv"
 	"strings"
 
@@ -46,31 +46,17 @@ func FormatUserName(containerNamePrefix, authContainerName, managerContainerName
 	return "-"
 }
 
-// PathToAbs resolves a path relative to the configured source directory.
-func PathToAbs(path string) string {
-	if path == "" {
-		return path
-	}
-	if filepath.IsAbs(path) {
-		return path
-	}
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return path
-	}
-	return filepath.Clean(absPath)
-}
-
 // NanoCPUsFromString converts a CPU value to Docker NanoCPUs.
 func NanoCPUsFromString(v string) (int64, error) {
 	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
 	if err != nil {
 		return 0, err
 	}
-	if f < 0 {
-		return 0, fmt.Errorf("must be non-negative")
+	nano := f * 1_000_000_000
+	if math.IsNaN(f) || math.IsInf(f, 0) || f < 0 || nano >= float64(math.MaxInt64) {
+		return 0, fmt.Errorf("CPU limit must be finite, non-negative and fit in int64 NanoCPUs")
 	}
-	return int64(f * 1_000_000_000), nil
+	return int64(nano), nil
 }
 
 // BytesFromString converts a memory string to bytes.
@@ -109,6 +95,9 @@ func BytesFromString(v string) (int64, error) {
 	if n < 0 {
 		return 0, fmt.Errorf("must be non-negative")
 	}
+	if n > math.MaxInt64/mult {
+		return 0, fmt.Errorf("size exceeds int64 byte range")
+	}
 	return n * mult, nil
 }
 
@@ -121,6 +110,13 @@ func PortBindingFromString(s string) (nat.Port, nat.PortBinding, error) {
 
 	hostPort := strings.TrimSpace(parts[0])
 	containerPart := strings.TrimSpace(parts[1])
+
+	if _, err := strconv.ParseUint(hostPort, 10, 16); err != nil {
+		return "", nat.PortBinding{}, fmt.Errorf("host port must be in 0-65535: %w", err)
+	}
+	if port, err := strconv.ParseUint(containerPart, 10, 16); err != nil || port == 0 {
+		return "", nat.PortBinding{}, fmt.Errorf("container port must be in 1-65535")
+	}
 
 	containerPort, err := nat.NewPort("tcp", containerPart)
 	if err != nil {

@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/elecbug/linuxus/src/internal/auth"
 	"github.com/elecbug/linuxus/src/internal/common/config"
+	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 	"github.com/elecbug/linuxus/src/internal/ctl/app"
 	"github.com/elecbug/linuxus/src/internal/ctl/cli"
 	"github.com/elecbug/linuxus/src/internal/ctl/log"
+	"github.com/elecbug/linuxus/src/internal/manager"
 )
 
 // main executes the CLI entrypoint and prints user-friendly errors.
@@ -33,19 +37,37 @@ const (
 	ADD_USER
 	REMOVE_USER
 	HELP
+	SERVE_DISKS
+	INIT
+	CONFIG_CHECK
+	DOCTOR
+	ACCOUNTS
+	LIST_USERS
+	TEMPLATES
+	BACKUP
+	RESTORE
+	VERIFY_BACKUP
+	SYSTEMD_UNIT
+	SUPERVISE
 )
 
 // Options encapsulates the selected operations and their parameters.
 type Options struct {
-	Option Opt
-	Params *cli.Parameters
+	Option  Opt
+	Command string
+	Params  *cli.Parameters
 }
 
 // run initializes the application and executes selected runtime operations.
 func run() error {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return err
+	// Containers run the same binary without host-side configuration files.
+	if len(os.Args) == 2 {
+		switch os.Args[1] {
+		case "serve-auth":
+			return auth.Run()
+		case "serve-manager":
+			return manager.Run()
+		}
 	}
 
 	execPath, err := os.Executable()
@@ -58,10 +80,6 @@ func run() error {
 		return err
 	}
 
-	repoDir := filepath.Dir(execPath)
-	sourceDir := filepath.Join(repoDir, "src")
-	configFile := filepath.Join(repoDir, "cfg", "config.yml")
-
 	opt, err := parseArgs(os.Args[0], os.Args[1:])
 	if err != nil {
 		return err
@@ -72,10 +90,38 @@ func run() error {
 		return nil
 	}
 
-	a, err := app.CreateApp(currentDir, execPath, repoDir, sourceDir, configFile)
+	if opt.Option == VERIFY_BACKUP {
+		return app.VerifyBackup(opt.Params.Params["file"], os.Stdout)
+	}
+	configFile, err := config.ResolveConfigFile()
 	if err != nil {
 		return err
 	}
+
+	if opt.Option == INIT {
+		if err := config.InitFile(configFile); err != nil {
+			return err
+		}
+		log.Log(log.DETAIL_PREFIX, "Created %s from embedded defaults.", configFile)
+		return nil
+	}
+
+	if opt.Option == CONFIG_CHECK {
+		return app.CheckConfig(configFile, os.Stdout)
+	}
+	if opt.Option == DOCTOR {
+		return app.Doctor(configFile, os.Stdout)
+	}
+
+	if opt.Option == SYSTEMD_UNIT {
+		return app.WriteSystemdUnit(execPath, configFile, os.Stdout)
+	}
+	a, err := app.CreateApp(execPath, configFile)
+	if err != nil {
+		return err
+	}
+
+	defer a.Close()
 
 	if err := a.LoadConfig(); err != nil {
 		return err
@@ -86,6 +132,20 @@ func run() error {
 	}
 
 	switch opt.Option {
+	case LIST_USERS:
+		return a.ListUsers(os.Stdout)
+	case TEMPLATES:
+		return a.ListTemplates(os.Stdout)
+	case ACCOUNTS:
+		return a.ServiceAccount(opt.Command, opt.Params)
+	case BACKUP:
+		return a.BackupUser(opt.Params.Params["user"], opt.Params.Params["output"])
+	case RESTORE:
+		return a.RestoreUser(opt.Params.Params["user"], opt.Params.Params["file"], opt.Params.Params["replace"] == cli.TRUE_STR)
+	case SUPERVISE:
+		return a.Supervise()
+	case SERVE_DISKS:
+		return a.ServeDisks()
 	case UP:
 		if err := a.ServiceUp(opt.Params); err != nil {
 			return err
@@ -140,6 +200,28 @@ func parseArgs(bin string, args []string) (Options, error) {
 	}
 
 	switch args[0] {
+	case "list-users":
+		result.Option = LIST_USERS
+	case "templates":
+		result.Option = TEMPLATES
+	case "recover-user", "lock-user", "unlock-user", "reset-password", "disconnect-user", "assign-template", "assign-class":
+		result.Option = ACCOUNTS
+	case "backup-user":
+		result.Option = BACKUP
+	case "restore-user":
+		result.Option = RESTORE
+	case "verify-backup":
+		result.Option = VERIFY_BACKUP
+	case "systemd-unit":
+		result.Option = SYSTEMD_UNIT
+	case "supervise":
+		result.Option = SUPERVISE
+	case "init":
+		result.Option = INIT
+	case "config-check":
+		result.Option = CONFIG_CHECK
+	case "doctor":
+		result.Option = DOCTOR
 	case "up":
 		result.Option = UP
 	case "down":
@@ -158,18 +240,89 @@ func parseArgs(bin string, args []string) (Options, error) {
 		result.Option = REMOVE_USER
 	case "help":
 		result.Option = HELP
+	case "serve-disks":
+		result.Option = SERVE_DISKS
 	default:
 		return result, fmt.Errorf("invalid parameter: '%s'\n\n%s", args[0], usageText(bin, true, true, false))
 	}
 
+	result.Command = args[0]
 	params := make([]string, 0)
 
 	if len(args) > 1 {
 		params = append(params, args[1:]...)
 	}
 
-	result.Params = cli.ParseParams(params)
-
+	parsed, err := cli.ParseParams(params)
+	if err != nil {
+		return result, err
+	}
+	result.Params = parsed
+	switch result.Option {
+	case UP, DOWN, RESTART, HELP, SERVE_DISKS, INIT, CONFIG_CHECK, DOCTOR, LIST_USERS, TEMPLATES, SYSTEMD_UNIT, SUPERVISE:
+		if len(params) != 0 {
+			return result, fmt.Errorf("%s does not accept arguments", args[0])
+		}
+	case ACCOUNTS, BACKUP, RESTORE, VERIFY_BACKUP:
+		allowed := map[string]bool{}
+		if result.Option != VERIFY_BACKUP {
+			allowed["user"] = true
+		}
+		switch result.Option {
+		case BACKUP:
+			allowed["output"] = true
+		case RESTORE:
+			allowed["file"] = true
+		case VERIFY_BACKUP:
+			allowed["file"] = true
+		case ACCOUNTS:
+			if args[0] == "assign-template" {
+				allowed["template"] = true
+			}
+			if args[0] == "assign-class" {
+				allowed["class"] = true
+			}
+		}
+		for key := range allowed {
+			if parsed.Params[key] == "" {
+				return result, fmt.Errorf("%s requires --%s", args[0], key)
+			}
+		}
+		if result.Option == RESTORE {
+			allowed["replace"] = true
+		}
+		for key := range parsed.Params {
+			if !allowed[key] {
+				return result, fmt.Errorf("unsupported --%s for %s", key, args[0])
+			}
+		}
+		if parsed.MainParam != "" {
+			return result, fmt.Errorf("unexpected positional argument")
+		}
+		if id := parsed.Params["user"]; id != "" && !ruleset.AllowedUserID(id) {
+			return result, fmt.Errorf("invalid user ID")
+		}
+	case PS:
+		if len(parsed.Params) != 0 {
+			return result, fmt.Errorf("ps only accepts container, network, all, c, n, or a")
+		}
+		switch strings.ToLower(parsed.MainParam) {
+		case "", "container", "network", "all", "c", "n", "a":
+		default:
+			return result, fmt.Errorf("ps only accepts container, network, all, c, n, or a")
+		}
+	case ADD_USER, REMOVE_USER, CLEAN_VOLUME, ENSURE_DISK:
+		if parsed.MainParam != "" || len(parsed.Params) != 1 {
+			return result, fmt.Errorf("%s requires exactly one --user <USERNAME> or supported --all option", args[0])
+		}
+		if id, ok := parsed.Params["user"]; ok {
+			if !ruleset.AllowedUserID(id) {
+				return result, fmt.Errorf("invalid user ID: %q", id)
+			}
+		} else if _, all := parsed.Params["all"]; !all || result.Option == ADD_USER || result.Option == REMOVE_USER {
+			return result, fmt.Errorf("%s requires --user <USERNAME>", args[0])
+		}
+	}
 	return result, nil
 }
 
@@ -187,8 +340,12 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 	if showUsage {
 		result += "Usage: " + fmt.Sprintf("%s [OPTION]...\n", bin)
 		result += "\n"
+		result += "Config: /etc/linuxus/.env (override with LINUXUS_CONFIG=/absolute/path/.env)\n\n"
 		result += "Options:\n"
 		result += "├─ General:\n"
+		result += fmt.Sprintf("│  ├─ %-35s# Create /etc/linuxus/.env from embedded defaults\n", "init")
+		result += fmt.Sprintf("│  ├─ %-35s# Validate settings without Docker or service changes\n", "config-check")
+		result += fmt.Sprintf("│  ├─ %-35s# Diagnose host prerequisites without changing state\n", "doctor")
 		result += fmt.Sprintf("│  └─ %-35s# Show help message\n", "help")
 		result += "│\n"
 		result += "├─ Service Management:\n"
@@ -197,6 +354,16 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 		result += fmt.Sprintf("│  ├─ %-35s# Restart services\n", "restart")
 		result += fmt.Sprintf("│  └─ %-35s# Show status about linuxus service\n", "ps [OPTION]")
 		result += fmt.Sprintf("│     %-35s  - OPTION can be one of container, network, all or their shorthand c, n, a. If not specified, defaults to all.\n", "")
+		result += "│\n"
+		result += "├─ Operations:\n"
+		result += "│  systemd-unit | list-users | templates\n"
+		result += "│  lock-user | unlock-user | reset-password | disconnect-user --user <ID>\n"
+		result += "│  assign-template --user <ID> --template <NAME>\n"
+		result += "│  assign-class --user <ID> --class <NAME>\n"
+		result += "│  backup-user --user <ID> --output <ARCHIVE>\n"
+		result += "│  restore-user --user <ID> --file <ARCHIVE> [--replace]\n"
+		result += "│  verify-backup --file <ARCHIVE>\n"
+		result += "│  recover-user --user <ID>  (clear abandoned maintenance; keep locked)\n"
 		result += "│\n"
 		result += "├─ User Management:\n"
 		result += fmt.Sprintf("│  ├─ %-35s# Add a new user\n", "add-user --user <USERNAME>")
@@ -211,6 +378,7 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 	if showExample {
 		result += "\n"
 		result += "Examples:\n"
+		result += fmt.Sprintf("├─ %-35s# Initialize deployment configuration\n", fmt.Sprintf("%s init", bin))
 		result += fmt.Sprintf("├─ %-35s# Build and start\n", fmt.Sprintf("%s up", bin))
 		result += fmt.Sprintf("├─ %-35s# Restart\n", fmt.Sprintf("%s restart", bin))
 		result += fmt.Sprintf("└─ %-35s# Show network status of linuxus service\n", fmt.Sprintf("%s ps network", bin))

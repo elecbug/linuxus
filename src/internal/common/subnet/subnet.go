@@ -3,14 +3,17 @@ package subnet
 import (
 	"fmt"
 	"net"
-	"regexp"
 	"strings"
 )
 
 // IsValidSubnet checks if the given string is a valid subnet in CIDR notation.
 func IsValidSubnet(subnet string) bool {
-	regex := regexp.MustCompile(`^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$`)
-	return regex.MatchString(subnet)
+	ip, network, err := net.ParseCIDR(subnet)
+	if err != nil {
+		return false
+	}
+	_, bits := network.Mask.Size()
+	return bits == 32 && ip.To4() != nil
 }
 
 // IsValidSubnetList checks if the given string is a valid comma-separated list of CIDR blocks.
@@ -24,7 +27,7 @@ func IsValidSubnetList(proxies string) error {
 
 	for _, proxy := range proxyList {
 		proxy = strings.TrimSpace(proxy)
-		if !IsValidSubnet(proxy) {
+		if _, _, err := net.ParseCIDR(proxy); err != nil {
 			return fmt.Errorf("invalid CIDR block: %s", proxy)
 		}
 	}
@@ -35,14 +38,14 @@ func IsValidSubnetList(proxies string) error {
 // IsValidSubnet16 checks if the given string is a valid /16 subnet.
 // Like IsValidSubnet but specifically for /16 subnets in the form x.x.0.0.
 func IsValidSubnet16(subnet string) bool {
-	regex := regexp.MustCompile(`^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.0\.0$`)
-	return regex.MatchString(subnet)
+	ip := net.ParseIP(subnet).To4()
+	return ip != nil && !strings.Contains(subnet, ":") && ip[2] == 0 && ip[3] == 0
 }
 
 // GetSubnetByIndex computes a /28 subnet string from base IP and slot index.
 func GetSubnetByIndex(baseIP string, index int) (string, error) {
-	ip := net.ParseIP(strings.TrimSpace(baseIP)).To4()
-	if ip == nil {
+	ip := net.ParseIP(baseIP).To4()
+	if !IsValidSubnet16(baseIP) {
 		return "", fmt.Errorf("invalid base ip")
 	}
 	if index < 0 {
@@ -63,8 +66,8 @@ func GetSubnetByIndex(baseIP string, index int) (string, error) {
 
 // SubnetToIndex converts a /28 subnet back to a slot index relative to base IP.
 func SubnetToIndex(baseIP, subnet string) (int, bool) {
-	base := net.ParseIP(strings.TrimSpace(baseIP)).To4()
-	if base == nil {
+	base := net.ParseIP(baseIP).To4()
+	if !IsValidSubnet16(baseIP) {
 		return 0, false
 	}
 

@@ -1,26 +1,9 @@
-FROM golang:1.26 AS builder
-
-WORKDIR /app
-
-COPY go.mod ./
-COPY go.sum ./
-RUN go mod download
-
-COPY cmd ./cmd
-COPY internal ./internal
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o auth-server cmd/auth/main.go
-
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
-
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-COPY --from=builder /app/auth-server /app/auth-server
-COPY static ./static
+COPY linuxusctl /app/linuxusctl
 
 EXPOSE 8080
-
-CMD ["/app/auth-server"]
+CMD ["/app/linuxusctl", "serve-auth"]

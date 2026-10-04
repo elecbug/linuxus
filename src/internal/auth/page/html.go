@@ -109,6 +109,7 @@ func GetServicePage(terminalPath, logoutPath string) string {
 			html.NewHTML(
 				"div",
 				html.NewAttributes("class", "right"),
+				html.NewHTML("a", html.NewAttributes("class", "btn", "href", "/admin"), "Admin").AddPrefix("{{if .IsAdmin}}").AddSuffix("{{end}}"),
 				html.NewHTML(
 					"a",
 					html.NewAttributes(

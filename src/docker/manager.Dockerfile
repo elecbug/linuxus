@@ -1,21 +1,9 @@
-FROM golang:1.26 AS builder
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+COPY linuxusctl /app/linuxusctl
 
-COPY go.mod ./
-COPY go.sum ./
-
-RUN go mod download
-
-COPY cmd ./cmd
-COPY internal ./internal
-
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o linuxus-manager cmd/manager/main.go
-
-FROM ubuntu:22.04
-
-WORKDIR /app
-
-COPY --from=builder /app/linuxus-manager /app/linuxus-manager
-
-CMD ["/app/linuxus-manager"]
+EXPOSE 5959
+CMD ["/app/linuxusctl", "serve-manager"]

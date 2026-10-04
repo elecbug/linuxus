@@ -1,9 +1,13 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
@@ -32,23 +36,10 @@ func (a *App) ensureManagerContainer() error {
 }
 
 // ensureContainer creates a container from the given runtime specification.
-func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
+func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) (retErr error) {
 	cli := a.dockerClient
 	if cli == nil {
 		return fmt.Errorf("Docker client is not initialized")
-	}
-
-	exists, err := a.existDockerContainer(spec.Name)
-	if err != nil {
-		return err
-	}
-	if exists {
-		log.Log(log.DETAIL_PREFIX, "Recreating container: %s", spec.Name)
-		if err := cli.ContainerRemove(a.context, spec.Name, container.RemoveOptions{
-			Force: true,
-		}); err != nil {
-			return fmt.Errorf("failed to remove existing container %s: %w", spec.Name, err)
-		}
 	}
 
 	var (
@@ -127,6 +118,20 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 		}
 	}
 
+	// Validate all local settings before removing a running service.
+	exists, err := a.existDockerContainer(spec.Name)
+	if err != nil {
+		return err
+	}
+	if exists {
+		log.Log(log.DETAIL_PREFIX, "Recreating container: %s", spec.Name)
+		if err := cli.ContainerRemove(a.context, spec.Name, container.RemoveOptions{
+			Force: true,
+		}); err != nil {
+			return fmt.Errorf("failed to remove existing container %s: %w", spec.Name, err)
+		}
+	}
+
 	resp, err := cli.ContainerCreate(
 		a.context,
 		cfg,
@@ -139,7 +144,19 @@ func (a *App) ensureContainer(spec spec.RuntimeContainerSpec) error {
 		return fmt.Errorf("failed to create container %s: %w", spec.Name, err)
 	}
 
-	for _, netName := range spec.Networks[1:] {
+	defer func() {
+		if retErr != nil {
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(a.context), 10*time.Second)
+			defer cancel()
+			if err := cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true}); err != nil && !errdefs.IsNotFound(err) {
+				retErr = errors.Join(retErr, fmt.Errorf("remove failed container %s: %w", resp.ID, err))
+			}
+		}
+	}()
+	for i, netName := range spec.Networks {
+		if i == 0 {
+			continue
+		}
 		if err := cli.NetworkConnect(a.context, netName, resp.ID, &network.EndpointSettings{}); err != nil {
 			return fmt.Errorf("failed to connect %s to %s: %w", spec.Name, netName, err)
 		}

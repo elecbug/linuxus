@@ -18,6 +18,7 @@ type API interface {
 	FormatExt4(path string) error
 
 	IsMountPoint(path string) (bool, error)
+	MountPointsUnder(root string) ([]string, error)
 	AttachLoopDevice(imagePath string) (string, error)
 	DetachLoopDevice(loopDevice string) error
 	Mount(source string, target string) error
