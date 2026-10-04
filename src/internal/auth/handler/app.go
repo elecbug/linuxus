@@ -16,6 +16,7 @@ import (
 
 // App holds auth server state, templates, and manager integration clients.
 type App struct {
+	adminPath string
 	adminID   string
 	templates map[string]commonconfig.Template
 	classes   map[string]string
@@ -87,6 +88,8 @@ type App struct {
 
 // AppConfig defines all configuration values required to initialize an App.
 type AppConfig struct {
+	// AdminPath is the base path for the administrator page, API, and assets.
+	AdminPath string
 	AdminID   string
 	Templates map[string]commonconfig.Template
 	Classes   map[string]string
@@ -154,8 +157,13 @@ func NewApp(config *AppConfig) *App {
 	if config.Users == nil {
 		config.Users = make(map[string]string)
 	}
+	adminPath := config.AdminPath
+	if adminPath == "" {
+		adminPath = "admin"
+	}
 	app := &App{
-		adminID: config.AdminID, templates: config.Templates, classes: config.Classes,
+		adminPath: adminPath,
+		adminID:   config.AdminID, templates: config.Templates, classes: config.Classes,
 		users:                   config.Users,
 		authListFile:            config.AuthListFile,
 		sessionKey:              config.SessionKey,
@@ -247,7 +255,7 @@ func (a *App) RegisterRoutes() {
 		log.Fatalf("failed to parse login template: %v", err)
 	}
 
-	serviceTmpl, err := template.New(a.servicePath).Parse(page.GetServicePage(a.terminalPath, a.logoutPath))
+	serviceTmpl, err := template.New(a.servicePath).Parse(page.GetServicePage(a.terminalPath, a.logoutPath, a.adminPath))
 	if err != nil {
 		log.Fatalf("failed to parse service template: %v", err)
 	}
@@ -268,9 +276,11 @@ func (a *App) RegisterRoutes() {
 	a.signupTmpl = signupTmpl
 
 	a.mux.HandleFunc("/", a.handleRoot)
-	a.mux.HandleFunc("/admin", a.handleAdmin)
-	a.mux.HandleFunc("/admin/", a.handleAdmin)
-	a.mux.HandleFunc("/admin/api/users", a.handleAdminUsers)
+	a.mux.HandleFunc("/"+a.adminPath, a.handleAdmin)
+	a.mux.HandleFunc("/"+a.adminPath+"/", a.handleAdmin)
+	a.mux.HandleFunc("/"+a.adminPath+"/api/users", a.handleAdminUsers)
+	a.mux.HandleFunc("/"+a.adminPath+"/assets/admin.css", a.handleAdminAsset)
+	a.mux.HandleFunc("/"+a.adminPath+"/assets/admin.js", a.handleAdminAsset)
 	a.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 	a.mux.HandleFunc("/"+a.loginPath, a.handleLogin)
 	a.mux.HandleFunc("/"+a.logoutPath, a.handleLogout)

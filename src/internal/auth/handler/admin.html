@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration | Linuxus</title>
+  <link rel="icon" href="/static/favicon.png" type="image/png">
+  <link rel="stylesheet" href="{{.BaseURL}}/assets/admin.css">
+  <script src="{{.BaseURL}}/assets/admin.js" defer></script>
+</head>
+<body data-api-url="{{.APIURL}}" data-login-url="{{.LoginURL}}" data-csrf-token="{{.Token}}" data-admin-id="{{.AdminID}}">
+  <header class="site-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">L</span><span>Linuxus <span class="brand-section">Administration</span></span></div>
+    <nav aria-label="Main navigation"><a href="{{.ServiceURL}}">My environment</a><span class="current-user">{{.AdminID}}</span><a href="{{.LogoutURL}}">Sign out</a></nav>
+  </header>
+  <main>
+    <section class="page-heading" aria-labelledby="page-title">
+      <div><p class="eyebrow">CLASSROOM OPERATIONS</p><h1 id="page-title">Manage your environments.</h1><p class="subtitle">Keep accounts, sessions, and classroom access in one place.</p></div>
+      <span class="status-pill" id="connection-status" role="status">Connecting</span>
+    </section>
+    <section class="metrics" aria-label="Classroom summary">
+      <article><span>Total users</span><strong id="total-users">—</strong><small>Registered accounts</small></article>
+      <article><span>Running environments</span><strong id="running-users">—</strong><small>Currently started</small></article>
+      <article><span>Active sessions</span><strong id="active-sessions">—</strong><small>Connected terminals</small></article>
+      <article><span>Restricted accounts</span><strong id="locked-users">—</strong><small>Locked or under maintenance</small></article>
+    </section>
+    <div id="session-notice" class="notice danger" role="alert" hidden><div><strong>Sign in again to continue.</strong><p>Your session expired or your account permissions changed.</p></div><a class="button" href="{{.LoginURL}}">Sign in</a></div>
+    <p id="action-notice" class="notice success" role="status" hidden></p>
+    <p id="load-error" class="notice danger" role="alert" hidden></p>
+    <p id="service-warning" class="notice warning" role="status" hidden></p>
+    <section class="panel" aria-labelledby="users-title">
+      <div class="panel-heading"><div><h2 id="users-title">Users</h2><p>Account changes preserve home files and exercise data.</p></div><div class="refresh-controls"><label class="toggle"><input type="checkbox" id="auto-refresh" checked>Auto-refresh · 15s</label><button id="refresh" class="button secondary" type="button">Refresh</button></div></div>
+      <div class="toolbar"><label class="search-field"><span class="sr-only">Search users, classes, or templates</span><input id="search" type="search" placeholder="Search users, classes, or templates" autocomplete="off"></label><label><span class="sr-only">Filter users</span><select id="filter"><option value="all">All users</option><option value="running">Running</option><option value="locked">Locked</option><option value="maintenance">Under maintenance</option></select></label><span id="result-count" class="muted"></span></div>
+      <div class="table-scroll" tabindex="0" aria-label="User accounts" id="table-region">
+        <table><thead><tr><th scope="col">User</th><th scope="col">Account</th><th scope="col">Environment</th><th scope="col">Home storage</th><th scope="col">Classroom</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody id="users"></tbody></table>
+        <div id="empty-state" class="empty-state"><strong>Loading users…</strong><p>Getting the latest account and environment status.</p></div>
+      </div>
+      <footer class="panel-footer"><span id="updated-at">Waiting for the first update</span><span id="refresh-note">Updates every 15 seconds</span></footer>
+    </section>
+    <p class="page-footnote">Lock accounts to suspend access. User data stays in place.</p>
+    <noscript><p class="notice danger">Enable JavaScript to use the administrator interface.</p></noscript>
+  </main>
+  <dialog id="account-dialog" aria-labelledby="dialog-title" aria-describedby="operation-description">
+    <form id="account-form">
+      <div class="dialog-heading"><div><p class="eyebrow">ACCOUNT ACTION</p><h2 id="dialog-title">Manage user</h2></div><button type="button" id="close-dialog" class="icon-button" aria-label="Close dialog">×</button></div>
+      <label class="field">Action<select id="operation" name="operation"></select></label>
+      <p id="operation-description" class="dialog-description"></p>
+      <div id="password-fields" hidden><label class="field">New password<input id="new-password" type="password" autocomplete="new-password"></label><label class="field">Confirm new password<input id="confirm-password" type="password" autocomplete="new-password"></label></div>
+      <label id="assignment-field" class="field" hidden><span id="assignment-label">Template</span><select id="assignment" name="assignment"></select></label>
+      <p id="self-notice" class="notice warning" hidden>This changes your own account. You will need to sign in again.</p>
+      <p id="dialog-error" class="notice danger" role="alert" hidden></p>
+      <div class="dialog-footer"><button type="button" id="cancel-dialog" class="button secondary">Cancel</button><button type="submit" id="apply-action" class="button primary">Apply action</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

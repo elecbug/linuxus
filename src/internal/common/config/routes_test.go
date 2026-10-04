@@ -26,3 +26,33 @@ func TestAuthRouteValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestAdminRouteDefaultsAndConflicts(t *testing.T) {
+	for _, tc := range []struct {
+		admin, login string
+		valid        bool
+	}{
+		{"", "login", true}, {"admin", "login", true}, {"ops/classroom", "auth/login", true},
+		{"ops", "admin", true}, {"/ops", "login", false}, {"ops/", "login", false},
+		{"ops//admin", "login", false}, {"ops?mode=admin", "login", false},
+		{"ops/{user}", "login", false}, {"static", "login", false},
+		{"static/admin", "login", false}, {"healthz", "login", false}, {"favicon.ico", "login", false},
+		{"ops", "ops", false}, {"ops", "ops/login", false}, {"ops/admin", "ops", false},
+		{"service/manage", "login", false}, {"admin", "admin/api/users", false},
+	} {
+		t.Run(tc.admin+"/"+tc.login, func(t *testing.T) {
+			cfg, err := ParseEnv([]byte(DefaultEnv))
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg.AuthService.ServiceURL.Admin = tc.admin
+			cfg.AuthService.ServiceURL.Login = tc.login
+			if err := ValidateAuthRoutes(&cfg); (err == nil) != tc.valid {
+				t.Fatalf("admin=%q login=%q error=%v", tc.admin, tc.login, err)
+			}
+			if tc.admin == "" && cfg.AdminRoute() != "admin" {
+				t.Fatal("legacy configuration lost its default administrator route")
+			}
+		})
+	}
+}

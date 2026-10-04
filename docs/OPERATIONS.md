@@ -199,16 +199,41 @@ Restart an environment to apply a changed template image.
 ## Administrator web interface
 
 When the account named by `MANAGER_SERVICE_ADMIN_ID` logs in, the service page
-shows an **Admin** link. The interface is also available at `/admin`. Create
+shows an **Admin** link. The interface defaults to `/admin`. Set its public base
+path in `.env`, without leading or trailing slashes:
+
+```dotenv
+AUTH_SERVICE_SERVICE_URL_ADMIN='ops/classroom'
+```
+
+This example serves the page at `/ops/classroom`, its API at
+`/ops/classroom/api/users`, and its assets below `/ops/classroom/assets/`.
+Navigation links and browser requests follow the configured path. Omitted or
+empty values keep the default `admin` route. The administrator path must not
+overlap login, logout, service, terminal, signup, or reserved asset paths.
+`config-check` prints the effective administrator URL. Rebuild and restart the
+services to apply these changes; `init` includes the setting in new files and
+leaves existing configuration files unchanged.
+
+Create
 accounts through registration or `add-user`; assigning an administrator ID does
 not create the account automatically.
 
 The interface shows users, account locks, session counts, container states, and
 usage for mounted home disks. Actions include locking, unlocking, password resets,
 disconnecting, restarting environments, and assigning classes or templates.
-Status refreshes every 15 seconds. Disk service failures produce an explicit
+The dashboard includes summary counts, user search, state filters, and home
+storage meters. Rows are updated in place, preserving search text and keyboard
+focus. Manual and automatic refreshes share a single request. Automatic updates
+run 15 seconds after the preceding request finishes; they pause while a dialog
+is open, an action is running, or the tab is hidden. The Auto-refresh checkbox
+allows manual control. Failed updates retain the last successful display and
+show an error with its last update time. Disk service failures produce an explicit
 warning while retaining available container and session status. The web interface rejects locking your own
-administrator account to prevent accidental lockout.
+administrator account to prevent accidental lockout. Password resets require
+confirmation. Updating your own account invalidates the current session; the
+interface stops polling and provides a sign-in link. Account changes that succeed
+before a runtime error are explicitly reported, without automatic action retries.
 
 Every administrator API request rechecks the account and administrator role.
 Mutation requests require a session-bound CSRF token. Responses exclude account
