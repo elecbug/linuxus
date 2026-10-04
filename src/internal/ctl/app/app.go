@@ -20,8 +20,6 @@ type App struct {
 
 	// execPath is the absolute executable path for the running binary.
 	execPath string
-	// runtimeRoot is the deployment directory containing linuxusctl.
-	runtimeRoot string
 	// configFile points to the runtime configuration file.
 	configFile string
 
@@ -32,7 +30,7 @@ type App struct {
 }
 
 // CreateApp creates an App instance and initializes the Docker client.
-func CreateApp(execPath, runtimeRoot, configFile string) (*App, error) {
+func CreateApp(execPath, configFile string) (*App, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
@@ -43,7 +41,6 @@ func CreateApp(execPath, runtimeRoot, configFile string) (*App, error) {
 		context:      context.Background(),
 		systemAPI:    system_api.NewSystemAPI(),
 		execPath:     execPath,
-		runtimeRoot:  runtimeRoot,
 		configFile:   configFile,
 		UserIDs:      nil,
 	}

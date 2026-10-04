@@ -15,10 +15,10 @@ import (
 	"github.com/elecbug/linuxus/src/internal/common/diskservice"
 )
 
-func TestDeploymentPathsIndependentOfWorkingDirectory(t *testing.T) {
+func TestStoragePathsRelativeToConfigIndependentOfWorkingDirectory(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(t.TempDir())
-	a := &App{runtimeRoot: root, configFile: filepath.Join(root, ".env")}
+	a := &App{configFile: filepath.Join(root, ".env")}
 	if err := os.WriteFile(a.configFile, []byte(`AUTH_SERVICE_MOUNTS_HOST_AUTH_LIST_PATH=data/AUTH_LIST
 AUTH_SERVICE_MOUNTS_CONTAINER_AUTH_LIST_PATH=/data/AUTH_LIST
 VOLUMES_HOST_VOLUMES=volumes
@@ -41,7 +41,7 @@ VOLUMES_HOST_READONLY=volumes/readonly
 		t.Fatal("absolute path changed")
 	}
 	if a.Config.AuthService.Mounts.HostAuthListPath != filepath.Join(root, "data/AUTH_LIST") {
-		t.Fatal("auth path is not deployment-relative")
+		t.Fatal("auth path is not config-relative")
 	}
 	if _, err := os.Stat(filepath.Join(root, "data")); !os.IsNotExist(err) {
 		t.Fatal("loading configuration changed disk state")
@@ -154,7 +154,7 @@ func TestAutoEnsureManagerSpec(t *testing.T) {
 }
 
 func TestAbsoluteHostPathsAreCleanedBeforeDiskOperations(t *testing.T) {
-	a := &App{runtimeRoot: t.TempDir()}
+	a := &App{configFile: filepath.Join(t.TempDir(), ".env")}
 	a.Config.Volumes.Host.Share = "/storage/share/"
 	a.Config.Volumes.Host.Readonly = "/storage/unused/../readonly/"
 	a.normalizeConfigPaths()
@@ -178,7 +178,7 @@ func TestConfigRejectsMalformedEnv(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			a := &App{runtimeRoot: root, configFile: filepath.Join(root, ".env")}
+			a := &App{configFile: filepath.Join(root, ".env")}
 			if err := os.WriteFile(a.configFile, []byte(tc.contents), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -197,5 +197,68 @@ func TestMissingConfigSuggestsInit(t *testing.T) {
 	a := &App{configFile: filepath.Join(t.TempDir(), ".env")}
 	if err := a.LoadConfig(); err == nil || !strings.Contains(err.Error(), "linuxusctl init") {
 		t.Fatalf("missing initialization hint: %v", err)
+	}
+}
+
+func TestMovingExecutableKeepsSameConfigAndStorage(t *testing.T) {
+	root := t.TempDir()
+	cfgPath := filepath.Join(root, "settings", ".env")
+	if err := config.InitFile(cfgPath); err != nil {
+		t.Fatal(err)
+	}
+	// Override only storage paths so this test never accesses host production data.
+	data := strings.ReplaceAll(config.DefaultEnv, "/var/lib/linuxus/", "../state/")
+	if err := os.WriteFile(cfgPath, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var first config.Config
+	for i := 0; i < 2; i++ {
+		a := &App{execPath: filepath.Join(t.TempDir(), "linuxusctl"), configFile: cfgPath}
+		t.Chdir(t.TempDir())
+		if err := a.LoadConfig(); err != nil {
+			t.Fatal(err)
+		}
+		if a.Config.Volumes.Host.Homes != filepath.Join(root, "state", "volumes", "homes") {
+			t.Fatal("storage followed the executable")
+		}
+		if i == 0 {
+			first = a.Config
+		} else if !reflect.DeepEqual(first, a.Config) {
+			t.Fatal("moving executable changed settings")
+		}
+		t.Setenv(config.ConfigFileEnv, "/unrelated/.env")
+		cmd := a.diskServiceCommand()
+		var configs []string
+		for _, entry := range cmd.Env {
+			if strings.HasPrefix(entry, config.ConfigFileEnv+"=") {
+				configs = append(configs, entry)
+			}
+		}
+		if !reflect.DeepEqual(configs, []string{config.ConfigFileEnv + "=" + cfgPath}) {
+			t.Fatal("disk service selected another config")
+		}
+	}
+}
+
+func TestConfigSymlinkUsesTargetStorageDirectory(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "configuration", ".env")
+	if err := config.InitFile(target); err != nil {
+		t.Fatal(err)
+	}
+	data := strings.ReplaceAll(config.DefaultEnv, "/var/lib/linuxus/", "../state/")
+	if err := os.WriteFile(target, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(t.TempDir(), ".env")
+	if err := os.Symlink(target, alias); err != nil {
+		t.Fatal(err)
+	}
+	a := &App{configFile: alias}
+	if err := a.LoadConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if a.configFile != target || a.Config.AuthService.Mounts.HostAuthListPath != filepath.Join(root, "state", "data", "AUTH_LIST") {
+		t.Fatal("config symlink redirected storage")
 	}
 }

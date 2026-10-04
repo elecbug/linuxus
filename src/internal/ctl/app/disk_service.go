@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/elecbug/linuxus/src/internal/common/config"
 	"github.com/elecbug/linuxus/src/internal/common/diskservice"
 	"github.com/elecbug/linuxus/src/internal/common/packet"
 	"github.com/elecbug/linuxus/src/internal/common/ruleset"
@@ -43,6 +44,14 @@ func (a *App) withDiskLock(action func() error) error {
 	return action()
 }
 
+// Pin the selected configuration for the child, independently of its binary's
+// location or any stale LINUXUS_CONFIG inherited from the invoking shell.
+func (a *App) diskServiceCommand() *exec.Cmd {
+	cmd := exec.Command(a.execPath, "serve-disks")
+	cmd.Env = config.WithConfigFile(os.Environ(), a.configFile)
+	return cmd
+}
+
 // startDiskService uses the same host privileges as the invoking up command.
 // It does not grant the Manager any additional Docker or system capabilities.
 func (a *App) startDiskService() error {
@@ -60,7 +69,7 @@ func (a *App) startDiskService() error {
 		return err
 	}
 	defer output.Close()
-	cmd := exec.Command(a.execPath, "serve-disks")
+	cmd := a.diskServiceCommand()
 	cmd.Stdout = output
 	cmd.Stderr = output
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}

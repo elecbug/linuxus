@@ -11,10 +11,23 @@ import (
 
 // LoadConfig reads and parses the .env configuration file into App.Config.
 func (a *App) LoadConfig() error {
+	// Resolve config symlinks before interpreting relative storage paths so
+	// both a symlink and its target select the same persistent state.
+	configFile, err := filepath.EvalSymlinks(a.configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("config %s does not exist; run sudo linuxusctl init: %w", a.configFile, err)
+		}
+		return fmt.Errorf("resolve config %s: %w", a.configFile, err)
+	}
+	a.configFile, err = filepath.Abs(configFile)
+	if err != nil {
+		return err
+	}
 	data, err := os.ReadFile(a.configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("config %s does not exist; run linuxusctl init: %w", a.configFile, err)
+			return fmt.Errorf("config %s does not exist; run sudo linuxusctl init: %w", a.configFile, err)
 		}
 		return fmt.Errorf("read config %s: %w", a.configFile, err)
 	}
@@ -38,7 +51,7 @@ func (a *App) LoadConfig() error {
 	return nil
 }
 
-// normalizeConfigPaths resolves host paths relative to the deployment directory.
+// normalizeConfigPaths resolves host paths relative to the selected configuration directory.
 func (a *App) normalizeConfigPaths() {
 	resolve := func(path string) string {
 		if path == "" {
@@ -47,7 +60,7 @@ func (a *App) normalizeConfigPaths() {
 		if filepath.IsAbs(path) {
 			return filepath.Clean(path)
 		}
-		return filepath.Join(a.runtimeRoot, path)
+		return filepath.Join(filepath.Dir(a.configFile), path)
 	}
 	a.Config.AuthService.Mounts.HostAuthListPath = resolve(a.Config.AuthService.Mounts.HostAuthListPath)
 	a.Config.Volumes.Host.Homes = resolve(a.Config.Volumes.Host.Homes)

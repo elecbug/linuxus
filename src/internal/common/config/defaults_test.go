@@ -88,3 +88,24 @@ func TestConcurrentInitCreatesOneCompleteFile(t *testing.T) {
 		t.Fatal("concurrent init damaged defaults")
 	}
 }
+
+func TestInitCreatesPrivateConfigDirectory(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "etc", "linuxus", ".env")
+	if err := InitFile(path); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(filepath.Dir(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0700 {
+		t.Fatalf("directory mode=%v", info.Mode().Perm())
+	}
+	cfg, err := ParseEnv([]byte(DefaultEnv))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AuthService.Mounts.HostAuthListPath != filepath.Join(DefaultStateDir, "data", "AUTH_LIST") || cfg.Volumes.Host.Volumes != filepath.Join(DefaultStateDir, "volumes") {
+		t.Fatal("default state still depends on the executable directory")
+	}
+}

@@ -58,39 +58,52 @@ After enabling completion, you can use `TAB` to automatically complete commands 
 
 ## 3. Run Service
 
-Copy `linuxusctl` into a deployment directory and initialize its configuration:
+The executable can live anywhere. For example, install it on the system PATH:
 
 ```bash
-mkdir -p deploy
-cp linuxusctl deploy/
-./deploy/linuxusctl init
+sudo install -m 0755 linuxusctl /usr/local/bin/linuxusctl
+sudo linuxusctl init
 ```
 
-`init` writes the defaults embedded in the binary to `.env` beside the executable,
-with file permissions `0600`. It works without Docker or the source tree and
-refuses to overwrite an existing file or symlink. The source template is
-`src/internal/common/config/default.env`; rebuild to include changes to that
-file. The deployment's `.env` is read at runtime and is not used during builds.
+For an existing deployment, use the migration procedure below before running
+`init`. For a new deployment, `init` writes the embedded defaults to
+`/etc/linuxus/.env` with file permissions `0600`, creating its directory with
+mode `0700` when needed. It refuses to overwrite an existing file or symlink.
+The source template is `src/internal/common/config/default.env`; rebuild to
+include template changes. Runtime configuration is not used during builds.
 
 ```text
-linuxus/
-├── linuxusctl
-├── .env
+/etc/linuxus/
+└── .env
+/var/lib/linuxus/
 ├── data/
-│   └── AUTH_LIST
+│   ├── AUTH_LIST
+│   └── .disk-service/
 └── volumes/
 ```
 
-`data/` and `volumes/` are initialized when starting a fresh deployment. All
-relative host paths in `.env` are resolved against the directory containing
-the executable, even when invoked from another working directory. Absolute
-paths remain absolute. When invoking a symlink to `linuxusctl`, the real
-executable's directory is used for both `init` and runtime configuration.
+All commands select `/etc/linuxus/.env` by default, regardless of the current
+working directory or executable location. Copying, renaming, or linking the
+binary does not select another installation's data. Default storage paths are
+absolute paths under `/var/lib/linuxus`; `up` creates missing data directories.
 
-For example, edit the generated `.env`, then start the deployment:
+To select a separate configuration, supply an absolute `LINUXUS_CONFIG` path:
 
 ```bash
-sudo ./deploy/linuxusctl up
+sudo env LINUXUS_CONFIG=/srv/classroom/.env /path/to/linuxusctl init
+sudo env LINUXUS_CONFIG=/srv/classroom/.env /path/to/linuxusctl up
+```
+
+This selects the configuration only; change its host storage settings as well
+if a separate data location is desired. Relative host paths are resolved against
+the selected configuration's directory (the target directory for a config
+symlink), never against the working directory or executable. The disk service
+inherits the exact configuration selected by the parent CLI.
+
+Edit `/etc/linuxus/.env`, then start services from any location:
+
+```bash
+sudo linuxusctl up
 ```
 
 The runtime host needs Linux, a local Docker daemon, `mkfs.ext4` (e2fsprogs),
@@ -99,14 +112,14 @@ the executable's architecture. The first image build needs access to the base
 images and Ubuntu/Debian package repositories; it does not download Go modules.
 
 Before starting, set `AUTH_SERVICE_SECURITY_SESSION_SECRET` and
-`MANAGER_SERVICE_SECURITY_SESSION_SECRET` in `.env` to your own values. `up` creates a missing auth file without
+`MANAGER_SERVICE_SECURITY_SESSION_SECRET` in `/etc/linuxus/.env` to your own values. `up` creates a missing auth file without
 overwriting existing accounts,
 prepares shared disks and registered users' disks, and starts the services.
 A fresh auth file has no accounts; `MANAGER_SERVICE_ADMIN_ID` designates an account's privileges
 and does not create the account automatically.
 
-Host directories can also point to an external storage location through absolute
-`.env` paths or root-level `data/` and `volumes/` symlinks. Manager passes the
+Host directories can also point to external storage through absolute `.env`
+paths or symlinks beneath `/var/lib/linuxus`. Manager passes the
 resolved host paths to Docker; it does not need its own copies of the volumes.
 The home, shared, and readonly host paths must not overlap or resolve to the
 filesystem root. Keep `AUTH_LIST` outside these disk directories and images.
@@ -120,7 +133,8 @@ supported. An unquoted `#` starts a comment at the beginning of a value or after
 whitespace. Single quotes preserve literal values; double quotes support
 `\n`, `\r`, `\t`, `\\`, `\"`, and `\$`. Values occupy one physical line;
 variable expansion and shell command execution are not performed. Process
-environment variables do not override `.env` settings. Missing settings are
+environment variables do not override individual `.env` settings;
+`LINUXUS_CONFIG` selects which configuration file to read. Missing settings are
 validated normally; they are not filled from embedded defaults at runtime.
 
 Auth route paths must be distinct, clean paths
@@ -150,7 +164,7 @@ into Manager.
 
 | Command                           | Description                                                                                      |
 | --------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `init`                            | Create `.env` beside the executable using embedded defaults; preserve existing files              |
+| `init`                            | Create `/etc/linuxus/.env` using embedded defaults; preserve existing files              |
 | `help`                            | Show help message                                                                                |
 | `up`                              | Build images and start services                                                                  |
 | `down`                            | Stop and remove services                                                                         |
@@ -166,7 +180,7 @@ into Manager.
 ### 3.2 Example Usage
 
 ```bash
-./linuxusctl init                 # Create .env once
+sudo ./linuxusctl init            # Create /etc/linuxus/.env once
 sudo ./linuxusctl up               # Assemble images, prepare disks and start
 sudo ./linuxusctl restart          # Restart
 ./linuxusctl ps network            # Show network status of linuxus service
@@ -183,7 +197,7 @@ sudo ./linuxusctl restart          # Restart
 
 ### 4.1 Enable Signup
 
-Edit `.env`:
+Edit `/etc/linuxus/.env`:
 
 ```dotenv
 AUTH_SERVICE_ALLOW_SIGNUP=true
@@ -212,7 +226,7 @@ With `VOLUMES_AUTO_ENSURE=true`, the first shell access prepares the newly regis
 
 ### 4.3 Activate User Environment
 
-Enable automatic disk activation in `.env`:
+Enable automatic disk activation in `/etc/linuxus/.env`:
 
 ```dotenv
 VOLUMES_AUTO_ENSURE=true
@@ -229,7 +243,7 @@ Its socket has mode 0600 in a mode-0700 `.disk-service` directory beside `AUTH_L
 Only Manager receives that directory as a read-only mount. There is no TCP
 listener. Requests accept a registered user ID only; paths and disk limits come
 from the deployment configuration. Manager's container capabilities are unchanged.
-The default service log is `data/.disk-service/service.log`. Run `sudo ./linuxusctl up`
+The default service log is `/var/lib/linuxus/data/.disk-service/service.log`. Run `sudo ./linuxusctl up`
 after a host reboot to restore mounts and the host process; Docker container
 restart policies alone do not restart this process. As with the existing deployment,
 Docker must run locally on the Linux host.
@@ -269,7 +283,7 @@ MANAGER_SERVICE_ADMIN_ID=alpha
 ## 5. Volume Structure
 
 ```
-volumes/
+/var/lib/linuxus/volumes/
 ├── homes/
 │   ├── alice.img      # ext4 disk image
 │   └── alice/         # mounted home
@@ -288,23 +302,58 @@ service. `down` removes containers and networks but preserves disks.
 than continuing deletion. Cleaning all volumes leaves unrelated files in the
 volume root untouched.
 
+### Migrating the previous executable-relative .env/data/volumes layout
+
+The CLI now reads `/etc/linuxus/.env` rather than an adjacent `.env`. Existing
+live storage must be stopped and unmounted before moving it. Keep a backup before
+migration; `clean-volume` must not be used because it deletes disk contents.
+
+For the standard previous layout, use the provided one-time migration helper
+with the newly built CLI:
+
+```bash
+sudo python3 ./shell/migrate_system_paths.py --from /absolute/old/deployment
+sudo ./linuxusctl up
+```
+
+If the new binary is elsewhere, add `--ctl /absolute/path/to/linuxusctl`.
+The helper supports ordinary `data/` and `volumes/` directories on the same
+filesystem as `/var/lib`. It refuses custom layouts, existing destination data,
+and cross-filesystem moves before stopping services. Python 3 is needed only
+for this migration helper, not for runtime operation.
+
+It uses the old `.env` to stop managed containers and the disk service, locks disk
+operations, unmounts nested volumes, detaches their loop devices, and verifies
+that mounts and loop attachments are gone. It then renames the directories to
+`/var/lib/linuxus`, preserving images, ownership, sparse allocation and inodes.
+Existing `data/` and `volumes/` paths become compatibility symlinks. Configuration
+is published to `/etc/linuxus/.env` with only the five host storage paths changed;
+other settings, including session secrets, are preserved. A failed configuration
+publication attempts to restore the original directory locations. Services remain
+stopped until the subsequent `up` command remounts storage and starts them.
+
+For custom storage or another filesystem, perform the migration manually:
+
+1. Stop services with the old configuration explicitly selected:
+   `sudo env LINUXUS_CONFIG=/absolute/old/.env /path/to/linuxusctl down`.
+2. Unmount all managed user and shared mounts, deepest first, and detach their
+   loop devices. Verify that none remain before copying images.
+3. Copy `data/` and `volumes/` to a fresh `/var/lib/linuxus` directory, preserving
+   ownership, permissions, symlinks and sparse files (for example, `cp -a --sparse=always`).
+   Verify the copies before removing any originals.
+4. Copy the original `.env` to `/etc/linuxus/.env` with permissions `0600` and
+   update the five host storage paths to their new absolute locations.
+5. Run `sudo /path/to/linuxusctl up` and check accounts and existing home data.
+
 ### Migrating from config.yml
 
-The CLI now reads `.env` beside the executable. It no longer reads
-`cfg/config.yml`. Run `linuxusctl init` once, then transfer any deployment-specific
-values from the old YAML before starting services. Nested YAML names map to
-uppercase underscore-separated keys, with hyphens also replaced by underscores:
-
-| Previous YAML setting | `.env` key |
-| --- | --- |
-| `volumes.auto-ensure` | `VOLUMES_AUTO_ENSURE` |
-| `volumes.host.homes` | `VOLUMES_HOST_HOMES` |
-| `auth_service.security.session_secret` | `AUTH_SERVICE_SECURITY_SESSION_SECRET` |
-| `user_service.limits.user.cpu` | `USER_SERVICE_LIMITS_USER_CPU` |
-
-Preserve both session secrets and existing host paths when migrating to keep
-account sessions and storage consistent. The embedded defaults are a build-time
-snapshot; they do not import another deployment's YAML automatically.
+YAML configurations are no longer loaded. For an older YAML installation,
+convert its settings to `.env` and apply the same storage migration sequence.
+Nested YAML names map to uppercase underscore-separated keys, with hyphens also
+replaced by underscores. For example, `volumes.auto-ensure` becomes
+`VOLUMES_AUTO_ENSURE`, and `auth_service.security.session_secret` becomes
+`AUTH_SERVICE_SECURITY_SESSION_SECRET`. Preserve session secrets and transfer
+existing images rather than starting with an empty auth list or fresh disks.
 
 ### Migrating an existing source-relative deployment
 
@@ -317,7 +366,7 @@ storage directories even if you remove the rest of the source checkout.
 
 To relocate storage completely, stop the services, unmount the old user/shared
 disks, and detach their loop devices before moving the directories. Copy the
-`AUTH_LIST` and `.img` files into the new root's `data/` and `volumes/`, preserving
+`AUTH_LIST` and `.img` files into `/var/lib/linuxus/data/` and `/var/lib/linuxus/volumes/`, preserving
 ownership and permissions. Then run `sudo ./linuxusctl up` to attach and mount
 the existing images at the new paths. Do not use `clean-volume` for migration;
 it deletes the images and their contents.

@@ -69,9 +69,6 @@ func run() error {
 		return err
 	}
 
-	runtimeRoot := filepath.Dir(execPath)
-	configFile := filepath.Join(runtimeRoot, ".env")
-
 	opt, err := parseArgs(os.Args[0], os.Args[1:])
 	if err != nil {
 		return err
@@ -82,6 +79,11 @@ func run() error {
 		return nil
 	}
 
+	configFile, err := config.ResolveConfigFile()
+	if err != nil {
+		return err
+	}
+
 	if opt.Option == INIT {
 		if err := config.InitFile(configFile); err != nil {
 			return err
@@ -90,7 +92,7 @@ func run() error {
 		return nil
 	}
 
-	a, err := app.CreateApp(execPath, runtimeRoot, configFile)
+	a, err := app.CreateApp(execPath, configFile)
 	if err != nil {
 		return err
 	}
@@ -242,9 +244,10 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 	if showUsage {
 		result += "Usage: " + fmt.Sprintf("%s [OPTION]...\n", bin)
 		result += "\n"
+		result += "Config: /etc/linuxus/.env (override with LINUXUS_CONFIG=/absolute/path/.env)\n\n"
 		result += "Options:\n"
 		result += "├─ General:\n"
-		result += fmt.Sprintf("│  ├─ %-35s# Create .env beside this executable from embedded defaults\n", "init")
+		result += fmt.Sprintf("│  ├─ %-35s# Create /etc/linuxus/.env from embedded defaults\n", "init")
 		result += fmt.Sprintf("│  └─ %-35s# Show help message\n", "help")
 		result += "│\n"
 		result += "├─ Service Management:\n"

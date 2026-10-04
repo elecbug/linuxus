@@ -21,7 +21,7 @@ func TestEmbeddedEnvCoversEverySetting(t *testing.T) {
 	if cfg.UserService.Runtime.UID != 1000 || cfg.UserService.Runtime.GID != 1000 || fmt.Sprint(cfg.UserService.Limits.User.CPU) != "1.5" {
 		t.Fatal("default runtime identity or resource limits changed")
 	}
-	if !cfg.Volumes.AutoEnsure || !cfg.AuthService.AllowSignup || cfg.Volumes.Host.Homes != "volumes/homes" {
+	if !cfg.Volumes.AutoEnsure || !cfg.AuthService.AllowSignup || cfg.Volumes.Host.Homes != "/var/lib/linuxus/volumes/homes" {
 		t.Fatal("default disk or signup behavior changed")
 	}
 }
