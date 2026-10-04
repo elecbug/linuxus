@@ -14,6 +14,9 @@ import (
 // ValidateConfig validates required config values before runtime operations.
 func ValidateConfig(cfg *Config) error {
 	errMsgs := []string{}
+	if err := validateOperations(cfg); err != nil {
+		errMsgs = append(errMsgs, err.Error())
+	}
 
 	if cfg.UserService.Container.NamePrefix == "" {
 		errMsgs = append(errMsgs, "USER_SERVICE_CONTAINER_NAME_PREFIX is required")
@@ -87,7 +90,7 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.AuthService.Mounts.HostAuthListPath == "" {
 		errMsgs = append(errMsgs, "AUTH_SERVICE_MOUNTS_HOST_AUTH_LIST_PATH is required")
-	} else if err := UsablePath(cfg.AuthService.Mounts.HostAuthListPath); err != nil {
+	} else if err := usableStoragePath(cfg.AuthService.Mounts.HostAuthListPath, false); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("AUTH_SERVICE_MOUNTS_HOST_AUTH_LIST_PATH (%v)", err))
 	}
 
@@ -181,25 +184,25 @@ func ValidateConfig(cfg *Config) error {
 
 	if cfg.Volumes.Host.Volumes == "" {
 		errMsgs = append(errMsgs, "VOLUMES_HOST_VOLUMES is required")
-	} else if err := UsablePath(cfg.Volumes.Host.Volumes); err != nil {
+	} else if err := usableStoragePath(cfg.Volumes.Host.Volumes, true); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("VOLUMES_HOST_VOLUMES (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Homes == "" {
 		errMsgs = append(errMsgs, "VOLUMES_HOST_HOMES is required")
-	} else if err := UsablePath(cfg.Volumes.Host.Homes); err != nil {
+	} else if err := usableStoragePath(cfg.Volumes.Host.Homes, true); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("VOLUMES_HOST_HOMES (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Share == "" {
 		errMsgs = append(errMsgs, "VOLUMES_HOST_SHARE is required")
-	} else if err := UsablePath(cfg.Volumes.Host.Share); err != nil {
+	} else if err := usableStoragePath(cfg.Volumes.Host.Share, true); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("VOLUMES_HOST_SHARE (%v)", err))
 	}
 
 	if cfg.Volumes.Host.Readonly == "" {
 		errMsgs = append(errMsgs, "VOLUMES_HOST_READONLY is required")
-	} else if err := UsablePath(cfg.Volumes.Host.Readonly); err != nil {
+	} else if err := usableStoragePath(cfg.Volumes.Host.Readonly, true); err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("VOLUMES_HOST_READONLY (%v)", err))
 	}
 
@@ -239,6 +242,24 @@ func UsablePath(path string) error {
 		return nil
 	}
 	return err
+}
+
+// Missing paths are prepared by up. Existing paths must have the right type.
+func usableStoragePath(path string, directory bool) error {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if directory && !info.IsDir() {
+		return fmt.Errorf("must be a directory")
+	}
+	if !directory && !info.Mode().IsRegular() {
+		return fmt.Errorf("must be a regular file")
+	}
+	return nil
 }
 
 // validateLimits checks if at least one limit value is non-zero.

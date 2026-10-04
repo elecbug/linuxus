@@ -2,8 +2,17 @@ package config
 
 // Config defines the runtime settings and .env key components consumed by linuxusctl.
 type Config struct {
+	Capacity struct {
+		MaxRunning   int    `env:"MAX_RUNNING"`
+		MaxPending   int    `env:"MAX_PENDING"`
+		MinFreeSpace string `env:"MIN_FREE_SPACE"`
+	} `env:"CAPACITY"`
+
 	// UserService configures user image and runtime settings.
 	UserService struct {
+		Templates string `env:"TEMPLATES"`
+		Classes   string `env:"CLASSES"`
+
 		// Container groups naming, runtime, and user limit settings.
 		Container struct {
 			// NamePrefix is prefixed to generated user container names.

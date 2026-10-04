@@ -18,7 +18,14 @@ func (a *App) ServiceUp(params *cli.Parameters) error {
 
 	log.Log(log.RUN_PREFIX, "Starting runtime-managed containers...")
 
-	if err := a.buildRuntimeImages(); err != nil {
+	if err := a.checkSupervisor(); err != nil {
+		return err
+	}
+	build := a.buildRuntimeImages
+	if a.supervised {
+		build = a.ensureCachedImages
+	}
+	if err := build(); err != nil {
 		return err
 	}
 	if err := user.EnsureFile(a.Config.AuthService.Mounts.HostAuthListPath); err != nil {
@@ -27,11 +34,7 @@ func (a *App) ServiceUp(params *cli.Parameters) error {
 	if err := a.ensureDiskAll(); err != nil {
 		return err
 	}
-	if a.Config.Volumes.AutoEnsure {
-		if err := a.startDiskService(); err != nil {
-			return err
-		}
-	} else if err := a.stopDiskService(); err != nil {
+	if err := a.startDiskService(); err != nil {
 		return err
 	}
 	if err := a.ensureRuntimeNetworks(); err != nil {
@@ -50,6 +53,9 @@ func (a *App) ServiceUp(params *cli.Parameters) error {
 
 // ServiceDown stops and removes all runtime-managed services.
 func (a *App) ServiceDown(params *cli.Parameters) error {
+	if err := a.checkSupervisor(); err != nil {
+		return err
+	}
 	if params != nil && (len(params.Params) > 0 || params.MainParam != "") {
 		return fmt.Errorf("service down option does not accept any parameters, please remove any provided parameters")
 	}

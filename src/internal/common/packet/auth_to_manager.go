@@ -35,3 +35,9 @@ type SessionStateReport struct {
 	// ObservedAt is the timestamp when the session state was observed.
 	ObservedAt time.Time `json:"observed_at"`
 }
+
+// SessionSnapshot is authoritative for the single Auth gateway at ObservedAt.
+type SessionSnapshot struct {
+	ObservedAt time.Time      `json:"observed_at"`
+	Sessions   map[string]int `json:"sessions"`
+}

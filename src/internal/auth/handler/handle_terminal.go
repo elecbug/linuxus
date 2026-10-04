@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -46,6 +47,15 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 	proxy := a.terminalProxy(target)
 
 	if isWebSocketRequest(r) {
+		ctx, cancel := context.WithCancel(r.Context())
+		r = r.WithContext(ctx)
+		a.sessionMu.Lock()
+		if a.sessionCancels == nil {
+			a.sessionCancels = make(map[*http.Request]context.CancelFunc)
+		}
+		a.sessionCancels[r] = cancel
+		a.sessionMu.Unlock()
+		defer func() { cancel(); a.sessionMu.Lock(); delete(a.sessionCancels, r); a.sessionMu.Unlock() }()
 		a.markSessionStart(id)
 		defer a.markSessionEnd(id)
 	}

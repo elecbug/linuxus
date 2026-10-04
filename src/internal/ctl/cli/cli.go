@@ -46,23 +46,32 @@ func ParseParams(params []string) (*Parameters, error) {
 		}
 		key, value, hasValue := strings.Cut(param, "=")
 		switch key {
+		case "--replace":
+			key = "replace"
+			if hasValue {
+				return nil, fmt.Errorf("--replace does not accept a value")
+			}
+			value = TRUE_STR
 		case "--all", "-a":
 			key = "all"
 			if hasValue {
 				return nil, fmt.Errorf("--all does not accept a value")
 			}
 			value = TRUE_STR
-		case "--user", "-u":
-			key = "user"
+		case "--user", "-u", "--file", "--output", "--template", "--class":
+			key = strings.TrimPrefix(key, "--")
+			if key == "-u" {
+				key = "user"
+			}
 			if !hasValue {
 				if i+1 == len(params) || strings.HasPrefix(params[i+1], "-") {
-					return nil, fmt.Errorf("--user requires a username")
+					return nil, fmt.Errorf("--%s requires a value", key)
 				}
 				i++
 				value = params[i]
 			}
 			if value == "" {
-				return nil, fmt.Errorf("--user requires a username")
+				return nil, fmt.Errorf("--%s requires a value", key)
 			}
 		default:
 			return nil, fmt.Errorf("unknown option %q", key)

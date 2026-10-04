@@ -5,10 +5,10 @@ linuxusctl
 debug/
 
 # Data file directory likely authentication info, user data, etc.
-data/
+/data
 
 # User volumes for services, e.g., home directories, shared directories, etc.
-volumes/
+/volumes
 
 # Logs and temporary files.
 logs/

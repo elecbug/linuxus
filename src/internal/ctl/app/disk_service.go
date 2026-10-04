@@ -167,9 +167,6 @@ func (a *App) stopDiskService() error {
 // ServeDisks is the private host mode launched by up when auto-ensure is true.
 // It exposes no TCP listener, command execution, path selection or deletion API.
 func (a *App) ServeDisks() error {
-	if !a.Config.Volumes.AutoEnsure {
-		return fmt.Errorf("VOLUMES_AUTO_ENSURE is disabled")
-	}
 	if os.Geteuid() != 0 {
 		return fmt.Errorf("host disk service requires root for mounting disks")
 	}
@@ -243,6 +240,7 @@ func (a *App) serveDisks(ctx context.Context) error {
 
 func (a *App) diskServiceHandler(shutdown func()) http.Handler {
 	mux := http.NewServeMux()
+	a.registerDiskDiagnostics(mux)
 	var mu sync.Mutex
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("POST /shutdown", func(w http.ResponseWriter, r *http.Request) {
@@ -267,7 +265,7 @@ func (a *App) diskServiceHandler(shutdown func()) http.Handler {
 			if err != nil {
 				return fmt.Errorf("cannot load registered users")
 			}
-			if !user.ExistsUser(users, request.UserID) {
+			if !user.ExistsUser(users, request.UserID) || user.IsLocked(users[request.UserID]) {
 				status = http.StatusForbidden
 				return fmt.Errorf("user is not registered")
 			}

@@ -54,7 +54,10 @@ func (a *App) showContainerInfos() error {
 			status = convert.ContainerInspectToStatusText(info)
 		}
 
-		image := info.Config.Image
+		image := "-"
+		if info.Config != nil {
+			image = info.Config.Image
+		}
 		ports := convert.ContainerInspectToPortSummary(info)
 
 		containerInfos = append(containerInfos, spec.ContainerInfo{
@@ -102,7 +105,7 @@ func (a *App) showNetworkInfos() error {
 			info := spec.NetworkInfo{
 				Name:   net.Name,
 				ID:     convert.ShortenNetworkID(net.ID),
-				Subnet: net.IPAM.Config[0].Subnet,
+				Subnet: networkSubnets(net.IPAM.Config),
 			}
 			networkInfos = append(networkInfos, info)
 		}
@@ -115,4 +118,17 @@ func (a *App) showNetworkInfos() error {
 	}
 
 	return nil
+}
+
+func networkSubnets(ranges []network.IPAMConfig) string {
+	var subnets []string
+	for _, allocation := range ranges {
+		if allocation.Subnet != "" {
+			subnets = append(subnets, allocation.Subnet)
+		}
+	}
+	if len(subnets) == 0 {
+		return "-"
+	}
+	return strings.Join(subnets, ", ")
 }

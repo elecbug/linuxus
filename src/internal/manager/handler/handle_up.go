@@ -91,6 +91,13 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (res
 		return nil, fmt.Errorf("user_id contains invalid characters")
 	}
 
+	if s.cfg != nil && s.cfg.MaxPending > 0 {
+		if s.pending.Add(1) > int32(s.cfg.MaxPending) {
+			s.pending.Add(-1)
+			return nil, fmt.Errorf("preparation queue is full; retry shortly")
+		}
+		defer s.pending.Add(-1)
+	}
 	if err := s.prepareMu.LockContext(ctx); err != nil {
 		return nil, err
 	}
@@ -102,8 +109,12 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (res
 	}()
 	containerName := s.cfg.UserContainerNamePrefix + userID
 
-	if _, err := s.docker.ImageInspect(ctx, s.cfg.UserImage, client.ImageInspectWithRawResponse(nil)); err != nil {
-		return nil, fmt.Errorf("inspect user image %s: %w", s.cfg.UserImage, err)
+	_, template, err := s.userTemplate(userID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.docker.ImageInspect(ctx, template.Image, client.ImageInspectWithRawResponse(nil)); err != nil {
+		return nil, fmt.Errorf("inspect user image %s: %w", template.Image, err)
 	}
 
 	exists, running, err := s.inspectContainerState(ctx, containerName)
@@ -111,6 +122,11 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (res
 		return nil, err
 	}
 
+	if !running {
+		if err := s.checkAdmission(ctx); err != nil {
+			return nil, err
+		}
+	}
 	if s.cfg.AutoEnsure && !running {
 		if err := diskservice.Ensure(ctx, s.diskClient, userID); err != nil {
 			return nil, fmt.Errorf("disk preparation failed: %w", err)
@@ -268,13 +284,19 @@ func (s *Server) createUserContainer(ctx context.Context, containerName, userID,
 		return "", fmt.Errorf("invalid user_id: path traversal detected")
 	}
 
+	templateName, template, err := s.userTemplate(userID)
+	if err != nil {
+		return "", err
+	}
 	cfg := &container.Config{
-		Image:      s.cfg.UserImage,
+		Image:      template.Image,
 		Hostname:   s.cfg.ContainerHostname,
 		User:       s.cfg.RuntimeUser,
 		WorkingDir: s.cfg.WorkingDir,
 		Env: []string{
 			"TZ=" + s.cfg.Timezone,
+			"LINUXUS_TEMPLATE=" + templateName,
+			"LINUXUS_TEMPLATE_SEED=" + template.Seed,
 			"CONTAINER_RUNTIME_USER=" + s.cfg.ContainerRuntimeUser,
 			"USER_ID=" + userID,
 			"SHARED_DIR=" + s.cfg.ContainerShareDir,

@@ -88,7 +88,23 @@ func parseConfigFromEnv() (*config.Config, error) {
 		return nil, fmt.Errorf("invalid UserService.Limits.Admin.Memory: %v", err)
 	}
 
+	templates, classes, err := ctl_config.ParseTemplates(&cfg)
+	if err != nil {
+		return nil, err
+	}
+	var minFree int64
+	if cfg.Capacity.MinFreeSpace != "" {
+		minFree, err = convert.BytesFromString(cfg.Capacity.MinFreeSpace)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &config.Config{
+		AuthListFile: "/run/linuxus-accounts",
+		MaxRunning:   cfg.Capacity.MaxRunning,
+		MaxPending:   cfg.Capacity.MaxPending,
+		MinFreeBytes: minFree,
+		Templates:    templates, Classes: classes,
 		AutoEnsure:              cfg.Volumes.AutoEnsure,
 		DiskServiceSocket:       diskSocket,
 		ListenAddr:              ":5959",

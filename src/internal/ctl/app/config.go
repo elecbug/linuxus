@@ -9,8 +9,8 @@ import (
 	"github.com/elecbug/linuxus/src/internal/common/user"
 )
 
-// LoadConfig reads and parses the .env configuration file into App.Config.
-func (a *App) LoadConfig() error {
+// loadSettings reads settings independently of Docker and the account database.
+func (a *App) loadSettings() error {
 	// Resolve config symlinks before interpreting relative storage paths so
 	// both a symlink and its target select the same persistent state.
 	configFile, err := filepath.EvalSymlinks(a.configFile)
@@ -23,6 +23,13 @@ func (a *App) LoadConfig() error {
 	a.configFile, err = filepath.Abs(configFile)
 	if err != nil {
 		return err
+	}
+	info, err := os.Stat(a.configFile)
+	if err != nil {
+		return fmt.Errorf("stat config %s: %w", a.configFile, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("config %s must be a regular file", a.configFile)
 	}
 	data, err := os.ReadFile(a.configFile)
 	if err != nil {
@@ -38,8 +45,15 @@ func (a *App) LoadConfig() error {
 	a.Config = parsed
 
 	a.normalizeConfigPaths()
+	return nil
+}
 
-	a.UserIDs, err = user.LoadUsers(a.Config.AuthService.Mounts.HostAuthListPath)
+// LoadConfig also loads credentials for commands that operate on accounts.
+func (a *App) LoadConfig() error {
+	if err := a.loadSettings(); err != nil {
+		return err
+	}
+	users, err := user.LoadUsers(a.Config.AuthService.Mounts.HostAuthListPath)
 	if os.IsNotExist(err) {
 		a.UserIDs = make(map[string]string)
 		return nil
@@ -48,6 +62,7 @@ func (a *App) LoadConfig() error {
 		return fmt.Errorf("failed to load user IDs from auth list: %w", err)
 	}
 
+	a.UserIDs = users
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"html/template"
 	"log"
 	"net"
@@ -61,7 +62,9 @@ type App struct {
 	userFails map[string]*loginAttempt
 
 	// done signals background goroutines to stop.
-	done chan struct{}
+	done           chan struct{}
+	stopOnce       sync.Once
+	sessionCancels map[*http.Request]context.CancelFunc
 
 	// mux is the HTTP request multiplexer.
 	mux *http.ServeMux
@@ -166,7 +169,8 @@ func NewApp(config *AppConfig) *App {
 		ipFails:   make(map[string]*loginAttempt),
 		userFails: make(map[string]*loginAttempt),
 
-		done: make(chan struct{}),
+		done:           make(chan struct{}),
+		sessionCancels: make(map[*http.Request]context.CancelFunc),
 
 		sessionMu:            sync.Mutex{},
 		activeSessions:       make(map[string]int),
@@ -218,13 +222,14 @@ func (a *App) SignupPath() string {
 // Start launches the HTTP server using the configured route multiplexer.
 func (a *App) Start(addr string) error {
 	log.Printf("Auth server listening on %s", addr)
+	go a.sessionReporter()
 	server := &http.Server{Addr: addr, Handler: a.mux, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
 	return server.ListenAndServe()
 }
 
 // Stop signals background maintenance routines to terminate.
 func (a *App) Stop() {
-	close(a.done)
+	a.stopOnce.Do(func() { close(a.done) })
 }
 
 // RegisterRoutes compiles templates and binds HTTP handlers.

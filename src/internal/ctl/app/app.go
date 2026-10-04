@@ -22,6 +22,7 @@ type App struct {
 	execPath string
 	// configFile points to the runtime configuration file.
 	configFile string
+	supervised bool
 
 	// Config stores the parsed application configuration.
 	Config config.Config

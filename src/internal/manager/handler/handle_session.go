@@ -31,7 +31,7 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req packet.SessionStateReport
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil {
 		http.Error(w, "invalid json body", http.StatusBadRequest)
 		return
 	}
@@ -60,6 +60,9 @@ func (s *Server) updateSessionState(userID string, active int, observedAt time.T
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.runtimes == nil {
+		s.runtimes = make(map[string]*RuntimeState)
+	}
 	rt, ok := s.runtimes[userID]
 	if !ok {
 		rt = &RuntimeState{

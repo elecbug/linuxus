@@ -51,7 +51,7 @@ func (a *App) getSessionID(r *http.Request) (string, bool) {
 		return "", false
 	}
 	hash, exists := users[parts[0]]
-	if !exists {
+	if !exists || user.IsLocked(hash) {
 		return "", false
 	}
 	expected := a.sign("session|" + parts[0] + "|" + parts[1] + "|" + hash)

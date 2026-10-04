@@ -18,13 +18,31 @@ import (
 // openLocked locks the auth file itself so host commands and the container's
 // bind mount synchronize on the same inode. Closing the file releases the lock.
 func openLocked(path string, flags, operation int) (*os.File, error) {
-	file, err := os.OpenFile(path, flags, 0600)
+	file, err := openRegular(path, flags)
 	if err != nil {
 		return nil, err
 	}
 	if err := syscall.Flock(int(file.Fd()), operation); err != nil {
 		file.Close()
 		return nil, fmt.Errorf("lock auth list: %w", err)
+	}
+	return file, nil
+}
+
+// Nonblocking open lets us reject a FIFO before waiting for a writer/reader.
+// Validate the opened inode, including when the path is a symlink.
+func openRegular(path string, flags int) (*os.File, error) {
+	file, err := os.OpenFile(path, flags|syscall.O_NONBLOCK, 0600)
+	if err != nil {
+		return nil, err
+	}
+	info, err := file.Stat()
+	if err == nil && !info.Mode().IsRegular() {
+		err = fmt.Errorf("auth list must be a regular file")
+	}
+	if err != nil {
+		file.Close()
+		return nil, err
 	}
 	return file, nil
 }
@@ -195,7 +213,7 @@ func EnsureFile(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return fmt.Errorf("create auth directory: %w", err)
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
+	file, err := openRegular(path, os.O_CREATE|os.O_WRONLY)
 	if err != nil {
 		return fmt.Errorf("initialize auth list: %w", err)
 	}

@@ -88,3 +88,25 @@ func TestAuthListCannotAliasSymlinkedShareImage(t *testing.T) {
 		t.Fatal("auth list would be deleted as a shared image")
 	}
 }
+
+func TestStoragePathTypes(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "file")
+	if err := os.WriteFile(file, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		path             string
+		directory, valid bool
+	}{
+		{root, true, true}, {file, false, true},
+		{root, false, false}, {file, true, false},
+		{filepath.Join(root, "missing"), true, true},
+		{filepath.Join(root, "missing"), false, true},
+		{filepath.Join(file, "invalid-parent"), true, false},
+	} {
+		if err := usableStoragePath(tc.path, tc.directory); (err == nil) != tc.valid {
+			t.Fatalf("path=%s directory=%t error=%v", tc.path, tc.directory, err)
+		}
+	}
+}

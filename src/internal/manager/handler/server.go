@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -28,6 +29,7 @@ type Server struct {
 	cfg *config.Config
 
 	// prepareMu serializes disk preparation, runtime allocation and idle cleanup.
+	pending    atomic.Int32
 	prepareMu  runtimeLock
 	diskClient *http.Client
 
@@ -72,8 +74,11 @@ func NewServer(cfg *config.Config) (*Server, error) {
 func (s *Server) RegisterRoutes() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.HandleHealthz)
+	mux.HandleFunc("/admin/user", s.HandleAdminUser)
+	mux.HandleFunc("/admin/status", s.HandleAdminStatus)
 	mux.HandleFunc("/user/up", s.HandleUserUp)
 	mux.HandleFunc("/user/session-state", s.HandleUserSessionState)
+	mux.HandleFunc("/user/session-snapshot", s.HandleSessionSnapshot)
 
 	s.mux = mux
 }
@@ -82,7 +87,13 @@ func (s *Server) RegisterRoutes() {
 func (s *Server) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	reconcileCtx, stopReconcile := context.WithTimeout(ctx, 10*time.Second)
+	if err := s.reconcileRuntimes(reconcileCtx); err != nil {
+		log.Printf("runtime reconciliation: %v", err)
+	}
+	stopReconcile()
 	s.StartIdleReaper(ctx)
+	s.startReconciliation(ctx)
 
 	srv := &http.Server{
 		Addr:              s.cfg.ListenAddr,

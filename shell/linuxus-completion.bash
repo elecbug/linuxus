@@ -5,7 +5,7 @@ _linuxus_completion() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="init up down restart ps add-user remove-user clean-volume ensure-disk help"
+    commands="init config-check doctor up down restart ps add-user remove-user clean-volume ensure-disk help"
 
     if [[ ${COMP_CWORD} -eq 1 ]]; then
         COMPREPLY=( $(compgen -W "$commands" -- "$cur") )

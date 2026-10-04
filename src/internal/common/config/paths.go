@@ -91,3 +91,6 @@ func validateVolumePaths(cfg *Config) error {
 	}
 	return nil
 }
+
+// CanonicalStoragePath also resolves existing parents of not-yet-created paths.
+func CanonicalStoragePath(path string) (string, error) { return resolveStoragePath(path) }

@@ -39,12 +39,23 @@ const (
 	HELP
 	SERVE_DISKS
 	INIT
+	CONFIG_CHECK
+	DOCTOR
+	ACCOUNTS
+	LIST_USERS
+	TEMPLATES
+	BACKUP
+	RESTORE
+	VERIFY_BACKUP
+	SYSTEMD_UNIT
+	SUPERVISE
 )
 
 // Options encapsulates the selected operations and their parameters.
 type Options struct {
-	Option Opt
-	Params *cli.Parameters
+	Option  Opt
+	Command string
+	Params  *cli.Parameters
 }
 
 // run initializes the application and executes selected runtime operations.
@@ -92,6 +103,19 @@ func run() error {
 		return nil
 	}
 
+	if opt.Option == CONFIG_CHECK {
+		return app.CheckConfig(configFile, os.Stdout)
+	}
+	if opt.Option == DOCTOR {
+		return app.Doctor(configFile, os.Stdout)
+	}
+
+	if opt.Option == SYSTEMD_UNIT {
+		return app.WriteSystemdUnit(execPath, configFile, os.Stdout)
+	}
+	if opt.Option == VERIFY_BACKUP {
+		return app.VerifyBackup(opt.Params.Params["file"], os.Stdout)
+	}
 	a, err := app.CreateApp(execPath, configFile)
 	if err != nil {
 		return err
@@ -108,6 +132,18 @@ func run() error {
 	}
 
 	switch opt.Option {
+	case LIST_USERS:
+		return a.ListUsers(os.Stdout)
+	case TEMPLATES:
+		return a.ListTemplates(os.Stdout)
+	case ACCOUNTS:
+		return a.ServiceAccount(opt.Command, opt.Params)
+	case BACKUP:
+		return a.BackupUser(opt.Params.Params["user"], opt.Params.Params["output"])
+	case RESTORE:
+		return a.RestoreUser(opt.Params.Params["user"], opt.Params.Params["file"], opt.Params.Params["replace"] == cli.TRUE_STR)
+	case SUPERVISE:
+		return a.Supervise()
 	case SERVE_DISKS:
 		return a.ServeDisks()
 	case UP:
@@ -164,8 +200,28 @@ func parseArgs(bin string, args []string) (Options, error) {
 	}
 
 	switch args[0] {
+	case "list-users":
+		result.Option = LIST_USERS
+	case "templates":
+		result.Option = TEMPLATES
+	case "lock-user", "unlock-user", "reset-password", "disconnect-user", "assign-template", "assign-class":
+		result.Option = ACCOUNTS
+	case "backup-user":
+		result.Option = BACKUP
+	case "restore-user":
+		result.Option = RESTORE
+	case "verify-backup":
+		result.Option = VERIFY_BACKUP
+	case "systemd-unit":
+		result.Option = SYSTEMD_UNIT
+	case "supervise":
+		result.Option = SUPERVISE
 	case "init":
 		result.Option = INIT
+	case "config-check":
+		result.Option = CONFIG_CHECK
+	case "doctor":
+		result.Option = DOCTOR
 	case "up":
 		result.Option = UP
 	case "down":
@@ -190,6 +246,7 @@ func parseArgs(bin string, args []string) (Options, error) {
 		return result, fmt.Errorf("invalid parameter: '%s'\n\n%s", args[0], usageText(bin, true, true, false))
 	}
 
+	result.Command = args[0]
 	params := make([]string, 0)
 
 	if len(args) > 1 {
@@ -202,9 +259,48 @@ func parseArgs(bin string, args []string) (Options, error) {
 	}
 	result.Params = parsed
 	switch result.Option {
-	case UP, DOWN, RESTART, HELP, SERVE_DISKS, INIT:
+	case UP, DOWN, RESTART, HELP, SERVE_DISKS, INIT, CONFIG_CHECK, DOCTOR, LIST_USERS, TEMPLATES, SYSTEMD_UNIT, SUPERVISE:
 		if len(params) != 0 {
 			return result, fmt.Errorf("%s does not accept arguments", args[0])
+		}
+	case ACCOUNTS, BACKUP, RESTORE, VERIFY_BACKUP:
+		allowed := map[string]bool{}
+		if result.Option != VERIFY_BACKUP {
+			allowed["user"] = true
+		}
+		switch result.Option {
+		case BACKUP:
+			allowed["output"] = true
+		case RESTORE:
+			allowed["file"] = true
+		case VERIFY_BACKUP:
+			allowed["file"] = true
+		case ACCOUNTS:
+			if args[0] == "assign-template" {
+				allowed["template"] = true
+			}
+			if args[0] == "assign-class" {
+				allowed["class"] = true
+			}
+		}
+		for key := range allowed {
+			if parsed.Params[key] == "" {
+				return result, fmt.Errorf("%s requires --%s", args[0], key)
+			}
+		}
+		if result.Option == RESTORE {
+			allowed["replace"] = true
+		}
+		for key := range parsed.Params {
+			if !allowed[key] {
+				return result, fmt.Errorf("unsupported --%s for %s", key, args[0])
+			}
+		}
+		if parsed.MainParam != "" {
+			return result, fmt.Errorf("unexpected positional argument")
+		}
+		if id := parsed.Params["user"]; id != "" && !ruleset.AllowedUserID(id) {
+			return result, fmt.Errorf("invalid user ID")
 		}
 	case PS:
 		if len(parsed.Params) != 0 {
@@ -248,6 +344,8 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 		result += "Options:\n"
 		result += "├─ General:\n"
 		result += fmt.Sprintf("│  ├─ %-35s# Create /etc/linuxus/.env from embedded defaults\n", "init")
+		result += fmt.Sprintf("│  ├─ %-35s# Validate settings without Docker or service changes\n", "config-check")
+		result += fmt.Sprintf("│  ├─ %-35s# Diagnose host prerequisites without changing state\n", "doctor")
 		result += fmt.Sprintf("│  └─ %-35s# Show help message\n", "help")
 		result += "│\n"
 		result += "├─ Service Management:\n"

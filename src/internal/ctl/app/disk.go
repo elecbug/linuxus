@@ -344,6 +344,9 @@ func (a *App) createUserDisk(userID string, isAdmin bool) (retErr error) {
 // createFormattedImage removes only the new image when formatting fails, so a
 // retry can initialize it again. Existing images never pass through this path.
 func (a *App) createFormattedImage(img string, size int64) error {
+	if err := a.checkFreeSpace(); err != nil {
+		return err
+	}
 	if err := a.systemAPI.CreateEmptyFile(img, size); err != nil {
 		return err
 	}

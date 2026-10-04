@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/elecbug/linuxus/src/internal/common/user"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // dummyHash is used to keep timing behavior similar for unknown users.
@@ -57,7 +56,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 3) Compare password
-		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+		err := user.CheckPassword(hash, password)
 
 		// 4) Handle failed comparison
 		if err != nil {

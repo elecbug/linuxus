@@ -28,7 +28,7 @@ func (a *App) buildAuthRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 		Ports: []string{
 			fmt.Sprintf("%d:8080", a.Config.AuthService.Container.ExternalPort),
 		},
-		Restart: "unless-stopped",
+		Restart: a.serviceRestartPolicy(),
 		Networks: []string{
 			a.Config.ManagerService.Container.Network,
 		},
@@ -42,9 +42,10 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 	if err != nil {
 		return spec.RuntimeContainerSpec{}, fmt.Errorf("failed to marshal config to JSON: %w", err)
 	}
-	volumes := []string{"/var/run/docker.sock:/var/run/docker.sock:rw"}
-	if a.Config.Volumes.AutoEnsure {
-		volumes = append(volumes, a.diskServiceDir()+":"+diskservice.ContainerDir+":ro")
+	volumes := []string{
+		"/var/run/docker.sock:/var/run/docker.sock:rw",
+		a.diskServiceDir() + ":" + diskservice.ContainerDir + ":ro",
+		a.Config.AuthService.Mounts.HostAuthListPath + ":/run/linuxus-accounts:ro",
 	}
 
 	return spec.RuntimeContainerSpec{
@@ -56,7 +57,7 @@ func (a *App) buildManagerRuntimeSpec() (spec.RuntimeContainerSpec, error) {
 			"DISK_SERVICE_SOCKET=" + diskservice.ContainerSocket,
 		},
 		Volumes: volumes,
-		Restart: "unless-stopped",
+		Restart: a.serviceRestartPolicy(),
 		Networks: []string{
 			a.Config.ManagerService.Container.Network,
 		},
