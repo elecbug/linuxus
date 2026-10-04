@@ -110,8 +110,17 @@ func TestRuntimeBuildContextsContainOnlyDeploymentAssets(t *testing.T) {
 					t.Fatal("binary is not executable")
 				}
 			}
-			if len(entries) != 2 {
-				t.Fatalf("unexpected context: %v", entries)
+			count := 2
+			if name == "user" {
+				count = 5
+				for _, seed := range []string{"templates/linux/README.txt", "templates/c/hello.c", "templates/python/hello.py"} {
+					if len(entries[seed]) == 0 {
+						t.Fatalf("missing classroom seed %s", seed)
+					}
+				}
+			}
+			if len(entries) != count {
+				t.Fatalf("unexpected context entry count: %d", len(entries))
 			}
 			if bytes.Contains(entries["Dockerfile"], []byte("go build")) {
 				t.Fatal("runtime still builds source")
@@ -136,10 +145,9 @@ func TestAutoEnsureManagerSpec(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := []string{"/var/run/docker.sock:/var/run/docker.sock:rw"}
-		if enabled {
-			want = append(want, a.diskServiceDir()+":"+diskservice.ContainerDir+":ro")
-		}
+		want := []string{"/var/run/docker.sock:/var/run/docker.sock:rw",
+			a.diskServiceDir() + ":" + diskservice.ContainerDir + ":ro",
+			a.Config.AuthService.Mounts.HostAuthListPath + ":/run/linuxus-accounts:ro"}
 		if !reflect.DeepEqual(spec.Volumes, want) || spec.Privileged {
 			t.Fatalf("invalid manager spec: %+v", spec)
 		}

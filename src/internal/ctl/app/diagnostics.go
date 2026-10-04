@@ -46,6 +46,7 @@ type doctorChecks struct {
 	lookPath func(string) (string, error)
 	docker   func(context.Context) error
 	disk     func(context.Context, string) error
+	runtime  func(*App, func(string, string, string))
 }
 
 // Doctor reports independent prerequisite failures without changing host state.
@@ -53,6 +54,7 @@ func Doctor(configFile string, output io.Writer) error {
 	return runDoctor(configFile, output, doctorChecks{
 		goos: runtime.GOOS, euid: os.Geteuid(), lookPath: exec.LookPath,
 		docker: probeDocker, disk: probeDiskService,
+		runtime: func(a *App, report func(string, string, string)) { a.diagnoseRuntime(report) },
 	})
 }
 
@@ -143,6 +145,9 @@ func runDoctor(configFile string, output io.Writer, checks doctorChecks) error {
 		} else {
 			report("OK", "auto-ensure", "disabled; new users require ensure-disk")
 		}
+	}
+	if a != nil && checks.runtime != nil {
+		checks.runtime(a, report)
 	}
 	if writeErr != nil {
 		return writeErr

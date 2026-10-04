@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -15,6 +16,9 @@ import (
 
 // cleanVolumesAll unmounts and removes all user and shared disks after confirming with the user.
 func (a *App) cleanVolumesAll() error {
+	if err := a.checkSupervisor(); err != nil {
+		return err
+	}
 	yes, err := log.Input("Are you sure you want to clean volumes for ALL users? This action cannot be undone. (yes/no): ")
 	if err != nil {
 		return fmt.Errorf("failed to read confirmation: %w", err)
@@ -25,6 +29,9 @@ func (a *App) cleanVolumesAll() error {
 		return nil
 	}
 
+	if err := a.checkMaintenanceAccounts(""); err != nil {
+		return err
+	}
 	log.Log(log.RUN_PREFIX, "Cleaning volumes for all users...")
 	log.Log(log.INFO_PREFIX, "Stopping and removing all managed containers and networks...")
 
@@ -117,7 +124,46 @@ func (a *App) cleanVolumeUser(userID string) error {
 	if !ruleset.AllowedUserID(userID) {
 		return fmt.Errorf("invalid user ID: %q", userID)
 	}
-	return a.withDiskLock(func() error { return a.cleanVolumeUserUnlocked(userID) })
+	return a.withDiskLock(func() error {
+		if err := a.checkMaintenanceAccounts(userID); err != nil {
+			return err
+		}
+		return a.cleanVolumeUserUnlocked(userID)
+	})
+}
+
+// Destructive cleanup must not discard an abandoned maintenance operation.
+// The service caller also holds the maintenance lock against new operations.
+func (a *App) checkMaintenanceAccounts(id string) error {
+	users, err := user.LoadUsers(a.Config.AuthService.Mounts.HostAuthListPath)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	for userID, record := range users {
+		if id != "" && id != userID {
+			continue
+		}
+		account, err := user.ParseAccount(record)
+		if err != nil {
+			return err
+		}
+		if account.Maintenance {
+			return fmt.Errorf("user %s is under disk maintenance; use recover-user before cleanup", userID)
+		}
+	}
+	if id != "" {
+		return a.checkPendingRestore(id)
+	}
+	entries, err := os.ReadDir(a.Config.Volumes.Host.Homes)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".restore-") && strings.HasSuffix(entry.Name(), ".previous") {
+			return fmt.Errorf("retained restore image %s requires recovery before cleanup", entry.Name())
+		}
+	}
+	return nil
 }
 
 func (a *App) cleanVolumeUserUnlocked(userID string) error {
@@ -158,7 +204,12 @@ func (a *App) cleanVolumeUserUnlocked(userID string) error {
 
 // ensureDiskAll creates and mounts disks for all users and shared volumes.
 func (a *App) ensureDiskAll() error {
-	return a.withDiskLock(a.ensureDiskAllUnlocked)
+	return a.withDiskLock(func() error {
+		if err := user.SyncUsers(a.UserIDs, a.Config.AuthService.Mounts.HostAuthListPath); err != nil {
+			return err
+		}
+		return a.ensureDiskAllUnlocked()
+	})
 }
 
 func (a *App) ensureDiskAllUnlocked() error {
@@ -173,7 +224,18 @@ func (a *App) ensureDiskAllUnlocked() error {
 		return err
 	}
 
-	for userID := range a.UserIDs {
+	for userID, record := range a.UserIDs {
+		account, err := user.ParseAccount(record)
+		if err != nil {
+			return fmt.Errorf("invalid account %s: %w", userID, err)
+		}
+		if account.Maintenance {
+			log.Log(log.INFO_PREFIX, "Skipping %s: disk maintenance requires recovery.", userID)
+			continue
+		}
+		if err := a.checkPendingRestore(userID); err != nil {
+			return err
+		}
 		if err := a.createUserDisk(userID, a.Config.ManagerService.AdminID == userID); err != nil {
 			return err
 		}
@@ -187,12 +249,28 @@ func (a *App) ensureDiskUser(userID string) error {
 	if !ruleset.AllowedUserID(userID) {
 		return fmt.Errorf("invalid user ID")
 	}
-	return a.withDiskLock(func() error { return a.ensureDiskUserUnlocked(userID) })
+	return a.withDiskLock(func() error {
+		if err := user.SyncUsers(a.UserIDs, a.Config.AuthService.Mounts.HostAuthListPath); err != nil {
+			return err
+		}
+		return a.ensureDiskUserUnlocked(userID)
+	})
 }
 
 func (a *App) ensureDiskUserUnlocked(userID string) error {
 	if !user.ExistsUser(a.UserIDs, userID) {
 		return fmt.Errorf("user ID not found in auth list: %s", userID)
+	}
+
+	account, err := user.ParseAccount(a.UserIDs[userID])
+	if err != nil {
+		return err
+	}
+	if account.Maintenance {
+		return fmt.Errorf("account is under disk maintenance; use recover-user first")
+	}
+	if err := a.checkPendingRestore(userID); err != nil {
+		return err
 	}
 
 	if err := a.systemAPI.MkdirAll(a.Config.Volumes.Host.Homes, 0755); err != nil {

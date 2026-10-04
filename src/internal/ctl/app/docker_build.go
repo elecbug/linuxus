@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"runtime"
 	"strconv"
@@ -90,6 +91,21 @@ func tarRuntimeContext(dockerfile, executable string) (io.Reader, error) {
 			return nil, err
 		}
 		if err := add("start.sh", 0755, script); err != nil {
+			return nil, err
+		}
+		if err := fs.WalkDir(assets.Files, "templates", func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			data, err := assets.Files.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			return add(path, 0644, data)
+		}); err != nil {
 			return nil, err
 		}
 	} else {

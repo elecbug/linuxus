@@ -57,6 +57,16 @@ func LoadUsers(path string) (map[string]string, error) {
 	return readUsers(file)
 }
 
+// TryLoadUsers avoids waiting indefinitely during read-only diagnostics.
+func TryLoadUsers(path string) (map[string]string, error) {
+	file, err := openLocked(path, os.O_RDONLY, syscall.LOCK_SH|syscall.LOCK_NB)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return readUsers(file)
+}
+
 func readUsers(reader io.Reader) (map[string]string, error) {
 	users := make(map[string]string)
 	scanner := bufio.NewScanner(reader)
@@ -162,6 +172,14 @@ func RemoveUser(path string, users map[string]string, id string) error {
 	}
 	if _, exists := current[id]; !exists {
 		return fmt.Errorf("user %q does not exist", id)
+	}
+
+	account, err := ParseAccount(current[id])
+	if err != nil {
+		return err
+	}
+	if account.Maintenance {
+		return fmt.Errorf("account is under disk maintenance; use recover-user before removing it")
 	}
 
 	var lines []string

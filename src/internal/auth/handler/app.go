@@ -11,10 +11,14 @@ import (
 	"time"
 
 	"github.com/elecbug/linuxus/src/internal/auth/page"
+	commonconfig "github.com/elecbug/linuxus/src/internal/common/config"
 )
 
 // App holds auth server state, templates, and manager integration clients.
 type App struct {
+	adminID   string
+	templates map[string]commonconfig.Template
+	classes   map[string]string
 	// users maps user IDs to bcrypt password hashes.
 	users map[string]string
 	// usersMu protects credential reloads, lookups and signup writes.
@@ -83,6 +87,9 @@ type App struct {
 
 // AppConfig defines all configuration values required to initialize an App.
 type AppConfig struct {
+	AdminID   string
+	Templates map[string]commonconfig.Template
+	Classes   map[string]string
 	// Users maps user IDs to bcrypt password hashes.
 	Users map[string]string
 	// AuthListFile is the path to the auth list file in container.
@@ -148,6 +155,7 @@ func NewApp(config *AppConfig) *App {
 		config.Users = make(map[string]string)
 	}
 	app := &App{
+		adminID: config.AdminID, templates: config.Templates, classes: config.Classes,
 		users:                   config.Users,
 		authListFile:            config.AuthListFile,
 		sessionKey:              config.SessionKey,
@@ -260,6 +268,10 @@ func (a *App) RegisterRoutes() {
 	a.signupTmpl = signupTmpl
 
 	a.mux.HandleFunc("/", a.handleRoot)
+	a.mux.HandleFunc("/admin", a.handleAdmin)
+	a.mux.HandleFunc("/admin/", a.handleAdmin)
+	a.mux.HandleFunc("/admin/api/users", a.handleAdminUsers)
+	a.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 	a.mux.HandleFunc("/"+a.loginPath, a.handleLogin)
 	a.mux.HandleFunc("/"+a.logoutPath, a.handleLogout)
 	a.mux.HandleFunc("/"+a.signupPath, a.handleSignup)

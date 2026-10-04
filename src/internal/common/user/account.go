@@ -19,11 +19,12 @@ import (
 // Legacy bcrypt entries remain readable. Updated entries also carry account
 // state and a random generation so unlocking never revives old session cookies.
 type Account struct {
-	Hash       string `json:"hash"`
-	Locked     bool   `json:"locked,omitempty"`
-	Generation string `json:"generation,omitempty"`
-	Template   string `json:"template,omitempty"`
-	Class      string `json:"class,omitempty"`
+	Maintenance bool   `json:"maintenance,omitempty"`
+	Hash        string `json:"hash"`
+	Locked      bool   `json:"locked,omitempty"`
+	Generation  string `json:"generation,omitempty"`
+	Template    string `json:"template,omitempty"`
+	Class       string `json:"class,omitempty"`
 }
 
 const accountPrefix = "!linuxus1!"
@@ -45,7 +46,7 @@ func ParseAccount(value string) (Account, error) {
 
 func IsLocked(value string) bool {
 	account, err := ParseAccount(value)
-	return err != nil || account.Locked
+	return err != nil || account.Locked || account.Maintenance
 }
 
 func CheckPassword(value, password string) error {
@@ -54,7 +55,7 @@ func CheckPassword(value, password string) error {
 		return err
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(account.Hash), []byte(password))
-	if account.Locked {
+	if account.Locked || account.Maintenance {
 		return fmt.Errorf("account locked")
 	}
 	return err
@@ -97,7 +98,17 @@ func UpdateAccount(path, id, operation, value string) error {
 	if err != nil {
 		return err
 	}
+	if account.Maintenance && operation != "maintenance-end" && operation != "maintenance-failed" {
+		return fmt.Errorf("account is under disk maintenance; wait or use recover-user after the operation exits")
+	}
 	switch operation {
+	case "maintenance":
+		account.Maintenance = true
+	case "maintenance-end":
+		account.Maintenance = false
+	case "maintenance-failed":
+		account.Maintenance = false
+		account.Locked = true
 	case "lock":
 		account.Locked = true
 	case "unlock":

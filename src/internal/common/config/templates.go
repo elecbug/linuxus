@@ -17,7 +17,11 @@ type Template struct {
 }
 
 func ParseTemplates(cfg *Config) (map[string]Template, map[string]string, error) {
-	templates, classes := map[string]Template{}, map[string]string{}
+	templates, classes := map[string]Template{
+		"linux":  {Image: "default", Seed: "/opt/linuxus/templates/linux"},
+		"c":      {Image: "default", Seed: "/opt/linuxus/templates/c"},
+		"python": {Image: "default", Seed: "/opt/linuxus/templates/python"},
+	}, map[string]string{}
 	decode := func(value string, target any) error {
 		if strings.TrimSpace(value) == "" {
 			return nil
@@ -39,6 +43,9 @@ func ParseTemplates(cfg *Config) (map[string]Template, map[string]string, error)
 	if err := decode(cfg.UserService.Classes, &classes); err != nil {
 		return nil, nil, fmt.Errorf("USER_SERVICE_CLASSES: %w", err)
 	}
+	if templates == nil || classes == nil {
+		return nil, nil, fmt.Errorf("templates and classes must be JSON objects")
+	}
 	for name, template := range templates {
 		if name == "default" || !ruleset.AllowedUserID(name) || strings.TrimSpace(template.Image) == "" || strings.ContainsAny(template.Image, " \t\r\n\x00") {
 			return nil, nil, fmt.Errorf("invalid template %q", name)
@@ -59,7 +66,7 @@ func ParseTemplates(cfg *Config) (map[string]Template, map[string]string, error)
 }
 
 func validateOperations(cfg *Config) error {
-	if cfg.Capacity.MaxRunning < 0 || cfg.Capacity.MaxPending < 0 {
+	if cfg.Capacity.MaxRunning < 0 || cfg.Capacity.MaxPending < 0 || cfg.Capacity.MaxPending > 1<<30 {
 		return fmt.Errorf("capacity limits must be non-negative")
 	}
 	if cfg.Capacity.MinFreeSpace != "" {

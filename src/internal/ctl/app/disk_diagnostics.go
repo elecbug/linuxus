@@ -50,7 +50,7 @@ func (a *App) registerDiskDiagnostics(mux *http.ServeMux) {
 			path := filepath.Join(a.Config.Volumes.Host.Homes, id)
 			mounted, err := a.systemAPI.IsMountPoint(path)
 			if err != nil {
-				rows[id] = map[string]any{"error": err.Error()}
+				rows[id] = map[string]any{"disk_error": err.Error()}
 				continue
 			}
 			row := map[string]any{"mounted": mounted}
@@ -60,6 +60,8 @@ func (a *App) registerDiskDiagnostics(mux *http.ServeMux) {
 					row["total_bytes"] = total
 					row["available_bytes"] = free
 					row["used_bytes"] = total - free
+				} else {
+					row["disk_error"] = err.Error()
 				}
 			}
 			rows[id] = row

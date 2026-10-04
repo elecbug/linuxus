@@ -50,6 +50,11 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 		req.ObservedAt = time.Now()
 	}
 
+	if req.ObservedAt.After(time.Now().Add(time.Minute)) {
+		http.Error(w, "invalid observed_at", http.StatusBadRequest)
+		return
+	}
+
 	s.updateSessionState(req.UserID, req.ActiveSessions, req.ObservedAt)
 
 	w.WriteHeader(http.StatusOK)
@@ -59,12 +64,19 @@ func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) 
 func (s *Server) updateSessionState(userID string, active int, observedAt time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if !s.lastSnapshotAt.IsZero() && !observedAt.After(s.lastSnapshotAt) {
+		return
+	}
+	s.updateSessionStateLocked(userID, active, observedAt)
+}
 
+// The caller holds mu for the whole update or complete snapshot.
+func (s *Server) updateSessionStateLocked(userID string, active int, observedAt time.Time) {
 	if s.runtimes == nil {
 		s.runtimes = make(map[string]*RuntimeState)
 	}
-	rt, ok := s.runtimes[userID]
-	if !ok {
+	rt := s.runtimes[userID]
+	if rt == nil {
 		rt = &RuntimeState{
 			UserID: userID,
 		}

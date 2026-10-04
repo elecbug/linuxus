@@ -37,6 +37,8 @@ type Server struct {
 	mu sync.Mutex
 	// runtimes tracks active user runtimes by sanitized user ID.
 	runtimes map[string]*RuntimeState
+	// lastSnapshotAt rejects delayed reports even for users absent from the map.
+	lastSnapshotAt time.Time
 }
 
 // RuntimeState tracks observed session activity for one user runtime.

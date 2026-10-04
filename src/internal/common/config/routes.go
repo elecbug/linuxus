@@ -29,7 +29,7 @@ func ValidateAuthRoutes(cfg *Config) error {
 		if !valid {
 			return fmt.Errorf("AUTH_SERVICE_SERVICE_URL_%s must be a clean URL path without leading/trailing slashes, query, escapes, or wildcard patterns", strings.ToUpper(route.name))
 		}
-		if value == "static" || strings.HasPrefix(value, "static/") || value == "favicon.ico" {
+		if value == "admin" || strings.HasPrefix(value, "admin/") || value == "healthz" || value == "static" || strings.HasPrefix(value, "static/") || value == "favicon.ico" {
 			return fmt.Errorf("AUTH_SERVICE_SERVICE_URL_%s conflicts with a reserved asset route", strings.ToUpper(route.name))
 		}
 		if previous, exists := seen[value]; exists {

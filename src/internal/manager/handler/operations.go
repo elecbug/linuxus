@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -18,8 +19,8 @@ import (
 
 func (s *Server) account(id string) (user.Account, error) {
 	if s.cfg.AuthListFile == "" {
-		return user.Account{}, nil
-	} // Unit/in-process configurations.
+		return user.Account{}, fmt.Errorf("account database is not configured")
+	}
 	users, err := user.LoadUsers(s.cfg.AuthListFile)
 	if err != nil {
 		return user.Account{}, fmt.Errorf("cannot read account database: %w", err)
@@ -29,7 +30,7 @@ func (s *Server) account(id string) (user.Account, error) {
 		return user.Account{}, fmt.Errorf("account does not exist")
 	}
 	account, err := user.ParseAccount(value)
-	if err != nil || account.Locked {
+	if err != nil || account.Locked || account.Maintenance {
 		return user.Account{}, fmt.Errorf("account is locked or invalid")
 	}
 	return account, nil
@@ -54,6 +55,9 @@ func (s *Server) userTemplate(id string) (string, commonconfig.Template, error) 
 	template, ok := s.cfg.Templates[name]
 	if !ok {
 		return "", commonconfig.Template{}, fmt.Errorf("unknown environment template %s", name)
+	}
+	if template.Image == "default" {
+		template.Image = s.cfg.UserImage
 	}
 	return name, template, nil
 }
@@ -173,12 +177,50 @@ func (s *Server) HandleAdminStatus(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://disk-service/usage", nil)
+	diskErr := fmt.Errorf("disk service unavailable")
+	if s.diskClient != nil {
+		resp, err := s.diskClient.Do(req)
+		diskErr = err
+		if err == nil {
+			if resp.StatusCode != http.StatusOK {
+				diskErr = fmt.Errorf("disk service returned HTTP %d", resp.StatusCode)
+			} else {
+				var usage map[string]map[string]any
+				diskErr = json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&usage)
+				if diskErr == nil && usage == nil {
+					diskErr = fmt.Errorf("invalid disk usage response")
+				}
+				if diskErr == nil {
+					for id, space := range usage {
+						if rows[id] == nil {
+							rows[id] = map[string]any{}
+						}
+						for key, value := range space {
+							rows[id][key] = value
+						}
+					}
+				}
+			}
+			resp.Body.Close()
+		}
+	}
+	if diskErr != nil {
+		w.Header().Set("X-Linuxus-Disk-Error", "Disk usage is unavailable; check the host disk service.")
+		for _, row := range rows {
+			row["disk_error"] = "Disk service unavailable"
+		}
+	}
 	http_helper.WriteJSONViaHTTP(w, 200, rows)
 }
 
 // Reconcile discovers runtimes after Manager restarts and gives Auth a grace
 // period to replay its complete session snapshot before idle cleanup is enabled.
 func (s *Server) reconcileRuntimes(ctx context.Context) error {
+	if err := s.prepareMu.LockContext(ctx); err != nil {
+		return err
+	}
+	defer s.prepareMu.Unlock()
 	containers, err := s.docker.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return err

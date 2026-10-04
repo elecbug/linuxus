@@ -30,7 +30,7 @@ func (a *App) ListUsers(output io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(output, "%s\t%t\t%s\t%s\n", id, record.Locked, record.Class, record.Template)
+		fmt.Fprintf(output, "%s\t%t\t%s\t%s\n", id, record.Locked || record.Maintenance, record.Class, record.Template)
 	}
 	return nil
 }
@@ -48,6 +48,9 @@ func (a *App) ListTemplates(output io.Writer) error {
 	sort.Strings(names)
 	for _, name := range names {
 		entry := templates[name]
+		if entry.Image == "default" {
+			entry.Image = a.userImageName()
+		}
 		fmt.Fprintf(output, "%s\t%s\t%s\n", name, entry.Image, entry.Seed)
 	}
 	names = nil
@@ -63,6 +66,9 @@ func (a *App) ListTemplates(output io.Writer) error {
 
 func (a *App) ServiceAccount(command string, params *cli.Parameters) error {
 	id := params.Params["user"]
+	if command == "recover-user" {
+		return a.RecoverUser(id)
+	}
 	actions := map[string]string{"lock-user": "lock", "unlock-user": "unlock", "reset-password": "password", "disconnect-user": "disconnect", "assign-template": "template", "assign-class": "class"}
 	action := actions[command]
 	value := ""

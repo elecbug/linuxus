@@ -120,8 +120,12 @@ func runtimeTestServer(t *testing.T, d *runtimeDocker, diskHandler http.HandlerF
 		t.Cleanup(func() { httpServer.Close() })
 		go httpServer.Serve(listener)
 	}
+	accountPath := filepath.Join(dir, "AUTH_LIST")
+	if err := os.WriteFile(accountPath, []byte("alice:hash\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	s := &Server{docker: cli, diskClient: diskservice.NewClient(socket, time.Second), cfg: &config.Config{
-		AutoEnsure: true, UserImage: "test-user", UserContainerNamePrefix: "user_", NetworkPrefix: "net_",
+		AuthListFile: accountPath, AutoEnsure: true, UserImage: "test-user", UserContainerNamePrefix: "user_", NetworkPrefix: "net_",
 		BaseIP: "10.10.0.0", AuthContainerName: "auth", AdminUserID: "admin", ManagerWaitTime: time.Second,
 		HostHomesDir: "/volumes/homes", HostShareDir: "/volumes/share", HostReadonlyDir: "/volumes/readonly",
 		ContainerRuntimeUser: "user", ContainerShareDir: "/home/share", ContainerReadonlyDir: "/home/readonly",

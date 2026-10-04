@@ -23,6 +23,7 @@ ENV LC_ALL=en_US.UTF-8
 RUN groupadd -g "$CONTAINER_GID" "$CONTAINER_RUNTIME_USER" && useradd -m -u "$CONTAINER_UID" -g "$CONTAINER_GID" -s /bin/bash "$CONTAINER_RUNTIME_USER"
 
 COPY start.sh /start.sh
+COPY templates /opt/linuxus/templates
 RUN chmod +x /start.sh
 
 CMD ["/start.sh"]

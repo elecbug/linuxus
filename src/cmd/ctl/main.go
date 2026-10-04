@@ -90,6 +90,9 @@ func run() error {
 		return nil
 	}
 
+	if opt.Option == VERIFY_BACKUP {
+		return app.VerifyBackup(opt.Params.Params["file"], os.Stdout)
+	}
 	configFile, err := config.ResolveConfigFile()
 	if err != nil {
 		return err
@@ -112,9 +115,6 @@ func run() error {
 
 	if opt.Option == SYSTEMD_UNIT {
 		return app.WriteSystemdUnit(execPath, configFile, os.Stdout)
-	}
-	if opt.Option == VERIFY_BACKUP {
-		return app.VerifyBackup(opt.Params.Params["file"], os.Stdout)
 	}
 	a, err := app.CreateApp(execPath, configFile)
 	if err != nil {
@@ -204,7 +204,7 @@ func parseArgs(bin string, args []string) (Options, error) {
 		result.Option = LIST_USERS
 	case "templates":
 		result.Option = TEMPLATES
-	case "lock-user", "unlock-user", "reset-password", "disconnect-user", "assign-template", "assign-class":
+	case "recover-user", "lock-user", "unlock-user", "reset-password", "disconnect-user", "assign-template", "assign-class":
 		result.Option = ACCOUNTS
 	case "backup-user":
 		result.Option = BACKUP
@@ -319,7 +319,7 @@ func parseArgs(bin string, args []string) (Options, error) {
 			if !ruleset.AllowedUserID(id) {
 				return result, fmt.Errorf("invalid user ID: %q", id)
 			}
-		} else if result.Option == ADD_USER || result.Option == REMOVE_USER {
+		} else if _, all := parsed.Params["all"]; !all || result.Option == ADD_USER || result.Option == REMOVE_USER {
 			return result, fmt.Errorf("%s requires --user <USERNAME>", args[0])
 		}
 	}
@@ -354,6 +354,16 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 		result += fmt.Sprintf("│  ├─ %-35s# Restart services\n", "restart")
 		result += fmt.Sprintf("│  └─ %-35s# Show status about linuxus service\n", "ps [OPTION]")
 		result += fmt.Sprintf("│     %-35s  - OPTION can be one of container, network, all or their shorthand c, n, a. If not specified, defaults to all.\n", "")
+		result += "│\n"
+		result += "├─ Operations:\n"
+		result += "│  systemd-unit | list-users | templates\n"
+		result += "│  lock-user | unlock-user | reset-password | disconnect-user --user <ID>\n"
+		result += "│  assign-template --user <ID> --template <NAME>\n"
+		result += "│  assign-class --user <ID> --class <NAME>\n"
+		result += "│  backup-user --user <ID> --output <ARCHIVE>\n"
+		result += "│  restore-user --user <ID> --file <ARCHIVE> [--replace]\n"
+		result += "│  verify-backup --file <ARCHIVE>\n"
+		result += "│  recover-user --user <ID>  (clear abandoned maintenance; keep locked)\n"
 		result += "│\n"
 		result += "├─ User Management:\n"
 		result += fmt.Sprintf("│  ├─ %-35s# Add a new user\n", "add-user --user <USERNAME>")

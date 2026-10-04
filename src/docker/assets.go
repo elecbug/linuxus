@@ -3,7 +3,7 @@ package docker
 
 import "embed"
 
-// Files contains only runtime image definitions and the user startup script.
+// Files contains runtime image definitions, the startup script, and classroom seeds.
 //
-//go:embed *.Dockerfile start.sh
+//go:embed *.Dockerfile start.sh templates
 var Files embed.FS

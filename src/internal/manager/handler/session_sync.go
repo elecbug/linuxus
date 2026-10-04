@@ -26,21 +26,26 @@ func (s *Server) HandleSessionSnapshot(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	s.applySessionSnapshot(snapshot)
+	w.WriteHeader(200)
+}
+
+// Apply the complete observation atomically, including the absence of users.
+func (s *Server) applySessionSnapshot(snapshot packet.SessionSnapshot) {
 	s.mu.Lock()
-	ids := make([]string, 0, len(s.runtimes))
-	for id := range s.runtimes {
-		ids = append(ids, id)
+	defer s.mu.Unlock()
+	if !snapshot.ObservedAt.After(s.lastSnapshotAt) {
+		return
 	}
-	s.mu.Unlock()
+	s.lastSnapshotAt = snapshot.ObservedAt
 	for id, count := range snapshot.Sessions {
-		s.updateSessionState(id, count, snapshot.ObservedAt)
+		s.updateSessionStateLocked(id, count, snapshot.ObservedAt)
 	}
-	for _, id := range ids {
+	for id := range s.runtimes {
 		if _, ok := snapshot.Sessions[id]; !ok {
-			s.updateSessionState(id, 0, snapshot.ObservedAt)
+			s.updateSessionStateLocked(id, 0, snapshot.ObservedAt)
 		}
 	}
-	w.WriteHeader(200)
 }
 
 func (s *Server) startReconciliation(ctx context.Context) {

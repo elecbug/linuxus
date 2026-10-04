@@ -46,8 +46,10 @@ func Write(output io.Writer, image *os.File, manifest Manifest) error {
 		return err
 	}
 	hash := sha256.New()
-	if n, err := io.Copy(io.MultiWriter(tw, hash), image); err != nil || n != manifest.Size {
-		return fmt.Errorf("copy disk image (%d bytes): %w", n, err)
+	if n, err := io.Copy(io.MultiWriter(tw, hash), image); err != nil {
+		return fmt.Errorf("copy disk image: %w", err)
+	} else if n != manifest.Size {
+		return fmt.Errorf("disk image size changed during backup")
 	}
 	manifest.SHA256 = hex.EncodeToString(hash.Sum(nil))
 	data, err := json.Marshal(manifest)

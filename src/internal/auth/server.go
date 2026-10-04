@@ -56,7 +56,12 @@ func parseConfig() (*handler.AppConfig, error) {
 		return nil, fmt.Errorf("failed to parse manager connection timeout: %v", err)
 	}
 
+	templates, classes, err := config.ParseTemplates(&cfg)
+	if err != nil {
+		return nil, err
+	}
 	return &handler.AppConfig{
+		AdminID: cfg.ManagerService.AdminID, Templates: templates, Classes: classes,
 		Users:                   users,
 		AuthListFile:            cfg.AuthService.Mounts.ContainerAuthListPath,
 		SessionKey:              []byte(cfg.AuthService.Security.SessionSecret),

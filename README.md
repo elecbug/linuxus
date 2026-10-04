@@ -20,7 +20,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
 ## 🚀 Usage
 
-Refer to the [Usage documentation](./doc/USAGE.md) for instructions on how to use this program.
+Refer to the [Usage documentation](./doc/USAGE.md) for installation and the [Operations guide](./doc/OPERATIONS.md) for diagnostics, recovery, accounts, backups, classroom templates, and the admin interface.
 
 ---
 
@@ -51,6 +51,6 @@ Please refer to [SECURITY.md](./SECURITY.md) for responsible disclosure instruct
 
 ---
 
-## 🚧 Upcoming Features
+## Operations
 
-Nothing TODO.
+Operational diagnostics, systemd recovery, account management, backups and restores, resource limits, classroom templates, and an administrator interface are available. See [Operations](./doc/OPERATIONS.md).

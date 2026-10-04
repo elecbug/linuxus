@@ -233,7 +233,7 @@ VOLUMES_AUTO_ENSURE=true
 ```
 
 Apply the setting with `sudo ./linuxusctl restart`. `up` starts the private host
-`linuxusctl serve-disks` process; `down` stops it. Manager requests disk preparation
+`linuxusctl serve-disks` process for disk diagnostics and preparation; `down` stops it. Manager requests disk preparation
 over a Unix socket before creating or restarting a user container. Disk errors
 prevent the shell from starting, and existing images are reused rather than
 formatted again. Manual `ensure-disk` remains available.
@@ -244,7 +244,8 @@ Only Manager receives that directory as a read-only mount. There is no TCP
 listener. Requests accept a registered user ID only; paths and disk limits come
 from the deployment configuration. Manager's container capabilities are unchanged.
 The default service log is `/var/lib/linuxus/data/.disk-service/service.log`. Run `sudo ./linuxusctl up`
-after a host reboot to restore mounts and the host process; Docker container
+after a host reboot to restore mounts and the host process, or enable the
+[systemd supervisor](OPERATIONS.md) for automatic recovery. Docker container
 restart policies alone do not restart this process. As with the existing deployment,
 Docker must run locally on the Linux host.
 
@@ -406,3 +407,10 @@ it deletes the images and their contents.
 
 > ![](./fig/03-shell_2.png)
 > Shell Page - Test GCC
+
+## Extended operations
+
+See [Operations](OPERATIONS.md) for `config-check`, `doctor`, systemd recovery,
+account locks and password changes, backups, capacity settings, class templates,
+and the administrator interface at `/admin`. New optional `.env` keys may be
+added to an existing file; rerunning `init` does not overwrite existing settings.

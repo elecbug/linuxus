@@ -138,6 +138,10 @@ func (a *App) ServicePS(params *cli.Parameters) error {
 
 // ServiceCleanVolume unmounts and removes managed volume data and loop devices.
 func (a *App) ServiceCleanVolume(params *cli.Parameters) error {
+	return a.withMaintenanceLock(func() error { return a.cleanVolumeServiceLocked(params) })
+}
+
+func (a *App) cleanVolumeServiceLocked(params *cli.Parameters) error {
 	if len(params.Params) > 1 || (len(params.Params) == 1 && params.MainParam != "") {
 		return fmt.Errorf("too many parameters for volume clean option, please specify only one '--user <USERNAME>' or use '--all' to clean volumes for all users")
 	}
@@ -284,12 +288,19 @@ func (a *App) ServiceRemoveUser(params *cli.Parameters) error {
 		return nil
 	}
 
-	if err := user.RemoveUser(a.Config.AuthService.Mounts.HostAuthListPath, a.UserIDs, userID); err != nil {
-		return fmt.Errorf("failed to remove user: %w", err)
-	}
-
-	if err := a.cleanVolumeUser(userID); err != nil {
-		return fmt.Errorf("failed to clean user volumes: %w", err)
+	if err := a.withMaintenanceLock(func() error {
+		if err := a.checkPendingRestore(userID); err != nil {
+			return err
+		}
+		if err := user.RemoveUser(a.Config.AuthService.Mounts.HostAuthListPath, a.UserIDs, userID); err != nil {
+			return fmt.Errorf("failed to remove user: %w", err)
+		}
+		if err := a.stopUserRuntime(userID); err != nil {
+			return fmt.Errorf("account removed; home data retained because runtime shutdown failed: %w", err)
+		}
+		return a.cleanVolumeUser(userID)
+	}); err != nil {
+		return err
 	}
 
 	log.Log(log.DETAIL_PREFIX, "User %s removed successfully.", userID)

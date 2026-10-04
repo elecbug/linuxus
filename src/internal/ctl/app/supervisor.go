@@ -138,6 +138,9 @@ func (a *App) Supervise() error {
 			probe, cancel := context.WithTimeout(ctx, 2*time.Second)
 			err := probeDiskService(probe, a.diskSocket())
 			cancel()
+			if ctx.Err() != nil {
+				return nil
+			}
 			if err != nil {
 				if err := a.startDiskService(); err != nil {
 					return fmt.Errorf("recover disk service: %w", err)
@@ -153,17 +156,25 @@ func (a *App) Supervise() error {
 				if err == nil && info.State != nil && info.State.Running {
 					continue
 				}
-				if name == a.Config.ManagerService.Container.Name {
-					err = a.ensureManagerContainer()
-				} else {
-					err = a.ensureAuthContainer()
-				}
+				err = a.recoverServiceContainer(ctx, name)
 				if err != nil {
 					return fmt.Errorf("recover %s: %w", name, err)
 				}
 			}
 		}
 	}
+}
+
+// Bound the complete recovery, including Docker create/start calls after inspect.
+func (a *App) recoverServiceContainer(ctx context.Context, name string) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	recovery := *a
+	recovery.context = ctx
+	if name == a.Config.ManagerService.Container.Name {
+		return recovery.ensureManagerContainer()
+	}
+	return recovery.ensureAuthContainer()
 }
 
 func (a *App) serviceRestartPolicy() string {

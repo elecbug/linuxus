@@ -18,6 +18,7 @@ import (
 	"github.com/elecbug/linuxus/src/internal/common/diskservice"
 	"github.com/elecbug/linuxus/src/internal/common/packet"
 	"github.com/elecbug/linuxus/src/internal/common/system_api"
+	"github.com/elecbug/linuxus/src/internal/common/user"
 )
 
 type mountedDiskAPI struct {
@@ -389,5 +390,60 @@ func TestServiceDownStopsDiskServiceWhenDockerFails(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("Docker failure left the disk service running")
+	}
+}
+
+func TestCapacityReserveRejectsWithoutDiskMutation(t *testing.T) {
+	root := t.TempDir()
+	api := &recordingDiskAPI{images: map[string]int64{}, formatted: map[string]int{}, mounted: map[string]bool{}}
+	a := &App{systemAPI: api}
+	a.Config.Volumes.Host.Homes = root
+	a.Config.Volumes.Host.Share = filepath.Join(root, "share")
+	a.Config.Volumes.Host.Readonly = filepath.Join(root, "readonly")
+	a.Config.Capacity.MinFreeSpace = "9000000000000000000"
+	w := httptest.NewRecorder()
+	a.diskServiceHandler(func() {}).ServeHTTP(w, httptest.NewRequest("GET", "/capacity", nil))
+	if w.Code != 503 {
+		t.Fatalf("reserve not enforced: %d %s", w.Code, w.Body.String())
+	}
+	if err := a.createFormattedImage(filepath.Join(root, "new.img"), 8<<20); err == nil {
+		t.Fatal("image created below reserve")
+	}
+	if len(api.images) != 0 {
+		t.Fatal("disk mutated before reserve check")
+	}
+}
+
+func TestEnsureDiskReloadsAndSkipsMaintenanceAccounts(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "AUTH_LIST")
+	if err := os.WriteFile(path, []byte("alice:legacy\nbob:legacy\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	api := &recordingDiskAPI{images: map[string]int64{}, formatted: map[string]int{}, mounted: map[string]bool{}}
+	a := &App{systemAPI: api, UserIDs: map[string]string{"alice": "legacy", "bob": "legacy"}}
+	a.Config.AuthService.Mounts.HostAuthListPath = path
+	a.Config.Volumes.Host.Homes = filepath.Join(root, "homes")
+	a.Config.Volumes.Host.Share = filepath.Join(root, "share")
+	a.Config.Volumes.Host.Readonly = filepath.Join(root, "readonly")
+	a.Config.Volumes.DiskLimit = "8M"
+	a.Config.UserService.Limits.User.Disk = "8M"
+	if err := user.UpdateAccount(path, "alice", "maintenance", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.ensureDiskAll(); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := api.images[filepath.Join(a.Config.Volumes.Host.Homes, "alice.img")]; exists {
+		t.Fatal("startup initialized missing data during interrupted maintenance")
+	}
+	if !api.mounted[filepath.Join(a.Config.Volumes.Host.Homes, "bob")] {
+		t.Fatal("maintenance prevented another user's disk preparation")
+	}
+	if err := a.ensureDiskUser("alice"); err == nil {
+		t.Fatal("manual disk preparation bypassed maintenance")
+	}
+	if err := a.cleanVolumeUser("alice"); err == nil {
+		t.Fatal("cleanup discarded abandoned maintenance")
 	}
 }
