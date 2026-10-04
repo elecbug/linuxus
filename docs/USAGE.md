@@ -30,7 +30,7 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 Build the single Linux executable (Go 1.26.1 or newer):
 
 ```bash
-./shell/build_ctl.sh
+./scripts/build_ctl.sh
 ```
 
 The script can be invoked from any working directory. It builds a static Linux
@@ -49,7 +49,7 @@ For a more convenient CLI experience, enable bash completion support.
 Run the following command:
 
 ```bash
-source ./shell/linuxus-completion.bash
+source ./scripts/linuxus-completion.bash
 ```
 
 After enabling completion, you can use `TAB` to automatically complete commands and options.
@@ -313,7 +313,7 @@ For the standard previous layout, use the provided one-time migration helper
 with the newly built CLI:
 
 ```bash
-sudo python3 ./shell/migrate_system_paths.py --from /absolute/old/deployment
+sudo python3 ./scripts/migrate_system_paths.py --from /absolute/old/deployment
 sudo ./linuxusctl up
 ```
 
@@ -396,16 +396,16 @@ it deletes the images and their contents.
 
 ## 🌐 APPENDIX - Preview Image
 
-> ![](./fig/04-arch.png)
+> ![](./figs/04-arch.png)
 > Linuxus Architecture Diagram
 
-> ![](./fig/01-login.png)
+> ![](./figs/01-login.png)
 > Login Page
 
-> ![](./fig/02-shell_1.png)
+> ![](./figs/02-shell_1.png)
 > Shell Page - Access
 
-> ![](./fig/03-shell_2.png)
+> ![](./figs/03-shell_2.png)
 > Shell Page - Test GCC
 
 ## Extended operations

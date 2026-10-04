@@ -1,6 +1,6 @@
 # LINUXUS
 
-<p align=center><img width="250" src="./doc/fig/logo.png"/></p>
+<p align=center><img width="250" src="./docs/figs/logo.png"/></p>
 <p align=center><i>Linuxus, a Docker-based service that provides Ubuntu shell environments via a web browser for Linux education</i></p>
 
 ---
@@ -20,7 +20,7 @@ Linuxus enables instructors to provide per-user Linux environments without requi
 
 ## 🚀 Usage
 
-Refer to the [Usage documentation](./doc/USAGE.md) for installation and the [Operations guide](./doc/OPERATIONS.md) for diagnostics, recovery, accounts, backups, classroom templates, and the admin interface.
+Refer to the [Usage documentation](./docs/USAGE.md) for installation and the [Operations guide](./docs/OPERATIONS.md) for diagnostics, recovery, accounts, backups, classroom templates, and the admin interface.
 
 ---
 
@@ -53,4 +53,4 @@ Please refer to [SECURITY.md](./SECURITY.md) for responsible disclosure instruct
 
 ## Operations
 
-Operational diagnostics, systemd recovery, account management, backups and restores, resource limits, classroom templates, and an administrator interface are available. See [Operations](./doc/OPERATIONS.md).
+Operational diagnostics, systemd recovery, account management, backups and restores, resource limits, classroom templates, and an administrator interface are available. See [Operations](./docs/OPERATIONS.md).
