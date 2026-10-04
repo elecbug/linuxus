@@ -5,7 +5,7 @@ _linuxus_completion() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="up down restart ps add-user remove-user clean-volume ensure-disk help"
+    commands="init up down restart ps add-user remove-user clean-volume ensure-disk help"
 
     if [[ ${COMP_CWORD} -eq 1 ]]; then
         COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
@@ -38,4 +38,4 @@ _linuxus_completion() {
     esac
 }
 
-complete -F _linuxus_completion ./linuxusctl
+complete -F _linuxus_completion linuxusctl ./linuxusctl

@@ -2,19 +2,13 @@ package manager
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
 	ctlconfig "github.com/elecbug/linuxus/src/internal/common/config"
 	"github.com/elecbug/linuxus/src/internal/common/diskservice"
-	"gopkg.in/yaml.v3"
 )
 
 func TestAutoEnsureConfigFromEnv(t *testing.T) {
-	data, err := os.ReadFile("../../../cfg/config.yml")
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, tc := range []struct {
 		name      string
 		enabled   bool
@@ -27,8 +21,8 @@ func TestAutoEnsureConfigFromEnv(t *testing.T) {
 		{"relative_socket", true, "disk.sock", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var cfg ctlconfig.Config
-			if err := yaml.Unmarshal(data, &cfg); err != nil {
+			cfg, err := ctlconfig.ParseEnv([]byte(ctlconfig.DefaultEnv))
+			if err != nil {
 				t.Fatal(err)
 			}
 			cfg.Volumes.AutoEnsure = tc.enabled

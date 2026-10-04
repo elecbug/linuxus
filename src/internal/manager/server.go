@@ -54,7 +54,7 @@ func parseConfigFromEnv() (*config.Config, error) {
 
 	diskSocket := os.Getenv("DISK_SERVICE_SOCKET")
 	if cfg.Volumes.AutoEnsure && !filepath.IsAbs(diskSocket) {
-		return nil, fmt.Errorf("DISK_SERVICE_SOCKET must be absolute when volumes.auto-ensure is enabled")
+		return nil, fmt.Errorf("DISK_SERVICE_SOCKET must be absolute when VOLUMES_AUTO_ENSURE is enabled")
 	}
 	managerWaitTime, err := time.ParseDuration(cfg.ManagerService.AuthService.ConnectionTimeout)
 	if err != nil {

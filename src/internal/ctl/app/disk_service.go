@@ -159,7 +159,7 @@ func (a *App) stopDiskService() error {
 // It exposes no TCP listener, command execution, path selection or deletion API.
 func (a *App) ServeDisks() error {
 	if !a.Config.Volumes.AutoEnsure {
-		return fmt.Errorf("volumes.auto-ensure is disabled")
+		return fmt.Errorf("VOLUMES_AUTO_ENSURE is disabled")
 	}
 	if os.Geteuid() != 0 {
 		return fmt.Errorf("host disk service requires root for mounting disks")

@@ -1,35 +1,26 @@
 package app
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/elecbug/linuxus/src/internal/common/config"
 	"github.com/elecbug/linuxus/src/internal/common/user"
-	"gopkg.in/yaml.v3"
 )
 
-// LoadConfig reads and parses the YAML configuration file into App.Config.
+// LoadConfig reads and parses the .env configuration file into App.Config.
 func (a *App) LoadConfig() error {
 	data, err := os.ReadFile(a.configFile)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("config %s does not exist; run linuxusctl init: %w", a.configFile, err)
+		}
 		return fmt.Errorf("read config %s: %w", a.configFile, err)
 	}
-	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(true)
-	var parsed config.Config
-	if err := decoder.Decode(&parsed); err != nil {
-		return fmt.Errorf("failed to parse yaml config: %w", err)
-	}
-	var extra yaml.Node
-	if err := decoder.Decode(&extra); err != io.EOF {
-		if err != nil {
-			return fmt.Errorf("failed to parse trailing yaml: %w", err)
-		}
-		return fmt.Errorf("config must contain exactly one YAML document")
+	parsed, err := config.ParseEnv(data)
+	if err != nil {
+		return fmt.Errorf("parse config %s: %w", a.configFile, err)
 	}
 	a.Config = parsed
 

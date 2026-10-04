@@ -27,13 +27,13 @@ func ValidateAuthRoutes(cfg *Config) error {
 			}
 		}
 		if !valid {
-			return fmt.Errorf("auth_service.service_url.%s must be a clean URL path without leading/trailing slashes, query, escapes, or wildcard patterns", route.name)
+			return fmt.Errorf("AUTH_SERVICE_SERVICE_URL_%s must be a clean URL path without leading/trailing slashes, query, escapes, or wildcard patterns", strings.ToUpper(route.name))
 		}
 		if value == "static" || strings.HasPrefix(value, "static/") || value == "favicon.ico" {
-			return fmt.Errorf("auth_service.service_url.%s conflicts with a reserved asset route", route.name)
+			return fmt.Errorf("AUTH_SERVICE_SERVICE_URL_%s conflicts with a reserved asset route", strings.ToUpper(route.name))
 		}
 		if previous, exists := seen[value]; exists {
-			return fmt.Errorf("auth_service.service_url.%s duplicates %s", route.name, previous)
+			return fmt.Errorf("AUTH_SERVICE_SERVICE_URL_%s duplicates %s", strings.ToUpper(route.name), strings.ToUpper(previous))
 		}
 		seen[value] = route.name
 	}

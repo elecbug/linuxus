@@ -17,3 +17,6 @@ temp/
 *.log
 *.tmp
 *.temp
+
+# Deployment settings may contain local secrets; defaults live in the source tree.
+/.env

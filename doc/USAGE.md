@@ -58,30 +58,38 @@ After enabling completion, you can use `TAB` to automatically complete commands 
 
 ## 3. Run Service
 
-Copy `linuxusctl` and `cfg/config.yml` into a deployment directory:
+Copy `linuxusctl` into a deployment directory and initialize its configuration:
+
+```bash
+mkdir -p deploy
+cp linuxusctl deploy/
+./deploy/linuxusctl init
+```
+
+`init` writes the defaults embedded in the binary to `.env` beside the executable,
+with file permissions `0600`. It works without Docker or the source tree and
+refuses to overwrite an existing file or symlink. The source template is
+`src/internal/common/config/default.env`; rebuild to include changes to that
+file. The deployment's `.env` is read at runtime and is not used during builds.
 
 ```text
 linuxus/
 ├── linuxusctl
-├── cfg/
-│   └── config.yml
+├── .env
 ├── data/
 │   └── AUTH_LIST
 └── volumes/
 ```
 
 `data/` and `volumes/` are initialized when starting a fresh deployment. All
-relative host paths in the YAML are resolved against the directory containing
+relative host paths in `.env` are resolved against the directory containing
 the executable, even when invoked from another working directory. Absolute
-paths remain unchanged. When invoking a symlink to `linuxusctl`, the real
-executable's directory is used.
+paths remain absolute. When invoking a symlink to `linuxusctl`, the real
+executable's directory is used for both `init` and runtime configuration.
 
-For example, prepare a separate deployment without copying `src/`:
+For example, edit the generated `.env`, then start the deployment:
 
 ```bash
-mkdir -p deploy/cfg
-cp linuxusctl deploy/
-cp cfg/config.yml deploy/cfg/
 sudo ./deploy/linuxusctl up
 ```
 
@@ -90,35 +98,47 @@ and `losetup` (util-linux). Disk operations require root privileges. Images use
 the executable's architecture. The first image build needs access to the base
 images and Ubuntu/Debian package repositories; it does not download Go modules.
 
-Before starting, set the two session secrets in `cfg/config.yml` to your own
-values. `up` creates a missing auth file without overwriting existing accounts,
+Before starting, set `AUTH_SERVICE_SECURITY_SESSION_SECRET` and
+`MANAGER_SERVICE_SECURITY_SESSION_SECRET` in `.env` to your own values. `up` creates a missing auth file without
+overwriting existing accounts,
 prepares shared disks and registered users' disks, and starts the services.
-A fresh auth file has no accounts; `admin_id` designates an account's privileges
+A fresh auth file has no accounts; `MANAGER_SERVICE_ADMIN_ID` designates an account's privileges
 and does not create the account automatically.
 
 Host directories can also point to an external storage location through absolute
-YAML paths or root-level `data/` and `volumes/` symlinks. Manager passes the
+`.env` paths or root-level `data/` and `volumes/` symlinks. Manager passes the
 resolved host paths to Docker; it does not need its own copies of the volumes.
 The home, shared, and readonly host paths must not overlap or resolve to the
 filesystem root. Keep `AUTH_LIST` outside these disk directories and images.
 Connection timeouts must be positive; a cleanup timeout of `0s` disables idle
 cleanup, and disk sizes must be greater than 1 MiB.
-Unknown YAML keys (including `auto_ensure` instead of `auto-ensure`) and multiple
-YAML documents are rejected. Auth route paths must be distinct, clean paths
+Settings use uppercase keys with underscores, for example
+`VOLUMES_AUTO_ENSURE=true` and `AUTH_SERVICE_CONTAINER_EXTERNAL_PORT=8080`.
+Unknown or duplicate keys are rejected, and booleans must be `true` or `false`.
+Blank lines, comments, optional `export`, and single/double quoted values are
+supported. An unquoted `#` starts a comment at the beginning of a value or after
+whitespace. Single quotes preserve literal values; double quotes support
+`\n`, `\r`, `\t`, `\\`, `\"`, and `\$`. Values occupy one physical line;
+variable expansion and shell command execution are not performed. Process
+environment variables do not override `.env` settings. Missing settings are
+validated normally; they are not filled from embedded defaults at runtime.
+
+Auth route paths must be distinct, clean paths
 without leading/trailing slashes or wildcard patterns; `static/` and
 `favicon.ico` are reserved. Nested paths such as `auth/login` are supported.
 Docker subnet allocation checks all existing Docker IPAM ranges to avoid
 conflicts with other projects. Trusted proxy CIDRs support both IPv4 and IPv6.
 
 When HTTPS terminates at a reverse proxy, include its source address in
-`auth_service.security.trusted_proxies` and configure it to overwrite
+`AUTH_SERVICE_SECURITY_TRUSTED_PROXIES` and configure it to overwrite
 `X-Forwarded-Proto` with the external scheme (`https` or `http`). Auth then sets
 `Secure` on HTTPS session cookies and preserves that scheme for the terminal.
 The Auth session cookie is removed before forwarding to a user's container.
 
-
-The legacy `manager_service.container.{homes_dir,share_dir,readonly_dir}` fields
-are retained for configuration compatibility but are no longer mounted into Manager.
+The legacy `MANAGER_SERVICE_CONTAINER_HOMES_DIR`,
+`MANAGER_SERVICE_CONTAINER_SHARE_DIR`, and `MANAGER_SERVICE_CONTAINER_READONLY_DIR`
+settings are retained for configuration compatibility but are no longer mounted
+into Manager.
 
 ### 3.1 Start / Manage Services
 
@@ -130,6 +150,7 @@ are retained for configuration compatibility but are no longer mounted into Mana
 
 | Command                           | Description                                                                                      |
 | --------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `init`                            | Create `.env` beside the executable using embedded defaults; preserve existing files              |
 | `help`                            | Show help message                                                                                |
 | `up`                              | Build images and start services                                                                  |
 | `down`                            | Stop and remove services                                                                         |
@@ -145,6 +166,7 @@ are retained for configuration compatibility but are no longer mounted into Mana
 ### 3.2 Example Usage
 
 ```bash
+./linuxusctl init                 # Create .env once
 sudo ./linuxusctl up               # Assemble images, prepare disks and start
 sudo ./linuxusctl restart          # Restart
 ./linuxusctl ps network            # Show network status of linuxus service
@@ -161,11 +183,10 @@ sudo ./linuxusctl restart          # Restart
 
 ### 4.1 Enable Signup
 
-Edit `cfg/config.yml`:
+Edit `.env`:
 
-```yml
-auth_service:
-  allow_signup: true
+```dotenv
+AUTH_SERVICE_ALLOW_SIGNUP=true
 ```
 
 A **Signup** link will appear on the login page.
@@ -185,17 +206,16 @@ the auth file's Docker bind mount.
 3. Enters ID and password
 4. Account is registered
 
-With `volumes.auto-ensure: true`, the first shell access prepares the newly registered user's disk automatically. With the setting omitted or false, initialize new users manually as shown below.
+With `VOLUMES_AUTO_ENSURE=true`, the first shell access prepares the newly registered user's disk automatically. With the setting omitted or false, initialize new users manually as shown below.
 
 ---
 
 ### 4.3 Activate User Environment
 
-Enable automatic disk activation in `cfg/config.yml`:
+Enable automatic disk activation in `.env`:
 
-```yaml
-volumes:
-  auto-ensure: true
+```dotenv
+VOLUMES_AUTO_ENSURE=true
 ```
 
 Apply the setting with `sudo ./linuxusctl restart`. `up` starts the private host
@@ -214,7 +234,7 @@ after a host reboot to restore mounts and the host process; Docker container
 restart policies alone do not restart this process. As with the existing deployment,
 Docker must run locally on the Linux host.
 
-When `auto-ensure` is omitted or false, users registered after startup need manual
+When `VOLUMES_AUTO_ENSURE` is omitted or false, users registered after startup need manual
 activation:
 
 ```bash
@@ -240,9 +260,8 @@ This step:
 * Default admin ID: `alpha`
 * Configurable in:
 
-```yml
-manager_service:
-  admin_id: alpha
+```dotenv
+MANAGER_SERVICE_ADMIN_ID=alpha
 ```
 
 ---
@@ -269,13 +288,31 @@ service. `down` removes containers and networks but preserves disks.
 than continuing deletion. Cleaning all volumes leaves unrelated files in the
 volume root untouched.
 
+### Migrating from config.yml
+
+The CLI now reads `.env` beside the executable. It no longer reads
+`cfg/config.yml`. Run `linuxusctl init` once, then transfer any deployment-specific
+values from the old YAML before starting services. Nested YAML names map to
+uppercase underscore-separated keys, with hyphens also replaced by underscores:
+
+| Previous YAML setting | `.env` key |
+| --- | --- |
+| `volumes.auto-ensure` | `VOLUMES_AUTO_ENSURE` |
+| `volumes.host.homes` | `VOLUMES_HOST_HOMES` |
+| `auth_service.security.session_secret` | `AUTH_SERVICE_SECURITY_SESSION_SECRET` |
+| `user_service.limits.user.cpu` | `USER_SERVICE_LIMITS_USER_CPU` |
+
+Preserve both session secrets and existing host paths when migrating to keep
+account sessions and storage consistent. The embedded defaults are a build-time
+snapshot; they do not import another deployment's YAML automatically.
+
 ### Migrating an existing source-relative deployment
 
 Existing `src/data` and `src/volumes` are not moved automatically. Before changing
 paths, stop the old services and back up `AUTH_LIST` and all disk images.
 
 To keep existing storage in place, configure its absolute host paths in the new
-YAML, or link the deployment's `data/` and `volumes/` to those locations. Keep the
+`.env`, or link the deployment's `data/` and `volumes/` to those locations. Keep the
 storage directories even if you remove the rest of the source checkout.
 
 To relocate storage completely, stop the services, unmount the old user/shared

@@ -18,17 +18,13 @@ import (
 func TestDeploymentPathsIndependentOfWorkingDirectory(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(t.TempDir())
-	a := &App{runtimeRoot: root, configFile: filepath.Join(root, "config.yml")}
-	if err := os.WriteFile(a.configFile, []byte(`auth_service:
-  mounts:
-    host_auth_list_path: data/AUTH_LIST
-    container_auth_list_path: /data/AUTH_LIST
-volumes:
-  host:
-    volumes: volumes
-    homes: volumes/homes
-    share: /external/share
-    readonly: volumes/readonly
+	a := &App{runtimeRoot: root, configFile: filepath.Join(root, ".env")}
+	if err := os.WriteFile(a.configFile, []byte(`AUTH_SERVICE_MOUNTS_HOST_AUTH_LIST_PATH=data/AUTH_LIST
+AUTH_SERVICE_MOUNTS_CONTAINER_AUTH_LIST_PATH=/data/AUTH_LIST
+VOLUMES_HOST_VOLUMES=volumes
+VOLUMES_HOST_HOMES=volumes/homes
+VOLUMES_HOST_SHARE=/external/share
+VOLUMES_HOST_READONLY=volumes/readonly
 `), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +79,7 @@ func TestRuntimeBuildContextsContainOnlyDeploymentAssets(t *testing.T) {
 	root := t.TempDir()
 	executable := filepath.Join(root, "linuxusctl")
 	binary := []byte("test executable")
-	for name, data := range map[string][]byte{"linuxusctl": binary, "AUTH_LIST": []byte("private"), "disk.img": []byte("private disk")} {
+	for name, data := range map[string][]byte{"linuxusctl": binary, "AUTH_LIST": []byte("private"), ".env": []byte("private settings"), "disk.img": []byte("private disk")} {
 		if err := os.WriteFile(filepath.Join(root, name), data, 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -167,21 +163,22 @@ func TestAbsoluteHostPathsAreCleanedBeforeDiskOperations(t *testing.T) {
 	}
 }
 
-func TestConfigRejectsTyposAndMultipleDocuments(t *testing.T) {
+func TestConfigRejectsMalformedEnv(t *testing.T) {
 	for _, tc := range []struct {
 		name, contents string
 		valid          bool
 	}{
-		{"hyphenated key", "volumes:\n  auto-ensure: true\n", true},
-		{"misspelled key", "volumes:\n  auto_ensure: true\n", false},
-		{"unknown section", "unknown: true\n", false},
-		{"duplicate documents", "volumes:\n  auto-ensure: true\n---\nvolumes:\n  auto-ensure: false\n", false},
-		{"trailing empty document", "volumes: {}\n---\n", false},
+		{"auto ensure", "VOLUMES_AUTO_ENSURE=true\n", true},
+		{"misspelled key", "VOLUMES_AUTOENSURE=true\n", false},
+		{"unknown key", "UNKNOWN=true\n", false},
+		{"duplicate key", "VOLUMES_AUTO_ENSURE=true\nVOLUMES_AUTO_ENSURE=false\n", false},
+		{"legacy YAML", "volumes:\n  auto-ensure: true\n", false},
+		{"invalid bool", "VOLUMES_AUTO_ENSURE=maybe\n", false},
 		{"empty file", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			a := &App{runtimeRoot: root, configFile: filepath.Join(root, "config.yml")}
+			a := &App{runtimeRoot: root, configFile: filepath.Join(root, ".env")}
 			if err := os.WriteFile(a.configFile, []byte(tc.contents), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -193,5 +190,12 @@ func TestConfigRejectsTyposAndMultipleDocuments(t *testing.T) {
 				t.Fatal("auto-ensure was not loaded")
 			}
 		})
+	}
+}
+
+func TestMissingConfigSuggestsInit(t *testing.T) {
+	a := &App{configFile: filepath.Join(t.TempDir(), ".env")}
+	if err := a.LoadConfig(); err == nil || !strings.Contains(err.Error(), "linuxusctl init") {
+		t.Fatalf("missing initialization hint: %v", err)
 	}
 }

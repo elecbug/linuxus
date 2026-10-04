@@ -38,6 +38,7 @@ const (
 	REMOVE_USER
 	HELP
 	SERVE_DISKS
+	INIT
 )
 
 // Options encapsulates the selected operations and their parameters.
@@ -69,7 +70,7 @@ func run() error {
 	}
 
 	runtimeRoot := filepath.Dir(execPath)
-	configFile := filepath.Join(runtimeRoot, "cfg", "config.yml")
+	configFile := filepath.Join(runtimeRoot, ".env")
 
 	opt, err := parseArgs(os.Args[0], os.Args[1:])
 	if err != nil {
@@ -78,6 +79,14 @@ func run() error {
 
 	if opt.Option == HELP {
 		fmt.Println(usageText(os.Args[0], true, true, true))
+		return nil
+	}
+
+	if opt.Option == INIT {
+		if err := config.InitFile(configFile); err != nil {
+			return err
+		}
+		log.Log(log.DETAIL_PREFIX, "Created %s from embedded defaults.", configFile)
 		return nil
 	}
 
@@ -153,6 +162,8 @@ func parseArgs(bin string, args []string) (Options, error) {
 	}
 
 	switch args[0] {
+	case "init":
+		result.Option = INIT
 	case "up":
 		result.Option = UP
 	case "down":
@@ -189,7 +200,7 @@ func parseArgs(bin string, args []string) (Options, error) {
 	}
 	result.Params = parsed
 	switch result.Option {
-	case UP, DOWN, RESTART, HELP, SERVE_DISKS:
+	case UP, DOWN, RESTART, HELP, SERVE_DISKS, INIT:
 		if len(params) != 0 {
 			return result, fmt.Errorf("%s does not accept arguments", args[0])
 		}
@@ -233,6 +244,7 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 		result += "\n"
 		result += "Options:\n"
 		result += "├─ General:\n"
+		result += fmt.Sprintf("│  ├─ %-35s# Create .env beside this executable from embedded defaults\n", "init")
 		result += fmt.Sprintf("│  └─ %-35s# Show help message\n", "help")
 		result += "│\n"
 		result += "├─ Service Management:\n"
@@ -255,6 +267,7 @@ func usageText(bin string, showUsage, showExample, showLogFormat bool) string {
 	if showExample {
 		result += "\n"
 		result += "Examples:\n"
+		result += fmt.Sprintf("├─ %-35s# Initialize deployment configuration\n", fmt.Sprintf("%s init", bin))
 		result += fmt.Sprintf("├─ %-35s# Build and start\n", fmt.Sprintf("%s up", bin))
 		result += fmt.Sprintf("├─ %-35s# Restart\n", fmt.Sprintf("%s restart", bin))
 		result += fmt.Sprintf("└─ %-35s# Show network status of linuxus service\n", fmt.Sprintf("%s ps network", bin))
