@@ -21,6 +21,7 @@ const css = await readFile(path.join(assets, 'admin.css'), 'utf8');
 const js = await readFile(path.join(assets, 'admin.js'), 'utf8');
 const sharedCSS = await readFile(path.join(root, 'src/static/ui.css'), 'utf8');
 const workspaceJS = await readFile(path.join(root, 'src/static/workspace.js'), 'utf8');
+const logo = await readFile(path.join(root, 'src/static/favicon.png'));
 const browser = await chromium.launch({ headless: true });
 let passed = 0;
 
@@ -70,7 +71,7 @@ async function fixture(viewport = { width: 1440, height: 1000 }, initial = 'admi
         api.terminalLoads++;
         return await route.fulfill({ contentType: 'text/html', body: '<!doctype html><html lang="en"><body style="margin:24px;background:#18272e;color:#dbe9e5;font:16px monospace"><label>linuxus:~$ <input id="terminal-input" aria-label="Terminal input" style="background:transparent;color:inherit;border:0;font:inherit"></label></body></html>' });
       }
-      if (pathname === '/static/favicon.png') return await route.fulfill({ status: 204 });
+      if (pathname === '/static/favicon.png') return await route.fulfill({ contentType: 'image/png', body: logo });
       assert.equal(pathname, base + '/api/users', 'unexpected or hardcoded public route');
       if (request.method() === 'GET') {
         api.gets++; api.active++; api.maximum = Math.max(api.maximum, api.active);

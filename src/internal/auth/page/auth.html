@@ -6,6 +6,7 @@
 {{template "auth-header" .}}
 <main class="auth-main">
   <section class="auth-card" aria-labelledby="auth-title">
+    {{template "auth-logo" .}}
     <p class="eyebrow">WELCOME TO LINUXUS</p><h1 id="auth-title">Sign in to your workspace.</h1>
     <p class="subtitle">Your terminal and classroom tools, in one place.</p>
     {{if .Error}}<p class="notice danger" role="alert">{{.Error}}</p>{{end}}
@@ -29,6 +30,7 @@
 {{template "auth-header" .}}
 <main class="auth-main">
   <section class="auth-card" aria-labelledby="auth-title">
+    {{template "auth-logo" .}}
     <p class="eyebrow">JOIN YOUR CLASSROOM</p><h1 id="auth-title">Create your account.</h1>
     <p class="subtitle">Get a personal Linux workspace for your exercises.</p>
     {{if .Error}}<p class="notice danger" role="alert">{{.Error}}</p>{{end}}
@@ -53,6 +55,7 @@
 {{template "auth-header" .}}
 <main class="auth-main">
   <section class="auth-card" aria-labelledby="auth-title">
+    {{template "auth-logo" .}}
     <p class="eyebrow">SOMETHING WENT WRONG</p><h1 id="auth-title">Unable to continue.</h1>
     <p class="notice danger" role="alert">{{.Error}}</p>
     <p class="subtitle">Try again, or contact your administrator if the issue continues.</p>

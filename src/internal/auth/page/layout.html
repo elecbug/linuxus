@@ -1,12 +1,14 @@
 {{define "head"}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>{{.Title}} | Linuxus</title>
 <link rel="icon" href="/static/favicon.png" type="image/png">
 <link rel="stylesheet" href="/static/ui.css">
 {{end}}
-{{define "brand"}}<a class="brand" href="{{.ServiceURL}}" aria-label="Linuxus home"{{if .View}} data-open-view="workspace"{{end}}><span class="brand-mark" aria-hidden="true">L</span><span>Linuxus</span></a>{{end}}
+{{define "brand"}}<a class="brand" href="{{.ServiceURL}}" aria-label="Linuxus home"{{if .View}} data-open-view="workspace"{{end}}><img class="brand-logo" src="/static/favicon.png" width="40" height="40" alt=""><span>Linuxus</span></a>{{end}}
 {{define "footer"}}<footer class="site-footer">© 2026 <a href="https://github.com/elecbug/linuxus">Linuxus</a>. All rights reserved.</footer>{{end}}
 {{define "auth-header"}}
 <header class="site-header auth-header">{{template "brand" .}}<span class="brand-section">Classroom environments</span></header>
 {{end}}
+{{define "auth-logo"}}<img class="auth-logo" src="/static/favicon.png" width="64" height="64" alt="Linuxus">{{end}}
