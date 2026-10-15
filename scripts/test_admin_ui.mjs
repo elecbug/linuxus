@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -21,7 +22,19 @@ const css = await readFile(path.join(assets, 'admin.css'), 'utf8');
 const js = await readFile(path.join(assets, 'admin.js'), 'utf8');
 const sharedCSS = await readFile(path.join(root, 'src/static/ui.css'), 'utf8');
 const workspaceJS = await readFile(path.join(root, 'src/static/workspace.js'), 'utf8');
+const settingsJS = await readFile(path.join(root, 'src/static/settings.js'), 'utf8');
 const logo = await readFile(path.join(root, 'src/static/favicon.png'));
+// Chromium does not re-intercept redirected requests. Serve the login target on
+// loopback so native form redirects are tested without DNS or external services.
+const redirectServer = createServer((request, response) => {
+  const url = new URL(request.url, 'http://127.0.0.1');
+  if (request.method === 'GET' && url.pathname === '/auth/login') {
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    response.end(url.searchParams.get('password') === 'changed' ? pages['password-changed'] : pages.login);
+  } else { response.writeHead(404); response.end('Unexpected test request'); }
+});
+await new Promise(resolve => redirectServer.listen(0, '127.0.0.1', resolve));
+const origin = 'http://127.0.0.1:' + redirectServer.address().port;
 const browser = await chromium.launch({ headless: true });
 let passed = 0;
 
@@ -45,7 +58,7 @@ async function fixture(viewport = { width: 1440, height: 1000 }, initial = 'admi
   const failures = [];
   page.on('pageerror', error => failures.push(error.message));
   const api = { gets: 0, posts: 0, active: 0, maximum: 0, getStatus: 200, postStatus: 200,
-    holdGet: null, holdPost: null, updated: true, reauthenticate: false, payloads: [], requests: [], terminalLoads: 0 };
+    holdGet: null, holdPost: null, updated: true, reauthenticate: false, payloads: [], requests: [], terminalLoads: 0, passwordPosts: 0, passwordStatus: 200, holdPassword: null, passwordPayloads: [] };
   const data = { csrf_token: 'fresh-token', status_available: true,
     templates: { linux: {}, c: {}, python: {} }, classes: { 'class-a': 'python' }, users: [
       { id: 'admin', locked: false, state: 'running', sessions: 1, template: 'linux', mounted: true, used_bytes: 536870912, total_bytes: 2147483648 },
@@ -53,7 +66,7 @@ async function fixture(viewport = { width: 1440, height: 1000 }, initial = 'admi
       { id: 'bob', locked: true, state: 'stopped', sessions: 0, mounted: true, used_bytes: 429496730, total_bytes: 2147483648 },
       { id: 'carol', locked: true, maintenance: true, state: 'stopped', sessions: 0, mounted: false }
     ] };
-  await page.route('http://linuxus.test/**', async route => {
+  await page.route(origin + '/**', async route => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     api.requests.push(pathname);
@@ -62,10 +75,25 @@ async function fixture(viewport = { width: 1440, height: 1000 }, initial = 'admi
       if (pathname === base + '/assets/admin.css') return await route.fulfill({ contentType: 'text/css', body: css });
       if (pathname === base + '/assets/admin.js') return await route.fulfill({ contentType: 'text/javascript', body: js });
       if (pathname === '/workspace/') return await route.fulfill({ contentType: 'text/html', body: initial === 'user' ? pages.user : pages.workspace });
-      if (pathname === '/auth/login') return await route.fulfill({ contentType: 'text/html', body: pages.login });
+      if (pathname === '/auth/login') return await route.fulfill({ contentType: 'text/html', body: new URL(request.url()).searchParams.get('password') === 'changed' ? pages['password-changed'] : pages.login });
+      if (pathname === '/account/preferences' && request.method() === 'POST') {
+        api.passwordPosts++;
+        const form = new URLSearchParams(request.postData());
+        assert.equal(form.get('csrf_token'), 'settings-token', 'password form lost its session-bound token');
+        api.passwordPayloads.push(Object.fromEntries(form));
+        const held = api.holdPassword; api.holdPassword = null;
+        if (held) await held.promise;
+        if (request.headers().accept !== 'application/json' && api.passwordStatus === 200) {
+          return await route.fulfill({ status: 303, headers: { Location: '/auth/login?password=changed' }, body: '' });
+        }
+        return await route.fulfill({ status: api.passwordStatus, contentType: 'application/json',
+          body: api.passwordStatus === 200 ? '{"login_url":"/auth/login?password=changed"}' : JSON.stringify({ error: api.passwordStatus === 401 ? 'Your session expired.' : 'Current password is incorrect.' }) });
+      }
+      if (pathname === '/account/preferences' && request.method() === 'GET') return await route.fulfill({ contentType: 'text/html', body: pages.settings });
       if (pathname === '/auth/signup') return await route.fulfill({ contentType: 'text/html', body: pages.signup });
       if (pathname === '/error') return await route.fulfill({ status: 503, contentType: 'text/html', body: pages.error });
       if (pathname === '/static/ui.css') return await route.fulfill({ contentType: 'text/css', body: sharedCSS });
+      if (pathname === '/static/settings.js') return await route.fulfill({ contentType: 'text/javascript', body: settingsJS });
       if (pathname === '/static/workspace.js') return await route.fulfill({ contentType: 'text/javascript', body: workspaceJS });
       if (pathname === '/shell/') {
         api.terminalLoads++;
@@ -108,8 +136,8 @@ async function fixture(viewport = { width: 1440, height: 1000 }, initial = 'admi
     }
   });
   if (javaScriptEnabled) await page.clock.install();
-  const initialPath = { admin: base, workspace: '/workspace/', user: '/workspace/', login: '/auth/login', signup: '/auth/signup', error: '/error' }[initial];
-  await page.goto('http://linuxus.test' + initialPath);
+  const initialPath = { admin: base, workspace: '/workspace/', user: '/workspace/', login: '/auth/login', signup: '/auth/signup', error: '/error', settings: '/account/preferences' }[initial];
+  await page.goto(origin + initialPath);
   if (initial === 'admin' && javaScriptEnabled) {
     await waitUntil(async () => await page.locator('#total-users').textContent() === '4', 'initial dashboard did not load');
     await waitUntil(async () => await page.locator('#refresh').isEnabled(), 'initial refresh did not finish');
@@ -415,6 +443,106 @@ try {
     } finally { await f.close(); }
   }
 
+  const personal = await fixture(undefined, 'settings');
+  try {
+    const { page, api } = personal;
+    assert.equal(api.terminalLoads, 0);
+    assert.equal(await page.getByRole('link', { name: 'Administration', exact: true }).count(), 0);
+    await page.locator('#current-password').fill('old-password');
+    await page.locator('#account-new-password').fill('new-password');
+    await page.locator('#account-confirm-password').fill('different-password');
+    await page.locator('#save-password').click();
+    assert.equal(api.passwordPosts, 0);
+    assert.equal(await page.locator('#account-confirm-password').evaluate(input => input.validationMessage), 'New passwords do not match.');
+    await page.locator('#account-new-password').fill('é'.repeat(37));
+    await page.locator('#account-confirm-password').fill('é'.repeat(37));
+    await page.locator('#save-password').click();
+    assert.equal(api.passwordPosts, 0);
+    assert.match(await page.locator('#account-new-password').evaluate(input => input.validationMessage), /72 UTF-8 bytes/);
+    await page.getByRole('link', { name: 'Workspace', exact: true }).click();
+    await page.frameLocator('#terminal-frame').locator('#terminal-input').fill('settings session');
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    assert.equal(await page.locator('#current-password').inputValue(), '');
+    assert.equal(await page.locator('#account-new-password').inputValue(), '');
+    assert.equal(new URL(page.url()).pathname, '/account/preferences');
+    assert.equal(await page.title(), 'Settings | Linuxus');
+    await page.goBack();
+    await page.locator('#workspace-panel').waitFor({ state: 'visible' });
+    assert.equal(await page.frameLocator('#terminal-frame').locator('#terminal-input').inputValue(), 'settings session');
+    assert.equal(api.terminalLoads, 1);
+    await page.goForward();
+    await page.locator('#settings-panel').waitFor({ state: 'visible' });
+    const screenshotDir = process.env.LINUXUS_UI_SCREENSHOTS;
+    if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, 'settings-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'mobile settings overflows');
+    if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, 'settings-mobile.png'), fullPage: true });
+    assert.equal(api.gets, 0);
+    passed++; console.log('PASS: personal settings validation, password clearing, terminal preservation, and history');
+  } finally { await personal.close(); }
+
+  const passwordFailure = await fixture(undefined, 'settings');
+  try {
+    const { page, api } = passwordFailure;
+    api.passwordStatus = 400;
+    for (const [id, value] of [['current-password', 'wrong'], ['account-new-password', 'new-password'], ['account-confirm-password', 'new-password']]) await page.locator('#' + id).fill(value);
+    await page.locator('#save-password').click();
+    await page.locator('#password-status').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#password-status').textContent(), /Current password is incorrect/);
+    assert.ok(await page.locator('#save-password').isEnabled());
+    assert.equal(new URL(page.url()).pathname, '/account/preferences');
+    await page.clock.runFor(45000);
+    assert.equal(api.passwordPosts, 1, 'failed password change was retried automatically');
+    api.passwordStatus = 401;
+    await page.locator('#save-password').click();
+    await page.locator('#session-notice').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#session-notice a').getAttribute('href'), '/auth/login');
+    assert.ok(await page.locator('#save-password').isDisabled());
+    assert.equal(await page.locator('#account-new-password').inputValue(), '');
+    passed++; console.log('PASS: incorrect current password and expired personal session are handled safely');
+  } finally { await passwordFailure.close(); }
+
+  const passwordSuccess = await fixture(undefined, 'settings');
+  try {
+    const { page, api } = passwordSuccess;
+    for (const [id, value] of [['current-password', 'old-password'], ['account-new-password', 'new-password'], ['account-confirm-password', 'new-password']]) await page.locator('#' + id).fill(value);
+    const held = gate(); api.holdPassword = held;
+    await page.locator('#save-password').click();
+    await waitUntil(() => api.passwordPosts === 1, 'password change did not begin');
+    assert.ok(await page.locator('#save-password').isDisabled());
+    await page.locator('#password-form').dispatchEvent('submit');
+    assert.equal(api.passwordPosts, 1);
+    held.release();
+    await page.waitForURL(origin + '/auth/login?password=changed');
+    assert.equal(api.passwordPayloads[0].current_password, 'old-password');
+    assert.equal(api.passwordPayloads[0].new_password, 'new-password');
+    assert.equal(api.posts, 0, 'personal password change used the administrator API');
+    passed++; console.log('PASS: password change submits once and redirects to the configured login');
+  } finally { await passwordSuccess.close(); }
+
+  const plainSettings = await fixture(undefined, 'settings', false);
+  try {
+    const { page, api } = plainSettings;
+    for (const [name, value] of [['current_password', 'old-password'], ['new_password', 'new-password'], ['confirm_password', 'new-password']]) await page.locator('input[name="' + name + '"]').fill(value);
+    await page.locator('#save-password').click();
+    await page.waitForURL(origin + '/auth/login?password=changed');
+    assert.equal(api.passwordPosts, 1);
+    assert.match(await page.getByRole('status').textContent(), /Password changed/);
+    passed++; console.log('PASS: personal password change works without JavaScript');
+  } finally { await plainSettings.close(); }
+
+  await run('settings pauses administrator polling and fits tablet navigation', async ({ page, api }) => {
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    const before = api.gets;
+    await page.clock.runFor(45000);
+    assert.equal(api.gets, before);
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.locator('.current-user').evaluate(element => { element.textContent = 'a'.repeat(64); });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'tablet navigation overflows');
+    await page.getByRole('link', { name: 'Administration', exact: true }).click();
+    await waitUntil(() => api.gets > before, 'returning from Settings did not resume status updates');
+  });
+
   const f = await fixture();
   try {
     const screenshotDir = process.env.LINUXUS_UI_SCREENSHOTS;
@@ -436,4 +564,5 @@ try {
   console.log(`PASS: ${passed} browser scenarios; no live services or user data were accessed.`);
 } finally {
   await browser.close();
+  await new Promise(resolve => redirectServer.close(resolve));
 }

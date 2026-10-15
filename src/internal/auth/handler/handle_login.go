@@ -25,7 +25,11 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		a.renderLogin(w, "")
+		data := a.pageData("Sign in")
+		if r.URL.Query().Get("password") == "changed" {
+			data.Notice = "Password changed. Sign in with your new password."
+		}
+		a.renderPage(w, "login", data, http.StatusOK)
 		return
 
 	case http.MethodPost:

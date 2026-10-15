@@ -14,10 +14,11 @@ import (
 
 // App holds auth server state, templates, and manager integration clients.
 type App struct {
-	adminPath string
-	adminID   string
-	templates map[string]commonconfig.Template
-	classes   map[string]string
+	settingsPath string
+	adminPath    string
+	adminID      string
+	templates    map[string]commonconfig.Template
+	classes      map[string]string
 	// users maps user IDs to bcrypt password hashes.
 	users map[string]string
 	// usersMu protects credential reloads, lookups and signup writes.
@@ -78,6 +79,8 @@ type App struct {
 
 // AppConfig defines all configuration values required to initialize an App.
 type AppConfig struct {
+	// SettingsPath is the personal account settings page and form endpoint.
+	SettingsPath string
 	// AdminPath is the base path for the administrator page, API, and assets.
 	AdminPath string
 	AdminID   string
@@ -151,9 +154,14 @@ func NewApp(config *AppConfig) *App {
 	if adminPath == "" {
 		adminPath = "admin"
 	}
+	settingsPath := config.SettingsPath
+	if settingsPath == "" {
+		settingsPath = "settings"
+	}
 	app := &App{
-		adminPath: adminPath,
-		adminID:   config.AdminID, templates: config.Templates, classes: config.Classes,
+		settingsPath: settingsPath,
+		adminPath:    adminPath,
+		adminID:      config.AdminID, templates: config.Templates, classes: config.Classes,
 		users:                   config.Users,
 		authListFile:            config.AuthListFile,
 		sessionKey:              config.SessionKey,
@@ -241,6 +249,8 @@ func (a *App) Stop() {
 // RegisterRoutes binds HTTP handlers to the configured routes.
 func (a *App) RegisterRoutes() {
 	a.mux.HandleFunc("/", a.handleRoot)
+	a.mux.HandleFunc("/"+a.settingsPath, a.handleSettings)
+	a.mux.HandleFunc("/"+a.settingsPath+"/", a.handleSettings)
 	a.mux.HandleFunc("/"+a.adminPath, a.handleAdmin)
 	a.mux.HandleFunc("/"+a.adminPath+"/", a.handleAdmin)
 	a.mux.HandleFunc("/"+a.adminPath+"/api/users", a.handleAdminUsers)

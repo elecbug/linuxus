@@ -59,7 +59,7 @@
     if (state.expired) note = 'Sign in again to resume updates';
     else if (state.writing) note = 'Updates paused while applying changes';
     else if (ui['account-dialog'].open) note = 'Updates paused while editing';
-    else if (!isActive()) note = 'Updates paused while viewing your workspace';
+    else if (!isActive()) note = 'Updates paused outside Administration';
     else if (document.hidden) note = 'Updates paused while this tab is hidden';
     else if (!ui['auto-refresh'].checked) note = 'Automatic updates paused';
     ui['refresh-note'].textContent = note;
@@ -77,12 +77,13 @@
     state.read = null;
   }
 
-  function sessionExpired() {
+  function sessionExpired(notify = true) {
+    if (state.expired) return;
     state.expired = true;
     stopTimer();
     cancelRead();
     ui['session-notice'].hidden = false;
-    document.dispatchEvent(new Event('linuxus:sessionexpired'));
+    if (notify) document.dispatchEvent(new Event('linuxus:sessionexpired'));
     notice(ui['load-error'], '');
     updateControls();
   }
@@ -346,6 +347,7 @@
     clearPasswords(); state.target = null;
     if (canPoll() && state.refreshOnClose) refresh(); else schedule();
   });
+  document.addEventListener('linuxus:sessionexpired', () => sessionExpired(false));
   document.addEventListener('linuxus:viewchange', () => {
     stopTimer();
     if (!isActive()) cancelRead();

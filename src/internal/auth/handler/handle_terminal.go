@@ -46,7 +46,8 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 
 	proxy := a.terminalProxy(target)
 
-	if isWebSocketRequest(r) {
+	websocket := isWebSocketRequest(r)
+	if websocket {
 		ctx, cancel := context.WithCancel(r.Context())
 		r = r.WithContext(ctx)
 		a.sessionMu.Lock()
@@ -56,6 +57,14 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 		a.sessionCancels[r] = cancel
 		a.sessionMu.Unlock()
 		defer func() { cancel(); a.sessionMu.Lock(); delete(a.sessionCancels, r); a.sessionMu.Unlock() }()
+	}
+	// Preparation can outlast a password change. Register upgrades before this
+	// check so revocation also cancels a connection racing with validation.
+	if _, valid := a.getSessionID(r); !valid {
+		http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
+		return
+	}
+	if websocket {
 		a.markSessionStart(id)
 		defer a.markSessionEnd(id)
 	}

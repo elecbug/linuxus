@@ -66,6 +66,7 @@ func parseConfig() (*handler.AppConfig, error) {
 		AuthListFile:            cfg.AuthService.Mounts.ContainerAuthListPath,
 		SessionKey:              []byte(cfg.AuthService.Security.SessionSecret),
 		AdminPath:               cfg.AdminRoute(),
+		SettingsPath:            cfg.SettingsRoute(),
 		LoginPath:               cfg.AuthService.ServiceURL.Login,
 		LogoutPath:              cfg.AuthService.ServiceURL.Logout,
 		ServicePath:             cfg.AuthService.ServiceURL.Service,

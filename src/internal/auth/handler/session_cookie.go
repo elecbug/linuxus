@@ -30,35 +30,41 @@ func (a *App) setSessionCookie(w http.ResponseWriter, r *http.Request, id, crede
 }
 
 func (a *App) getSessionID(r *http.Request) (string, bool) {
+	id, _, ok := a.getSessionAccount(r)
+	return id, ok
+}
+
+// getSessionAccount returns the exact record bound to the signed session cookie.
+func (a *App) getSessionAccount(r *http.Request) (string, string, bool) {
 	cookie, err := r.Cookie("session")
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 	raw, err := base64.StdEncoding.DecodeString(cookie.Value)
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 	parts := strings.Split(string(raw), "|")
 	if len(parts) != 3 || !ruleset.AllowedUserID(parts[0]) {
-		return "", false
+		return "", "", false
 	}
 	expires, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil || time.Now().Unix() >= expires {
-		return "", false
+		return "", "", false
 	}
 	users, err := user.LoadUsers(a.authListFile)
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 	hash, exists := users[parts[0]]
 	if !exists || user.IsLocked(hash) {
-		return "", false
+		return "", "", false
 	}
 	expected := a.sign("session|" + parts[0] + "|" + parts[1] + "|" + hash)
 	if !hmac.Equal([]byte(parts[2]), []byte(expected)) {
-		return "", false
+		return "", "", false
 	}
-	return parts[0], true
+	return parts[0], hash, true
 }
 
 func (a *App) sign(value string) string {

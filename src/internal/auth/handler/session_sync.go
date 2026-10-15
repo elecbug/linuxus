@@ -21,16 +21,8 @@ func (a *App) reportAllSessions() error {
 			snapshot.Sessions[id] = count
 		}
 	}
-	requests := make(map[*http.Request]context.CancelFunc, len(a.sessionCancels))
-	for request, cancel := range a.sessionCancels {
-		requests[request] = cancel
-	}
 	a.sessionMu.Unlock()
-	for request, cancel := range requests {
-		if _, ok := a.getSessionID(request); !ok {
-			cancel()
-		}
-	}
+	a.cancelRevokedSessions()
 	if a.managerBaseURL == "" {
 		return nil
 	}
@@ -68,6 +60,21 @@ func (a *App) sessionReporter() {
 		case <-a.done:
 			return
 		case <-ticker.C:
+		}
+	}
+}
+
+// cancelRevokedSessions closes terminal connections without requiring Manager.
+func (a *App) cancelRevokedSessions() {
+	a.sessionMu.Lock()
+	requests := make(map[*http.Request]context.CancelFunc, len(a.sessionCancels))
+	for request, cancel := range a.sessionCancels {
+		requests[request] = cancel
+	}
+	a.sessionMu.Unlock()
+	for request, cancel := range requests {
+		if _, ok := a.getSessionID(request); !ok {
+			cancel()
 		}
 	}
 }

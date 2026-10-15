@@ -7,6 +7,11 @@ import (
 // handleLogout removes this browser's cookie. Other open terminals keep their
 // session counts until their WebSocket connections actually close.
 func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
+	a.clearSessionCookie(w, r)
+	http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
+}
+
+func (a *App) clearSessionCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    "",
@@ -16,6 +21,4 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
-
-	http.Redirect(w, r, "/"+a.loginPath, http.StatusSeeOther)
 }

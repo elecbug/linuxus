@@ -1,0 +1,26 @@
+{{define "settings-panel"}}
+<div class="settings-heading"><p class="eyebrow">YOUR ACCOUNT</p><h1 id="settings-title" tabindex="-1">Settings</h1><p class="subtitle">Manage your account and sign-in details.</p></div>
+<div class="settings-grid">
+  <section class="settings-card" aria-labelledby="profile-title">
+    <h2 id="profile-title">Account</h2>
+    <dl class="account-details"><div><dt>User ID</dt><dd>{{.ID}}</dd></div><div><dt>Access</dt><dd>{{if .IsAdmin}}Administrator{{else}}User{{end}}</dd></div></dl>
+    <p class="subtitle">Your account and files stay with your workspace.</p>
+  </section>
+  <section class="settings-card" aria-labelledby="password-title">
+    <h2 id="password-title">Change password</h2>
+    <p class="settings-description">Confirm your current password to choose a new one.</p>
+    <p id="password-status" class="notice danger" role="alert"{{if not .Error}} hidden{{end}}>{{.Error}}</p>
+    <form id="password-form" action="{{.SettingsURL}}" method="post" aria-labelledby="password-title">
+      <input type="hidden" name="csrf_token" value="{{.SettingsToken}}">
+      <input type="hidden" name="username" autocomplete="username" value="{{.ID}}">
+      <fieldset id="password-controls">
+        <label class="field">Current password<input id="current-password" name="current_password" type="password" autocomplete="current-password" required maxlength="72"></label>
+        <label class="field">New password<input id="account-new-password" name="new_password" type="password" autocomplete="new-password" required maxlength="72" aria-describedby="password-help"></label>
+        <label class="field">Confirm new password<input id="account-confirm-password" name="confirm_password" type="password" autocomplete="new-password" required maxlength="72"></label>
+        <p id="password-help" class="settings-description">Use up to 72 UTF-8 bytes. Changing your password signs you out of all browsers and closes connected terminals. Your files are preserved.</p>
+        <button id="save-password" class="button primary" type="submit">Change password</button>
+      </fieldset>
+    </form>
+  </section>
+</div>
+{{end}}

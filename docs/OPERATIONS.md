@@ -200,11 +200,11 @@ Restart an environment to apply a changed template image.
 
 Login, registration, the workspace, and administration share one interface.
 When the account named by `MANAGER_SERVICE_ADMIN_ID` logs in, the navigation
-shows **Workspace** and **Administration**. Switching views keeps the terminal
+shows **Workspace**, **Administration**, and **Settings**. Switching views keeps the terminal
 connected and preserves dashboard search and filters. Browser Back and Forward
 follow the selected view. Opening administration directly does not start a
 personal environment; it starts when Workspace is first opened. Regular users
-see only Workspace. **Reconnect terminal** explicitly reloads the terminal.
+see **Workspace** and **Settings**. **Reconnect terminal** explicitly reloads the terminal.
 Without JavaScript, Workspace remains available through server navigation.
 
 The administrator interface defaults to `/admin`. Set its public base
@@ -218,7 +218,7 @@ This example serves the page at `/ops/classroom`, its API at
 `/ops/classroom/api/users`, and its assets below `/ops/classroom/assets/`.
 Navigation links and browser requests follow the configured path. Omitted or
 empty values keep the default `admin` route. The administrator path must not
-overlap login, logout, service, terminal, signup, or reserved asset paths.
+overlap login, logout, service, terminal, signup, settings, or reserved asset paths.
 `config-check` prints the effective administrator URL. Rebuild and restart the
 services to apply these changes; `init` includes the setting in new files and
 leaves existing configuration files unchanged.
@@ -234,7 +234,7 @@ The dashboard includes summary counts, user search, state filters, and home
 storage meters. Rows are updated in place, preserving search text and keyboard
 focus. Manual and automatic refreshes share a single request. Automatic updates
 run 15 seconds after the preceding request finishes; they pause while a dialog
-is open, an action is running, the tab is hidden, or Workspace is selected.
+is open, an action is running, the tab is hidden, or Workspace or Settings is selected.
 Leaving Administration cancels pending status reads; returning refreshes status
 when automatic updates are enabled. The Auto-refresh checkbox
 allows manual control. Failed updates retain the last successful display and
@@ -250,3 +250,27 @@ Mutation requests require a session-bound CSRF token. Responses exclude account
 hashes and secrets. Administrator and `healthz` paths are reserved. Manager's
 operations API uses the existing shared secret; the host disk API is exposed only
 through its permission-restricted Unix socket.
+
+## Personal account settings
+
+Every signed-in account can open **Settings** to view its user ID and access level
+and change its own password. The page defaults to `/settings`. Set
+`AUTH_SERVICE_SERVICE_URL_SETTINGS='account/preferences'` to move it to
+`/account/preferences`; navigation and form submissions follow this path. Omitted
+or empty values retain `/settings`. The path must not overlap another configured
+route or a reserved asset route. `init` includes the key in new configuration
+files and `config-check` displays its effective URL.
+
+Password changes require the current password, a new password, confirmation, and
+a session-bound request token. Passwords are limited to 72 UTF-8 bytes. Failed
+current-password attempts use the existing login rate limits. The account is
+selected from the signed session; form input cannot select another user. A
+concurrent account update cancels the password change rather than overwriting it.
+
+A successful change signs out all existing sessions and closes their terminal
+connections, then returns to the configured login page. Sign in with the new
+password to continue. Home files, classroom assignments, and other accounts are
+preserved. Manager and Docker availability are not required to save a password.
+The form also works without JavaScript. Leaving Settings clears its password
+fields; switching views retains an already open terminal until a successful
+password change invalidates the session.

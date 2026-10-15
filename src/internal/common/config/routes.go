@@ -14,11 +14,20 @@ func (cfg *Config) AdminRoute() string {
 	return cfg.AuthService.ServiceURL.Admin
 }
 
+// SettingsRoute preserves the default for configuration files without this setting.
+func (cfg *Config) SettingsRoute() string {
+	if cfg.AuthService.ServiceURL.Settings == "" {
+		return "settings"
+	}
+	return cfg.AuthService.ServiceURL.Settings
+}
+
 // ValidateAuthRoutes rejects patterns that ServeMux would reinterpret, conflict
 // with, or redirect away from. Nested paths such as auth/login remain supported.
 func ValidateAuthRoutes(cfg *Config) error {
 	routes := []struct{ name, value string }{
 		{"admin", cfg.AdminRoute()},
+		{"settings", cfg.SettingsRoute()},
 		{"login", cfg.AuthService.ServiceURL.Login},
 		{"logout", cfg.AuthService.ServiceURL.Logout},
 		{"service", cfg.AuthService.ServiceURL.Service},
@@ -45,9 +54,13 @@ func ValidateAuthRoutes(cfg *Config) error {
 			return fmt.Errorf("AUTH_SERVICE_SERVICE_URL_%s duplicates %s", strings.ToUpper(route.name), strings.ToUpper(previous))
 		}
 		for previousPath, previousName := range seen {
-			if (route.name == "admin" || previousName == "admin") &&
+			if (route.name == "admin" || previousName == "admin" || route.name == "settings" || previousName == "settings") &&
 				(strings.HasPrefix(value, previousPath+"/") || strings.HasPrefix(previousPath, value+"/")) {
-				return fmt.Errorf("AUTH_SERVICE_SERVICE_URL_%s overlaps the administrator route", strings.ToUpper(route.name))
+				kind := "settings"
+				if route.name == "admin" || previousName == "admin" {
+					kind = "administrator"
+				}
+				return fmt.Errorf("AUTH_SERVICE_SERVICE_URL_%s overlaps the %s route", strings.ToUpper(route.name), kind)
 			}
 		}
 		seen[value] = route.name

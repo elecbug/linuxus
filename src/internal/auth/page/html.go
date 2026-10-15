@@ -11,8 +11,9 @@ var templates embed.FS
 
 // Data supplies configured routes and session details to the shared interface.
 type Data struct {
-	Title, Error, ID, View                                            string
+	Title, Error, Notice, ID, View                                    string
 	LoginURL, SignupURL, ServiceURL, TerminalURL, LogoutURL, AdminURL string
+	SettingsURL, SettingsToken                                        string
 	BaseURL, APIURL, Token, AdminID                                   string
 	IsAdmin, AllowSignup                                              bool
 }

@@ -16,10 +16,11 @@ func main() {
 		ID: "admin", AdminID: "admin", IsAdmin: true, AllowSignup: true,
 		LoginURL: "/auth/login", SignupURL: "/auth/signup", LogoutURL: "/auth/logout",
 		ServiceURL: "/workspace/", TerminalURL: "/shell/", AdminURL: "/ops/classroom",
+		SettingsURL: "/account/preferences", SettingsToken: "settings-token",
 		BaseURL: "/ops/classroom", APIURL: "/ops/classroom/api/users", Token: "initial-token",
 	}
 	rendered := map[string]string{}
-	for _, name := range []string{"admin", "workspace", "user", "login", "signup", "error"} {
+	for _, name := range []string{"admin", "workspace", "user", "settings", "password-changed", "login", "signup", "error"} {
 		value := data
 		templateName := name
 		switch name {
@@ -30,6 +31,11 @@ func main() {
 			if name == "user" {
 				value.ID, value.IsAdmin, value.Token = "alice", false, ""
 			}
+		case "settings":
+			templateName, value.Title, value.View = "app", "Settings", "settings"
+			value.ID, value.IsAdmin, value.Token = "alice", false, ""
+		case "password-changed":
+			templateName, value.Title, value.Notice = "login", "Sign in", "Password changed. Sign in with your new password."
 		case "login":
 			value.Title = "Sign in"
 		case "signup":

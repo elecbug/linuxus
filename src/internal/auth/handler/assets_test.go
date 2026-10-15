@@ -19,6 +19,7 @@ func TestStaticAssetsWithoutSourceDirectory(t *testing.T) {
 		{"/static/favicon.png", "favicon.png", "image/png"},
 		{"/static/ui.css", "ui.css", "text/css"},
 		{"/static/workspace.js", "workspace.js", "javascript"},
+		{"/static/settings.js", "settings.js", "javascript"},
 	} {
 		want, err := static.Files.ReadFile(tc.name)
 		if err != nil {

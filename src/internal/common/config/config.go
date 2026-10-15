@@ -63,6 +63,8 @@ type Config struct {
 
 		// ServiceURL defines auth endpoint paths.
 		ServiceURL struct {
+			// Settings is the personal account settings path; empty uses settings.
+			Settings string `env:"SETTINGS"`
 			// Admin is the administrator interface base path; empty uses admin.
 			Admin string `env:"ADMIN"`
 			// Login is the login route path.

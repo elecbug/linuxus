@@ -11,7 +11,8 @@ import (
 func (a *App) pageData(title string) page.Data {
 	base := "/" + a.adminPath
 	return page.Data{
-		Title: title, AllowSignup: a.allowSignup,
+		SettingsURL: "/" + a.settingsPath,
+		Title:       title, AllowSignup: a.allowSignup,
 		LoginURL: "/" + a.loginPath, SignupURL: "/" + a.signupPath,
 		ServiceURL: "/" + a.servicePath + "/", TerminalURL: "/" + a.terminalPath + "/",
 		LogoutURL: "/" + a.logoutPath, AdminURL: base,
@@ -21,11 +22,15 @@ func (a *App) pageData(title string) page.Data {
 
 func (a *App) applicationData(r *http.Request, id, view string) page.Data {
 	title := "Workspace"
+	if view == "settings" {
+		title = "Settings"
+	}
 	if view == "admin" {
 		title = "Administration"
 	}
 	data := a.pageData(title)
 	data.ID, data.View = id, view
+	data.SettingsToken = a.settingsToken(r)
 	data.IsAdmin = a.adminID != "" && id == a.adminID
 	if data.IsAdmin {
 		data.Token = a.adminToken(r)

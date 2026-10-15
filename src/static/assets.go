@@ -5,5 +5,5 @@ import "embed"
 
 // Files contains the authentication server's static assets.
 //
-//go:embed favicon.png ui.css workspace.js
+//go:embed favicon.png ui.css workspace.js settings.js
 var Files embed.FS

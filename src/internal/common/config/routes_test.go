@@ -56,3 +56,31 @@ func TestAdminRouteDefaultsAndConflicts(t *testing.T) {
 		})
 	}
 }
+
+func TestSettingsRouteDefaultsAndConflicts(t *testing.T) {
+	for _, tc := range []struct {
+		settings, login string
+		valid           bool
+	}{
+		{"", "login", true}, {"settings", "login", true}, {"account/preferences", "auth/login", true},
+		{"/settings", "login", false}, {"settings/", "login", false}, {"settings?tab=profile", "login", false},
+		{"settings", "settings", false}, {"account", "account/login", false}, {"account/profile", "account", false},
+		{"admin/settings", "login", false}, {"service/settings", "login", false}, {"settings", "settings/login", false},
+		{"static/settings", "login", false}, {"healthz", "login", false},
+	} {
+		t.Run(tc.settings+"/"+tc.login, func(t *testing.T) {
+			cfg, err := ParseEnv([]byte(DefaultEnv))
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg.AuthService.ServiceURL.Settings = tc.settings
+			cfg.AuthService.ServiceURL.Login = tc.login
+			if err := ValidateAuthRoutes(&cfg); (err == nil) != tc.valid {
+				t.Fatalf("settings=%q login=%q error=%v", tc.settings, tc.login, err)
+			}
+			if tc.settings == "" && cfg.SettingsRoute() != "settings" {
+				t.Fatal("legacy configuration lost the default settings route")
+			}
+		})
+	}
+}

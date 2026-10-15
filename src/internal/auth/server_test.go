@@ -56,3 +56,36 @@ func TestInvalidAdminRouteRejectedBeforeLoadingAccounts(t *testing.T) {
 		t.Fatalf("invalid route was not rejected before runtime access: %v", err)
 	}
 }
+
+func TestSettingsRouteSurvivesEnvAndContainerConfiguration(t *testing.T) {
+	for _, settings := range []string{"settings", "account/preferences", "", "omitted"} {
+		contents := strings.Replace(config.DefaultEnv, "AUTH_SERVICE_SERVICE_URL_SETTINGS='settings'", "AUTH_SERVICE_SERVICE_URL_SETTINGS='"+settings+"'", 1)
+		if settings == "omitted" {
+			contents = strings.Replace(config.DefaultEnv, "AUTH_SERVICE_SERVICE_URL_SETTINGS='settings'\n", "", 1)
+		}
+		cfg, err := config.ParseEnv([]byte(contents))
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg.AuthService.Mounts.ContainerAuthListPath = filepath.Join(t.TempDir(), "AUTH_LIST")
+		if err := os.WriteFile(cfg.AuthService.Mounts.ContainerAuthListPath, []byte("alice:hash\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		data, err := json.Marshal(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("ENV", string(data))
+		app, err := parseConfig()
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := settings
+		if want == "" || want == "omitted" {
+			want = "settings"
+		}
+		if app.SettingsPath != want {
+			t.Fatalf("settings route lost in configuration transport: %q", app.SettingsPath)
+		}
+	}
+}

@@ -9,6 +9,7 @@
     {{template "auth-logo" .}}
     <p class="eyebrow">WELCOME TO LINUXUS</p><h1 id="auth-title">Sign in to your workspace.</h1>
     <p class="subtitle">Your terminal and classroom tools, in one place.</p>
+    {{if .Notice}}<p class="notice success" role="status">{{.Notice}}</p>{{end}}
     {{if .Error}}<p class="notice danger" role="alert">{{.Error}}</p>{{end}}
     <form action="{{.LoginURL}}" method="post">
       <label class="field">User ID<input name="id" type="text" autocomplete="username" required autofocus></label>

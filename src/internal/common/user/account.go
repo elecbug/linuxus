@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -64,6 +65,25 @@ func CheckPassword(value, password string) error {
 // UpdateAccount preserves the auth inode and unrelated lines under the same
 // cross-process lock as signup. Every successful change revokes old cookies.
 func UpdateAccount(path, id, operation, value string) error {
+	return updateAccount(path, id, operation, value, nil)
+}
+
+// ErrPasswordMismatch indicates that the current password did not match.
+var ErrPasswordMismatch = errors.New("current password is incorrect")
+
+// ErrAccountChanged rejects writes authenticated against an outdated account record.
+var ErrAccountChanged = errors.New("account changed; sign in again before changing the password")
+
+// ChangePassword verifies the current password outside the file lock, then checks
+// that the authenticated record is still current under the exclusive write lock.
+func ChangePassword(path, id, expectedRecord, currentPassword, newPassword string) error {
+	if err := CheckPassword(expectedRecord, currentPassword); err != nil {
+		return ErrPasswordMismatch
+	}
+	return updateAccount(path, id, "password", newPassword, &expectedRecord)
+}
+
+func updateAccount(path, id, operation, value string, expectedRecord *string) error {
 	if !ruleset.AllowedUserID(id) {
 		return fmt.Errorf("invalid user ID")
 	}
@@ -92,11 +112,17 @@ func UpdateAccount(path, id, operation, value string) error {
 	}
 	record, ok := users[id]
 	if !ok {
+		if expectedRecord != nil {
+			return ErrAccountChanged
+		}
 		return fmt.Errorf("user %q does not exist", id)
 	}
 	account, err := ParseAccount(record)
 	if err != nil {
 		return err
+	}
+	if expectedRecord != nil && (record != *expectedRecord || account.Locked || account.Maintenance) {
+		return ErrAccountChanged
 	}
 	if account.Maintenance && operation != "maintenance-end" && operation != "maintenance-failed" {
 		return fmt.Errorf("account is under disk maintenance; wait or use recover-user after the operation exits")

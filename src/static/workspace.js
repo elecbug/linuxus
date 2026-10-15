@@ -5,7 +5,7 @@
   const frame = document.getElementById('terminal-frame');
   const reconnect = document.getElementById('reconnect-terminal');
   const links = Array.from(document.querySelectorAll('[data-view-link], [data-open-view]'));
-  const panels = { workspace: document.getElementById('workspace-panel'), admin: document.getElementById('admin-panel') };
+  const panels = { workspace: document.getElementById('workspace-panel'), admin: document.getElementById('admin-panel'), settings: document.getElementById('settings-panel') };
   let expired = false;
 
   function startTerminal() {
@@ -15,6 +15,7 @@
   function routeView() {
     const pathname = location.pathname;
     if (panels.admin && (pathname === config.adminUrl || pathname === config.adminUrl + '/')) return 'admin';
+    if (pathname === config.settingsUrl || pathname === config.settingsUrl + '/') return 'settings';
     if (pathname === config.serviceUrl) return 'workspace';
     return null;
   }
@@ -28,11 +29,11 @@
       if (link.dataset.viewLink === view) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
     }
-    document.title = (view === 'admin' ? 'Administration' : 'Workspace') + ' | Linuxus';
+    document.title = { admin: 'Administration', settings: 'Settings', workspace: 'Workspace' }[view] + ' | Linuxus';
     if (view === 'workspace') startTerminal();
     document.dispatchEvent(new CustomEvent('linuxus:viewchange', { detail: { view } }));
     if (focus && !document.getElementById('account-dialog')?.open) {
-      document.getElementById(view === 'admin' ? 'page-title' : 'workspace-title').focus({ preventScroll: true });
+      document.getElementById({ admin: 'page-title', settings: 'settings-title', workspace: 'workspace-title' }[view]).focus({ preventScroll: true });
     }
   }
 
@@ -57,8 +58,15 @@
   window.addEventListener('pageshow', event => {
     if (event.persisted) show(routeView() || config.view);
   });
-  document.addEventListener('linuxus:sessionexpired', () => {
+  document.addEventListener('linuxus:sessionexpired', event => {
     expired = true;
+    const notice = document.getElementById('session-notice');
+    if (event.detail?.message) {
+      notice.querySelector('strong').textContent = event.detail.message;
+      notice.querySelector('p').textContent = 'Your previous sessions have been signed out.';
+      notice.className = 'notice success app-session-notice';
+    }
+    notice.hidden = false;
     reconnect.disabled = true;
     for (const link of links) link.setAttribute('aria-disabled', 'true');
     // Removing the source closes a terminal belonging to a revoked session.

@@ -144,6 +144,12 @@ without leading/trailing slashes or wildcard patterns; `static/` and
 asset base path. Existing files that omit it retain `/admin`; for example,
 `AUTH_SERVICE_SERVICE_URL_ADMIN='ops/classroom'` moves the interface to
 `/ops/classroom`. It must not overlap the other configured routes.
+`AUTH_SERVICE_SERVICE_URL_SETTINGS='settings'` selects personal account settings;
+for example, `account/preferences` serves them at `/account/preferences`.
+Omitted or empty values retain `/settings`. Both regular users and administrators
+can change their own passwords there after confirming the current password.
+Changing a password signs out existing sessions and preserves workspace files.
+The settings route must not overlap the other configured routes.
 Docker subnet allocation checks all existing Docker IPAM ranges to avoid
 conflicts with other projects. Trusted proxy CIDRs support both IPv4 and IPv6.
 
