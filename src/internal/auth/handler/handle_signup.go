@@ -1,11 +1,9 @@
 package handler
 
 import (
-	"html/template"
 	"net/http"
 	"strings"
 
-	"github.com/elecbug/linuxus/src/internal/auth/page"
 	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 	"github.com/elecbug/linuxus/src/internal/common/user"
 )
@@ -83,24 +81,7 @@ func (a *App) handleSignup(w http.ResponseWriter, r *http.Request) {
 
 // renderSignup renders the signup page with an optional error message.
 func (a *App) renderSignup(w http.ResponseWriter, errMsg string) {
-	tmpl, err := template.New("signup").Parse(
-		page.GetSignupPage(a.signupPath, a.loginPath),
-	)
-	if err != nil {
-		http.Error(w, "Template parsing error", http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		Error string
-	}{
-		Error: errMsg,
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	if err := tmpl.Execute(w, data); err != nil {
-		http.Error(w, "Template execution error", http.StatusInternalServerError)
-		return
-	}
+	data := a.pageData("Create account")
+	data.Error = errMsg
+	a.renderPage(w, "signup", data, http.StatusOK)
 }

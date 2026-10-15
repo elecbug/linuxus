@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"net"
 	"net/http"
 	"strconv"
@@ -102,33 +101,16 @@ func (a *App) isBlocked(ip, id string) (bool, time.Time) {
 
 // renderLogin renders the login page with an optional error message.
 func (a *App) renderLogin(w http.ResponseWriter, errMsg string) {
-	data := struct {
-		Error string
-	}{
-		Error: errMsg,
-	}
-
-	if err := a.loginTmpl.Execute(w, data); err != nil {
-		http.Error(w, "Template error", http.StatusInternalServerError)
-	}
+	data := a.pageData("Sign in")
+	data.Error = errMsg
+	a.renderPage(w, "login", data, http.StatusOK)
 }
 
 // renderError renders a formatted error page with a specific status code.
 func (a *App) renderError(w http.ResponseWriter, errMsg string, statusCode int) {
-	data := struct {
-		Error string
-	}{
-		Error: errMsg,
-	}
-
-	var buf bytes.Buffer
-	if err := a.errorTmpl.Execute(&buf, data); err != nil {
-		http.Error(w, "Template error", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(statusCode)
-	_, _ = buf.WriteTo(w)
+	data := a.pageData("Unable to continue")
+	data.Error = errMsg
+	a.renderPage(w, "error", data, statusCode)
 }
 
 // recordFail updates per-IP and optional per-user failure counters and lock states.

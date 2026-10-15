@@ -20,18 +20,6 @@ func (a *App) handleServicePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Pragma", "no-cache")
-
-	data := struct {
-		ID      string
-		IsAdmin bool
-	}{
-		ID:      id,
-		IsAdmin: a.adminID != "" && id == a.adminID,
-	}
-
-	if err := a.serviceTmpl.Execute(w, data); err != nil {
-		http.Error(w, "Template error", http.StatusInternalServerError)
-	}
+	w.Header().Set("X-Frame-Options", "DENY")
+	a.renderPage(w, "app", a.applicationData(r, id, "workspace"), http.StatusOK)
 }

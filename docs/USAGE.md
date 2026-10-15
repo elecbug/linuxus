@@ -139,7 +139,11 @@ validated normally; they are not filled from embedded defaults at runtime.
 
 Auth route paths must be distinct, clean paths
 without leading/trailing slashes or wildcard patterns; `static/` and
-`favicon.ico` are reserved. Nested paths such as `auth/login` are supported.
+`favicon.ico` and `healthz` are reserved. Nested paths such as `auth/login` are supported.
+`AUTH_SERVICE_SERVICE_URL_ADMIN='admin'` selects the administrator page, API, and
+asset base path. Existing files that omit it retain `/admin`; for example,
+`AUTH_SERVICE_SERVICE_URL_ADMIN='ops/classroom'` moves the interface to
+`/ops/classroom`. It must not overlap the other configured routes.
 Docker subnet allocation checks all existing Docker IPAM ranges to avoid
 conflicts with other projects. Trusted proxy CIDRs support both IPv4 and IPv6.
 
@@ -412,5 +416,6 @@ it deletes the images and their contents.
 
 See [Operations](OPERATIONS.md) for `config-check`, `doctor`, systemd recovery,
 account locks and password changes, backups, capacity settings, class templates,
-and the administrator interface at `/admin`. New optional `.env` keys may be
+and the administrator interface at the configured `AUTH_SERVICE_SERVICE_URL_ADMIN`
+path (default `/admin`). New optional `.env` keys may be
 added to an existing file; rerunning `init` does not overwrite existing settings.

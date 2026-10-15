@@ -1,0 +1,68 @@
+{{define "login"}}
+<!doctype html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body class="auth-page">
+{{template "auth-header" .}}
+<main class="auth-main">
+  <section class="auth-card" aria-labelledby="auth-title">
+    {{template "auth-logo" .}}
+    <p class="eyebrow">WELCOME TO LINUXUS</p><h1 id="auth-title">Sign in to your workspace.</h1>
+    <p class="subtitle">Your terminal and classroom tools, in one place.</p>
+    {{if .Error}}<p class="notice danger" role="alert">{{.Error}}</p>{{end}}
+    <form action="{{.LoginURL}}" method="post">
+      <label class="field">User ID<input name="id" type="text" autocomplete="username" required autofocus></label>
+      <label class="field">Password<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="button primary full-width" type="submit">Sign in</button>
+    </form>
+    {{if .AllowSignup}}<p class="auth-switch">New to Linuxus? <a href="{{.SignupURL}}">Create an account</a></p>{{else}}<p class="auth-switch">Contact your administrator to request an account.</p>{{end}}
+  </section>
+</main>
+{{template "footer" .}}
+</body>
+</html>
+{{end}}
+{{define "signup"}}
+<!doctype html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body class="auth-page">
+{{template "auth-header" .}}
+<main class="auth-main">
+  <section class="auth-card" aria-labelledby="auth-title">
+    {{template "auth-logo" .}}
+    <p class="eyebrow">JOIN YOUR CLASSROOM</p><h1 id="auth-title">Create your account.</h1>
+    <p class="subtitle">Get a personal Linux workspace for your exercises.</p>
+    {{if .Error}}<p class="notice danger" role="alert">{{.Error}}</p>{{end}}
+    <form action="{{.SignupURL}}" method="post">
+      <label class="field">User ID<input name="id" type="text" autocomplete="username" required autofocus></label>
+      <label class="field">Password<input name="password" type="password" autocomplete="new-password" required></label>
+      <label class="field">Confirm password<input name="confirm_password" type="password" autocomplete="new-password" required></label>
+      <button class="button primary full-width" type="submit">Create account</button>
+    </form>
+    <p class="auth-switch">Already registered? <a href="{{.LoginURL}}">Sign in</a></p>
+  </section>
+</main>
+{{template "footer" .}}
+</body>
+</html>
+{{end}}
+{{define "error"}}
+<!doctype html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body class="auth-page">
+{{template "auth-header" .}}
+<main class="auth-main">
+  <section class="auth-card" aria-labelledby="auth-title">
+    {{template "auth-logo" .}}
+    <p class="eyebrow">SOMETHING WENT WRONG</p><h1 id="auth-title">Unable to continue.</h1>
+    <p class="notice danger" role="alert">{{.Error}}</p>
+    <p class="subtitle">Try again, or contact your administrator if the issue continues.</p>
+    <a class="button primary full-width" href="{{.LoginURL}}">Back to sign in</a>
+  </section>
+</main>
+{{template "footer" .}}
+</body>
+</html>
+{{end}}

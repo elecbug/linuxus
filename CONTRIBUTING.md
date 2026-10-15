@@ -78,6 +78,25 @@ Before submitting a PR:
 
 ---
 
+## Administrator UI checks
+
+Run the Go regression suite with `go -C src test -race ./...`.
+The browser checks use Node 20 or newer, Playwright, and its Chromium browser:
+
+```bash
+node scripts/test_admin_ui.mjs
+```
+
+The checks use simulated API responses and do not access deployed services or
+user data. Set `PLAYWRIGHT_MODULE` to the absolute path of an existing Playwright
+installation when it is not available through normal Node module resolution.
+`PLAYWRIGHT_BROWSERS_PATH` selects a custom browser installation directory.
+Set `LINUXUS_UI_SCREENSHOTS` to save desktop, mobile, and dialog screenshots.
+These tools are only needed for development; the deployed binary embeds the
+administrator HTML, CSS, and JavaScript.
+
+---
+
 ## 🐛 Reporting Issues
 
 If you find a bug:

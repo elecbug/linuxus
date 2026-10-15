@@ -33,10 +33,10 @@ func CheckConfig(configFile string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(output, "Configuration valid: %s\nAuth list: %s\nVolumes: %s\nHomes: %s\nShare: %s\nReadonly: %s\nAuto-ensure: %t\n",
+	_, err = fmt.Fprintf(output, "Configuration valid: %s\nAuth list: %s\nVolumes: %s\nHomes: %s\nShare: %s\nReadonly: %s\nAuto-ensure: %t\nAdmin URL: /%s\n",
 		a.configFile, a.Config.AuthService.Mounts.HostAuthListPath,
 		a.Config.Volumes.Host.Volumes, a.Config.Volumes.Host.Homes,
-		a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly, a.Config.Volumes.AutoEnsure)
+		a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly, a.Config.Volumes.AutoEnsure, a.Config.AdminRoute())
 	return err
 }
 
