@@ -86,15 +86,8 @@ func (a *App) handleAdmin(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r, true) {
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Frame-Options", "DENY")
-	if err := adminTemplate.Execute(w, map[string]string{
-		"Token": a.adminToken(r), "BaseURL": "/" + a.adminPath,
-		"APIURL": "/" + a.adminPath + "/api/users", "LoginURL": "/" + a.loginPath,
-		"ServiceURL": "/" + a.servicePath + "/", "LogoutURL": "/" + a.logoutPath, "AdminID": a.adminID,
-	}); err != nil {
-		return
-	}
+	a.renderPage(w, "app", a.applicationData(r, a.adminID, "admin"), http.StatusOK)
 }
 
 func (a *App) handleAdminUsers(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,7 @@
 // Run with Node 20+ and Playwright installed outside the application runtime.
 // PLAYWRIGHT_MODULE may point to an existing Playwright installation.
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -11,11 +12,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('..', import.meta.url));
 const assets = path.join(root, 'src/internal/auth/handler');
 const base = '/ops/classroom';
-const values = { BaseURL: base, APIURL: base + '/api/users', LoginURL: '/auth/login',
-  ServiceURL: '/workspace/', LogoutURL: '/auth/logout', AdminID: 'admin', Token: 'initial-token' };
-const html = (await readFile(path.join(assets, 'admin.html'), 'utf8')).replace(/{{\.(\w+)}}/g, (_, key) => values[key]);
+// Render the actual Go templates so shared layout changes are covered too.
+const pages = JSON.parse(execFileSync('go', ['run', '-mod=readonly', './internal/auth/page/testdata/render'], {
+  cwd: path.join(root, 'src'), encoding: 'utf8', timeout: 60000,
+  env: { ...process.env, GOTOOLCHAIN: 'local' }
+}));
 const css = await readFile(path.join(assets, 'admin.css'), 'utf8');
 const js = await readFile(path.join(assets, 'admin.js'), 'utf8');
+const sharedCSS = await readFile(path.join(root, 'src/static/ui.css'), 'utf8');
+const workspaceJS = await readFile(path.join(root, 'src/static/workspace.js'), 'utf8');
 const browser = await chromium.launch({ headless: true });
 let passed = 0;
 
@@ -33,13 +38,13 @@ async function waitUntil(predicate, message) {
   }
 }
 
-async function fixture(viewport = { width: 1440, height: 1000 }) {
-  const context = await browser.newContext({ viewport });
+async function fixture(viewport = { width: 1440, height: 1000 }, initial = 'admin', javaScriptEnabled = true) {
+  const context = await browser.newContext({ viewport, javaScriptEnabled });
   const page = await context.newPage();
   const failures = [];
   page.on('pageerror', error => failures.push(error.message));
   const api = { gets: 0, posts: 0, active: 0, maximum: 0, getStatus: 200, postStatus: 200,
-    holdGet: null, holdPost: null, updated: true, reauthenticate: false, payloads: [], requests: [] };
+    holdGet: null, holdPost: null, updated: true, reauthenticate: false, payloads: [], requests: [], terminalLoads: 0 };
   const data = { csrf_token: 'fresh-token', status_available: true,
     templates: { linux: {}, c: {}, python: {} }, classes: { 'class-a': 'python' }, users: [
       { id: 'admin', locked: false, state: 'running', sessions: 1, template: 'linux', mounted: true, used_bytes: 536870912, total_bytes: 2147483648 },
@@ -52,9 +57,19 @@ async function fixture(viewport = { width: 1440, height: 1000 }) {
     const pathname = new URL(request.url()).pathname;
     api.requests.push(pathname);
     try {
-      if (pathname === base || pathname === base + '/') return await route.fulfill({ contentType: 'text/html', body: html });
+      if (pathname === base || pathname === base + '/') return await route.fulfill({ contentType: 'text/html', body: pages.admin });
       if (pathname === base + '/assets/admin.css') return await route.fulfill({ contentType: 'text/css', body: css });
       if (pathname === base + '/assets/admin.js') return await route.fulfill({ contentType: 'text/javascript', body: js });
+      if (pathname === '/workspace/') return await route.fulfill({ contentType: 'text/html', body: initial === 'user' ? pages.user : pages.workspace });
+      if (pathname === '/auth/login') return await route.fulfill({ contentType: 'text/html', body: pages.login });
+      if (pathname === '/auth/signup') return await route.fulfill({ contentType: 'text/html', body: pages.signup });
+      if (pathname === '/error') return await route.fulfill({ status: 503, contentType: 'text/html', body: pages.error });
+      if (pathname === '/static/ui.css') return await route.fulfill({ contentType: 'text/css', body: sharedCSS });
+      if (pathname === '/static/workspace.js') return await route.fulfill({ contentType: 'text/javascript', body: workspaceJS });
+      if (pathname === '/shell/') {
+        api.terminalLoads++;
+        return await route.fulfill({ contentType: 'text/html', body: '<!doctype html><html lang="en"><body style="margin:24px;background:#18272e;color:#dbe9e5;font:16px monospace"><label>linuxus:~$ <input id="terminal-input" aria-label="Terminal input" style="background:transparent;color:inherit;border:0;font:inherit"></label></body></html>' });
+      }
       if (pathname === '/static/favicon.png') return await route.fulfill({ status: 204 });
       assert.equal(pathname, base + '/api/users', 'unexpected or hardcoded public route');
       if (request.method() === 'GET') {
@@ -91,10 +106,13 @@ async function fixture(viewport = { width: 1440, height: 1000 }) {
       if (!/already handled|closed|disposed|intercepted/i.test(error.message)) failures.push(error.stack);
     }
   });
-  await page.clock.install();
-  await page.goto('http://linuxus.test' + base);
-  await waitUntil(async () => await page.locator('#total-users').textContent() === '4', 'initial dashboard did not load');
-  await waitUntil(async () => await page.locator('#refresh').isEnabled(), 'initial refresh did not finish');
+  if (javaScriptEnabled) await page.clock.install();
+  const initialPath = { admin: base, workspace: '/workspace/', user: '/workspace/', login: '/auth/login', signup: '/auth/signup', error: '/error' }[initial];
+  await page.goto('http://linuxus.test' + initialPath);
+  if (initial === 'admin' && javaScriptEnabled) {
+    await waitUntil(async () => await page.locator('#total-users').textContent() === '4', 'initial dashboard did not load');
+    await waitUntil(async () => await page.locator('#refresh').isEnabled(), 'initial refresh did not finish');
+  }
   return { page, api, data, failures, async close() { await context.close(); assert.deepEqual(failures, [], 'browser errors'); } };
 }
 
@@ -112,6 +130,7 @@ async function run(name, test) {
 }
 
 try {
+  if (process.env.LINUXUS_UI_SCREENSHOTS) await mkdir(process.env.LINUXUS_UI_SCREENSHOTS, { recursive: true });
   await run('custom paths, summary, search, filters, and maintenance controls', async ({ page, api }) => {
     assert.equal(await page.locator('#running-users').textContent(), '2');
     assert.equal(await page.locator('#active-sessions').textContent(), '3');
@@ -237,6 +256,10 @@ try {
   });
 
   await run('changing the current administrator handles revoked sessions without retry', async ({ page, api }) => {
+    await page.getByRole('link', { name: 'Workspace', exact: true }).click();
+    await page.frameLocator('#terminal-frame').locator('#terminal-input').fill('active terminal');
+    await page.getByRole('link', { name: 'Administration', exact: true }).click();
+    await waitUntil(async () => await page.locator('#refresh').isEnabled(), 'return to administration did not finish');
     api.reauthenticate = true; api.postStatus = 503;
     await page.getByRole('button', { name: 'Manage admin', exact: true }).click();
     assert.equal(await page.locator('#operation option[value="lock"]').count(), 0);
@@ -247,6 +270,12 @@ try {
     await page.clock.runFor(60000);
     assert.equal(api.gets, before);
     assert.match(await page.locator('#action-notice').textContent(), /Account updated/);
+    assert.equal(await page.locator('#terminal-frame').getAttribute('src'), null, 'revoked terminal remained connected');
+    const workspaceLink = page.getByRole('link', { name: 'Workspace', exact: true });
+    assert.equal(await workspaceLink.getAttribute('aria-disabled'), 'true');
+    await workspaceLink.dispatchEvent('click', { button: 0 });
+    assert.equal(new URL(page.url()).pathname, base, 'expired shell still allowed view changes');
+    assert.equal(api.terminalLoads, 1);
   });
 
   await run('a cancelled old response cannot overwrite a completed account action', async ({ page, api }) => {
@@ -277,6 +306,113 @@ try {
     await page.locator('#refresh').click();
     await waitUntil(() => api.gets > paused, 'manual refresh did not work with automatic refresh disabled');
   });
+
+  await run('workspace switching preserves the terminal and dashboard state', async ({ page, api }) => {
+    assert.equal(api.terminalLoads, 0, 'opening administration started a personal environment');
+    await page.locator('#search').fill('alice');
+    await page.getByRole('link', { name: 'Workspace', exact: true }).click();
+    await page.frameLocator('#terminal-frame').locator('#terminal-input').fill('echo preserved');
+    assert.equal(new URL(page.url()).pathname, '/workspace/');
+    assert.equal(await page.title(), 'Workspace | Linuxus');
+    const before = api.gets;
+    await page.clock.runFor(45000);
+    assert.equal(api.gets, before, 'dashboard polling continued in Workspace');
+    await page.getByRole('link', { name: 'Administration', exact: true }).click();
+    await waitUntil(() => api.gets === before + 1, 'returning to administration did not refresh');
+    assert.equal(await page.locator('#search').inputValue(), 'alice');
+    await page.getByRole('link', { name: 'Linuxus home', exact: true }).click();
+    assert.equal(await page.frameLocator('#terminal-frame').locator('#terminal-input').inputValue(), 'echo preserved');
+    assert.equal(api.terminalLoads, 1, 'switching views reloaded the terminal');
+  });
+
+  await run('leaving administration cancels an old response', async ({ page, api, data }) => {
+    data.users[1].locked = true;
+    const held = gate(); api.holdGet = held;
+    const before = api.gets;
+    await page.locator('#refresh').click();
+    await waitUntil(() => api.gets > before, 'old status request did not begin');
+    await page.getByRole('link', { name: 'Workspace', exact: true }).click();
+    data.users[1].locked = false;
+    held.release();
+    await waitUntil(() => api.active === 0, 'cancelled status request did not finish');
+    assert.equal(await page.locator('[data-user-id="alice"] .badge').first().textContent(), 'Enabled');
+    await page.getByRole('link', { name: 'Administration', exact: true }).click();
+    await waitUntil(async () => await page.locator('#refresh').isEnabled(), 'fresh status request did not finish');
+    assert.equal(await page.locator('[data-user-id="alice"] .badge').first().textContent(), 'Enabled');
+  });
+
+  const workspace = await fixture(undefined, 'workspace');
+  try {
+    const { page, api } = workspace;
+    await page.frameLocator('#terminal-frame').locator('#terminal-input').fill('history state');
+    assert.equal(api.gets, 0, 'hidden administrator panel requested status');
+    await page.getByRole('link', { name: 'Administration', exact: true }).click();
+    await waitUntil(async () => await page.locator('#total-users').textContent() === '4', 'administrator panel did not load on first visit');
+    await page.goBack();
+    await page.locator('#workspace-panel').waitFor({ state: 'visible' });
+    assert.equal(new URL(page.url()).pathname, '/workspace/');
+    assert.equal(await page.locator('[data-view-link="workspace"]').getAttribute('aria-current'), 'page');
+    assert.equal(await page.frameLocator('#terminal-frame').locator('#terminal-input').inputValue(), 'history state');
+    await page.goForward();
+    await page.locator('#admin-panel').waitFor({ state: 'visible' });
+    assert.equal(new URL(page.url()).pathname, base);
+    assert.equal(api.terminalLoads, 1);
+    await page.getByRole('link', { name: 'Workspace', exact: true }).click();
+    await page.locator('#reconnect-terminal').click();
+    await waitUntil(() => api.terminalLoads === 2, 'explicit reconnect did not reload the terminal');
+    const screenshotDir = process.env.LINUXUS_UI_SCREENSHOTS;
+    if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, 'workspace-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'mobile workspace overflows');
+    const dimensions = await page.locator('#terminal-frame').boundingBox();
+    assert.ok(dimensions.height >= 300, 'terminal height collapsed');
+    if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, 'workspace-mobile.png'), fullPage: true });
+    passed++; console.log('PASS: workspace entry, browser history, reconnect, and mobile layout');
+  } finally { await workspace.close(); }
+
+  const user = await fixture(undefined, 'user');
+  try {
+    assert.equal(await user.page.locator('#admin-panel').count(), 0);
+    assert.equal(await user.page.locator('[data-view-link="admin"]').count(), 0);
+    assert.equal(await user.page.locator('script[src$="/assets/admin.js"]').count(), 0);
+    await user.page.clock.runFor(45000);
+    assert.equal(user.api.gets, 0);
+    assert.equal(user.api.terminalLoads, 1);
+    passed++; console.log('PASS: regular user workspace excludes administrator resources');
+  } finally { await user.close(); }
+
+  const noScript = await fixture(undefined, 'admin', false);
+  try {
+    assert.equal(noScript.api.terminalLoads, 0);
+    await noScript.page.locator('#admin-panel noscript .notice').waitFor({ state: 'visible' });
+    await noScript.page.getByRole('link', { name: 'Workspace', exact: true }).click();
+    await noScript.page.frameLocator('#terminal-frame').locator('#terminal-input').waitFor({ state: 'visible' });
+    assert.equal(noScript.api.terminalLoads, 1);
+    assert.equal(noScript.api.gets, 0);
+    passed++; console.log('PASS: server navigation and terminal remain usable without JavaScript');
+  } finally { await noScript.close(); }
+
+  for (const name of ['login', 'signup', 'error']) {
+    const f = await fixture({ width: 390, height: 844 }, name);
+    try {
+      assert.ok(await f.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name + ' overflows on mobile');
+      assert.equal(await f.page.locator('link[href="/static/ui.css"]').count(), 1);
+      assert.equal(await f.page.locator('.brand').count(), 1);
+      if (name === 'login') {
+        assert.equal(await f.page.locator('form').getAttribute('action'), '/auth/login');
+        assert.equal(await f.page.getByRole('link', { name: 'Create an account' }).getAttribute('href'), '/auth/signup');
+      }
+      if (name === 'signup') {
+        assert.equal(await f.page.locator('form').getAttribute('action'), '/auth/signup');
+        assert.equal(await f.page.locator('input[name="confirm_password"]').count(), 1);
+      }
+      if (name === 'error') assert.equal(await f.page.getByRole('link', { name: 'Back to sign in' }).getAttribute('href'), '/auth/login');
+      const screenshotDir = process.env.LINUXUS_UI_SCREENSHOTS;
+      if (screenshotDir) await f.page.screenshot({ path: path.join(screenshotDir, name + '-mobile.png'), fullPage: true });
+      assert.equal(f.api.gets, 0);
+      passed++; console.log('PASS:', name, 'uses shared responsive layout and configured routes');
+    } finally { await f.close(); }
+  }
 
   const f = await fixture();
   try {

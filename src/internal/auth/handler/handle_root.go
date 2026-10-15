@@ -19,7 +19,12 @@ func (a *App) handleRoot(w http.ResponseWriter, r *http.Request) {
 
 // handleFavicon serves embedded assets, independent of the working directory.
 func (a *App) handleFavicon() {
-	a.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(static.Files))))
+	files := http.StripPrefix("/static/", http.FileServer(http.FS(static.Files)))
+	a.mux.Handle("/static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		files.ServeHTTP(w, r)
+	}))
 	a.mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		data, _ := static.Files.ReadFile("favicon.png")
 		http.ServeContent(w, r, "favicon.png", time.Time{}, bytes.NewReader(data))

@@ -198,8 +198,16 @@ Restart an environment to apply a changed template image.
 
 ## Administrator web interface
 
-When the account named by `MANAGER_SERVICE_ADMIN_ID` logs in, the service page
-shows an **Admin** link. The interface defaults to `/admin`. Set its public base
+Login, registration, the workspace, and administration share one interface.
+When the account named by `MANAGER_SERVICE_ADMIN_ID` logs in, the navigation
+shows **Workspace** and **Administration**. Switching views keeps the terminal
+connected and preserves dashboard search and filters. Browser Back and Forward
+follow the selected view. Opening administration directly does not start a
+personal environment; it starts when Workspace is first opened. Regular users
+see only Workspace. **Reconnect terminal** explicitly reloads the terminal.
+Without JavaScript, Workspace remains available through server navigation.
+
+The administrator interface defaults to `/admin`. Set its public base
 path in `.env`, without leading or trailing slashes:
 
 ```dotenv
@@ -226,7 +234,9 @@ The dashboard includes summary counts, user search, state filters, and home
 storage meters. Rows are updated in place, preserving search text and keyboard
 focus. Manual and automatic refreshes share a single request. Automatic updates
 run 15 seconds after the preceding request finishes; they pause while a dialog
-is open, an action is running, or the tab is hidden. The Auto-refresh checkbox
+is open, an action is running, the tab is hidden, or Workspace is selected.
+Leaving Administration cancels pending status reads; returning refreshes status
+when automatic updates are enabled. The Auto-refresh checkbox
 allows manual control. Failed updates retain the last successful display and
 show an error with its last update time. Disk service failures produce an explicit
 warning while retaining available container and session status. The web interface rejects locking your own

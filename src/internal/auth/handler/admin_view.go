@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/elecbug/linuxus/src/internal/auth/page"
 )
 
 //go:embed admin.html admin.css admin.js
 var adminAssets embed.FS
 
-var adminTemplate = template.Must(template.ParseFS(adminAssets, "admin.html"))
+var webTemplates = template.Must(template.Must(page.NewTemplates()).ParseFS(adminAssets, "admin.html"))
 
 func (a *App) handleAdminAsset(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {

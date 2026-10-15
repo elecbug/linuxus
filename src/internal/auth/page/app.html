@@ -1,0 +1,30 @@
+{{define "app"}}
+<!doctype html>
+<html lang="en">
+<head>
+  {{template "head" .}}
+  <script src="/static/workspace.js" defer></script>
+  {{if .IsAdmin}}<link rel="stylesheet" href="{{.BaseURL}}/assets/admin.css"><script src="{{.BaseURL}}/assets/admin.js" defer></script>{{end}}
+</head>
+<body class="app-page" data-view="{{.View}}" data-service-url="{{.ServiceURL}}" data-terminal-url="{{.TerminalURL}}"{{if .IsAdmin}} data-admin-url="{{.AdminURL}}" data-api-url="{{.APIURL}}" data-login-url="{{.LoginURL}}" data-csrf-token="{{.Token}}" data-admin-id="{{.AdminID}}"{{end}}>
+  <header class="site-header">
+    {{template "brand" .}}
+    <nav class="view-navigation" aria-label="Main navigation">
+      <a href="{{.ServiceURL}}" data-view-link="workspace"{{if eq .View "workspace"}} aria-current="page"{{end}}>Workspace</a>
+      {{if .IsAdmin}}<a href="{{.AdminURL}}" data-view-link="admin"{{if eq .View "admin"}} aria-current="page"{{end}}>Administration</a>{{end}}
+    </nav>
+    <div class="account-navigation"><span class="current-user" title="{{.ID}}">{{.ID}}</span><a href="{{.LogoutURL}}">Sign out</a></div>
+  </header>
+  {{if .IsAdmin}}<div id="session-notice" class="notice danger app-session-notice" role="alert" hidden><div><strong>Sign in again to continue.</strong><p>Your session expired or your account permissions changed.</p></div><a class="button" href="{{.LoginURL}}">Sign in</a></div>{{end}}
+  <main class="app-main">
+    <section id="workspace-panel" class="workspace-panel" aria-labelledby="workspace-title"{{if ne .View "workspace"}} hidden{{end}}>
+      <div class="workspace-heading"><div><p class="eyebrow">YOUR ENVIRONMENT</p><h1 id="workspace-title" tabindex="-1">Workspace</h1><p class="subtitle">Your personal Linux terminal.</p></div><div><button class="button" id="reconnect-terminal" type="button" hidden>Reconnect terminal</button><noscript><a class="button" href="{{.TerminalURL}}" target="shellframe">Open terminal</a></noscript></div></div>
+      <div class="terminal-frame"><iframe id="terminal-frame" name="shellframe" title="Linux terminal" data-terminal-url="{{.TerminalURL}}"{{if eq .View "workspace"}} src="{{.TerminalURL}}"{{end}}></iframe></div>
+    </section>
+    {{if .IsAdmin}}<section id="admin-panel" class="admin-panel" aria-labelledby="page-title"{{if ne .View "admin"}} hidden{{end}}>{{template "admin-panel" .}}</section>{{end}}
+  </main>
+  {{template "footer" .}}
+  {{if .IsAdmin}}{{template "admin-dialog" .}}{{end}}
+</body>
+</html>
+{{end}}

@@ -1,21 +1,6 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Administration | Linuxus</title>
-  <link rel="icon" href="/static/favicon.png" type="image/png">
-  <link rel="stylesheet" href="{{.BaseURL}}/assets/admin.css">
-  <script src="{{.BaseURL}}/assets/admin.js" defer></script>
-</head>
-<body data-api-url="{{.APIURL}}" data-login-url="{{.LoginURL}}" data-csrf-token="{{.Token}}" data-admin-id="{{.AdminID}}">
-  <header class="site-header">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">L</span><span>Linuxus <span class="brand-section">Administration</span></span></div>
-    <nav aria-label="Main navigation"><a href="{{.ServiceURL}}">My environment</a><span class="current-user">{{.AdminID}}</span><a href="{{.LogoutURL}}">Sign out</a></nav>
-  </header>
-  <main>
+{{define "admin-panel"}}
     <section class="page-heading" aria-labelledby="page-title">
-      <div><p class="eyebrow">CLASSROOM OPERATIONS</p><h1 id="page-title">Manage your environments.</h1><p class="subtitle">Keep accounts, sessions, and classroom access in one place.</p></div>
+      <div><p class="eyebrow">CLASSROOM OPERATIONS</p><h1 id="page-title" tabindex="-1">Manage your environments.</h1><p class="subtitle">Keep accounts, sessions, and classroom access in one place.</p></div>
       <span class="status-pill" id="connection-status" role="status">Connecting</span>
     </section>
     <section class="metrics" aria-label="Classroom summary">
@@ -24,7 +9,6 @@
       <article><span>Active sessions</span><strong id="active-sessions">—</strong><small>Connected terminals</small></article>
       <article><span>Restricted accounts</span><strong id="locked-users">—</strong><small>Locked or under maintenance</small></article>
     </section>
-    <div id="session-notice" class="notice danger" role="alert" hidden><div><strong>Sign in again to continue.</strong><p>Your session expired or your account permissions changed.</p></div><a class="button" href="{{.LoginURL}}">Sign in</a></div>
     <p id="action-notice" class="notice success" role="status" hidden></p>
     <p id="load-error" class="notice danger" role="alert" hidden></p>
     <p id="service-warning" class="notice warning" role="status" hidden></p>
@@ -39,7 +23,8 @@
     </section>
     <p class="page-footnote">Lock accounts to suspend access. User data stays in place.</p>
     <noscript><p class="notice danger">Enable JavaScript to use the administrator interface.</p></noscript>
-  </main>
+{{end}}
+{{define "admin-dialog"}}
   <dialog id="account-dialog" aria-labelledby="dialog-title" aria-describedby="operation-description">
     <form id="account-form">
       <div class="dialog-heading"><div><p class="eyebrow">ACCOUNT ACTION</p><h2 id="dialog-title">Manage user</h2></div><button type="button" id="close-dialog" class="icon-button" aria-label="Close dialog">×</button></div>
@@ -52,5 +37,4 @@
       <div class="dialog-footer"><button type="button" id="cancel-dialog" class="button secondary">Cancel</button><button type="submit" id="apply-action" class="button primary">Apply action</button></div>
     </form>
   </dialog>
-</body>
-</html>
+{{end}}

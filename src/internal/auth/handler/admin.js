@@ -30,9 +30,13 @@
     if (kind) element.className = 'notice ' + kind;
   }
 
+  function isActive() {
+    return config.view === 'admin';
+  }
+
   function canPoll() {
     return !state.disposed && !state.expired && !state.writing && !ui['account-dialog'].open &&
-      !document.hidden && ui['auto-refresh'].checked;
+      isActive() && !document.hidden && ui['auto-refresh'].checked;
   }
 
   function stopTimer() {
@@ -55,6 +59,7 @@
     if (state.expired) note = 'Sign in again to resume updates';
     else if (state.writing) note = 'Updates paused while applying changes';
     else if (ui['account-dialog'].open) note = 'Updates paused while editing';
+    else if (!isActive()) note = 'Updates paused while viewing your workspace';
     else if (document.hidden) note = 'Updates paused while this tab is hidden';
     else if (!ui['auto-refresh'].checked) note = 'Automatic updates paused';
     ui['refresh-note'].textContent = note;
@@ -77,12 +82,13 @@
     stopTimer();
     cancelRead();
     ui['session-notice'].hidden = false;
+    document.dispatchEvent(new Event('linuxus:sessionexpired'));
     notice(ui['load-error'], '');
     updateControls();
   }
 
   async function refresh() {
-    if (state.disposed || state.expired || state.writing || ui['account-dialog'].open) return;
+    if (state.disposed || state.expired || state.writing || ui['account-dialog'].open || !isActive()) return;
     if (state.read) return state.read.promise;
     stopTimer();
     const job = { id: ++state.sequence, controller: new AbortController(), promise: null };
@@ -219,7 +225,7 @@
   }
 
   function openDialog(id) {
-    if (state.writing || state.expired || !state.data) return;
+    if (state.writing || state.expired || !state.data || !isActive()) return;
     const user = state.data.users.find(user => user.id === id);
     if (!user || user.maintenance) return;
     stopTimer(); cancelRead();
@@ -262,6 +268,13 @@
     ui['apply-action'].textContent = labels[action];
   }
 
+  function clearPasswords() {
+    for (const id of ['new-password', 'confirm-password']) {
+      ui[id].value = '';
+      ui[id].setCustomValidity('');
+    }
+  }
+
   function setWriting(value) {
     state.writing = value;
     for (const control of ui['account-form'].querySelectorAll('button, input, select')) control.disabled = value;
@@ -283,7 +296,7 @@
     stopTimer(); cancelRead(); setWriting(true);
     notice(ui['dialog-error'], ''); notice(ui['action-notice'], '');
     const controller = new AbortController();
-    const closeAfterAction = () => { state.refreshOnClose = false; ui['account-dialog'].close(); };
+    const closeAfterAction = () => { state.refreshOnClose = false; clearPasswords(); ui['account-dialog'].close(); };
     const timeout = setTimeout(() => controller.abort(), 60000);
     let refreshAfter = false;
     try {
@@ -323,12 +336,21 @@
   });
   ui['account-form'].addEventListener('submit', submitAction);
   for (const id of ['close-dialog', 'cancel-dialog']) ui[id].addEventListener('click', () => {
-    if (!state.writing) ui['account-dialog'].close();
+    if (!state.writing) { clearPasswords(); ui['account-dialog'].close(); }
   });
-  ui['account-dialog'].addEventListener('cancel', event => { if (state.writing) event.preventDefault(); });
+  ui['account-dialog'].addEventListener('cancel', event => {
+    if (state.writing) event.preventDefault();
+    else clearPasswords();
+  });
   ui['account-dialog'].addEventListener('close', () => {
-    ui['new-password'].value = ''; ui['confirm-password'].value = ''; state.target = null;
+    clearPasswords(); state.target = null;
     if (canPoll() && state.refreshOnClose) refresh(); else schedule();
+  });
+  document.addEventListener('linuxus:viewchange', () => {
+    stopTimer();
+    if (!isActive()) cancelRead();
+    else if (!state.data || canPoll()) refresh();
+    updateControls();
   });
   document.addEventListener('visibilitychange', () => {
     stopTimer();

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"html/template"
 	"log"
 	"net"
 	"net/http"
@@ -10,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elecbug/linuxus/src/internal/auth/page"
 	commonconfig "github.com/elecbug/linuxus/src/internal/common/config"
 )
 
@@ -28,14 +26,6 @@ type App struct {
 	authListFile string
 	// sessionKey is used to sign session cookie payloads.
 	sessionKey []byte
-	// loginTmpl renders the login page.
-	loginTmpl *template.Template
-	// serviceTmpl renders the service landing page.
-	serviceTmpl *template.Template
-	// errorTmpl renders error pages.
-	errorTmpl *template.Template
-	// signupTmpl renders the user registration page.
-	signupTmpl *template.Template
 
 	// loginPath is the configured login endpoint path.
 	loginPath string
@@ -248,33 +238,8 @@ func (a *App) Stop() {
 	a.stopOnce.Do(func() { close(a.done) })
 }
 
-// RegisterRoutes compiles templates and binds HTTP handlers.
+// RegisterRoutes binds HTTP handlers to the configured routes.
 func (a *App) RegisterRoutes() {
-	loginTmpl, err := template.New(a.loginPath).Parse(page.GetLoginPage(a.loginPath, a.allowSignup, a.signupPath))
-	if err != nil {
-		log.Fatalf("failed to parse login template: %v", err)
-	}
-
-	serviceTmpl, err := template.New(a.servicePath).Parse(page.GetServicePage(a.terminalPath, a.logoutPath, a.adminPath))
-	if err != nil {
-		log.Fatalf("failed to parse service template: %v", err)
-	}
-
-	errorTmpl, err := template.New("error").Parse(page.GetErrorPage())
-	if err != nil {
-		log.Fatalf("failed to parse error template: %v", err)
-	}
-
-	signupTmpl, err := template.New(a.signupPath).Parse(page.GetSignupPage(a.signupPath, a.loginPath))
-	if err != nil {
-		log.Fatalf("failed to parse signup template: %v", err)
-	}
-
-	a.loginTmpl = loginTmpl
-	a.serviceTmpl = serviceTmpl
-	a.errorTmpl = errorTmpl
-	a.signupTmpl = signupTmpl
-
 	a.mux.HandleFunc("/", a.handleRoot)
 	a.mux.HandleFunc("/"+a.adminPath, a.handleAdmin)
 	a.mux.HandleFunc("/"+a.adminPath+"/", a.handleAdmin)
