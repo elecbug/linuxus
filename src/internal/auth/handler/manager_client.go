@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -14,7 +15,8 @@ import (
 )
 
 // ensureUserContainerReady asks the manager service to ensure a user runtime is ready.
-// It returns the container name to use for proxying to the user's runtime.
+// It returns the exact IPv4 address for proxying to the user's runtime. Docker
+// DNS cannot distinguish container names that differ only in letter case.
 func (a *App) ensureUserContainerReady(ctx context.Context, userID string) (string, error) {
 	if a.managerBaseURL == "" {
 		return "", fmt.Errorf("manager base url is not configured")
@@ -83,12 +85,14 @@ func (a *App) ensureUserContainerReady(ctx context.Context, userID string) (stri
 		return "", fmt.Errorf("%s", msg)
 	}
 
-	containerName := strings.TrimSpace(parsed.ContainerName)
-	if containerName == "" {
-		return "", fmt.Errorf("manager returned empty container name for user %q", userID)
+	if parsed.UserID != userID {
+		return "", fmt.Errorf("manager returned a different user identity")
 	}
-
-	return containerName, nil
+	address, err := netip.ParseAddr(strings.TrimSpace(parsed.ContainerIP))
+	if err != nil || !address.Is4() {
+		return "", fmt.Errorf("manager returned an invalid runtime IPv4 address for user %q", userID)
+	}
+	return address.String(), nil
 }
 
 // reportSessionState sends the current active session count for a user to the manager.

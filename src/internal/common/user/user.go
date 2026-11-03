@@ -109,6 +109,10 @@ func AddUser(path string, users map[string]string, id, password string) error {
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
+	entry := fmt.Appendf(nil, "%s:%s\n", id, string(hash))
+	if _, err := readUsers(bytes.NewReader(entry)); err != nil {
+		return fmt.Errorf("auth entry cannot be read back: %w", err)
+	}
 	if err := EnsureFile(path); err != nil {
 		return err
 	}
@@ -139,7 +143,9 @@ func AddUser(path string, users map[string]string, id, password string) error {
 			prefix = "\n"
 		}
 	}
-	entry := fmt.Appendf(nil, "%s%s:%s\n", prefix, id, string(hash))
+	if prefix != "" {
+		entry = append([]byte(prefix), entry...)
+	}
 	if err := appendAuthEntry(file, info.Size(), entry); err != nil {
 		return err
 	}

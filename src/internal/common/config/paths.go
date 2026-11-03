@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -41,6 +42,14 @@ func containsPath(parent, path string) bool {
 
 func validateVolumePaths(cfg *Config) error {
 	paths := []string{cfg.Volumes.Host.Homes, cfg.Volumes.Host.Share, cfg.Volumes.Host.Readonly}
+	// Images stay beside the configured mount paths even when the mount points
+	// are symlinks. Validate their own resolved paths before preparing any disk.
+	for _, mount := range []string{cfg.Volumes.Host.Share, cfg.Volumes.Host.Readonly} {
+		if mount != "" {
+			paths = append(paths, filepath.Clean(mount)+".img")
+		}
+	}
+	files := make([]os.FileInfo, len(paths))
 	for i, path := range paths {
 		if path == "" {
 			continue
@@ -53,14 +62,21 @@ func validateVolumePaths(cfg *Config) error {
 			return fmt.Errorf("volume path cannot be the filesystem root: %s", path)
 		}
 		paths[i] = resolved
+		info, err := os.Stat(resolved)
+		if err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("stat volume path %q: %w", path, err)
+		}
+		files[i] = info
 	}
 	for i, path := range paths {
 		if path == "" {
 			continue
 		}
-		for _, other := range paths[i+1:] {
-			if other != "" && (containsPath(path, other) || containsPath(other, path)) {
-				return fmt.Errorf("home, shared and readonly volume paths must not overlap: %s and %s", path, other)
+		for j := i + 1; j < len(paths); j++ {
+			other := paths[j]
+			sameFile := files[i] != nil && files[j] != nil && os.SameFile(files[i], files[j])
+			if other != "" && (containsPath(path, other) || containsPath(other, path) || sameFile) {
+				return fmt.Errorf("managed volume directories and images must not overlap: %s and %s", path, other)
 			}
 		}
 	}
@@ -69,23 +85,33 @@ func validateVolumePaths(cfg *Config) error {
 		if err != nil {
 			return err
 		}
-		for _, path := range paths {
-			if path != "" && containsPath(path, auth) {
+		authInfo, err := os.Stat(auth)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		for i, path := range paths {
+			sameFile := authInfo != nil && files[i] != nil && os.SameFile(authInfo, files[i])
+			if path != "" && (containsPath(path, auth) || sameFile) {
 				return fmt.Errorf("auth list must be outside managed disks and their images: %s", auth)
 			}
 		}
-		// A shared mount point may itself be a symlink; its image remains
-		// beside the configured path rather than beside the resolved target.
-		for _, mount := range []string{cfg.Volumes.Host.Share, cfg.Volumes.Host.Readonly} {
-			if mount == "" {
-				continue
-			}
-			image, err := resolveStoragePath(filepath.Clean(mount) + ".img")
-			if err != nil {
-				return err
-			}
-			if image == auth {
-				return fmt.Errorf("auth list cannot be a managed disk image: %s", auth)
+	}
+	return nil
+}
+
+func validateContainerVolumePaths(cfg *Config) error {
+	mounts := []struct{ name, target string }{
+		{"user home", "/home/" + cfg.UserService.Runtime.LinuxUsername},
+		{"VOLUMES_CONTAINER_SHARE", cfg.Volumes.Container.Share},
+		{"VOLUMES_CONTAINER_READONLY", cfg.Volumes.Container.Readonly},
+	}
+	for i, mount := range mounts {
+		if !path.IsAbs(mount.target) || path.Clean(mount.target) != mount.target || mount.target == "/" || strings.ContainsRune(mount.target, '\x00') {
+			return fmt.Errorf("%s must be a clean absolute container path other than /", mount.name)
+		}
+		for _, other := range mounts[:i] {
+			if mount.target == other.target || strings.HasPrefix(mount.target, other.target+"/") || strings.HasPrefix(other.target, mount.target+"/") {
+				return fmt.Errorf("container volume paths must not overlap: %s and %s", other.name, mount.name)
 			}
 		}
 	}

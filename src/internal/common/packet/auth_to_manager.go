@@ -18,6 +18,8 @@ type UserUpResponse struct {
 	UserID string `json:"user_id"`
 	// ContainerName is the prepared runtime container name.
 	ContainerName string `json:"container_name"`
+	// ContainerIP identifies the exact runtime without case-insensitive DNS lookup.
+	ContainerIP string `json:"container_ip"`
 	// NetworkName is the prepared runtime network name.
 	NetworkName string `json:"network_name"`
 	// Subnet is the allocated runtime subnet.

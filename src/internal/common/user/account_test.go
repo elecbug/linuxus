@@ -1,11 +1,57 @@
 package user
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestOversizedAccountUpdatesPreserveReadableCredentials(t *testing.T) {
+	for _, operation := range []string{"template", "class"} {
+		t.Run(operation, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "AUTH_LIST")
+			original := []byte("alice:legacy\nbob:untouched\n")
+			if err := os.WriteFile(path, original, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := UpdateAccount(path, "alice", operation, strings.Repeat("a", bufio.MaxScanTokenSize)); err == nil {
+				t.Fatal("wrote an account record that the auth reader cannot load")
+			}
+			data, err := os.ReadFile(path)
+			if err != nil || string(data) != string(original) {
+				t.Fatal("oversized account update changed the credential file")
+			}
+			users, err := LoadUsers(path)
+			if err != nil || users["bob"] != "untouched" {
+				t.Fatalf("oversized update blocked unrelated accounts: %v", err)
+			}
+		})
+	}
+}
+
+func TestOversizedSignupPreservesReadableCredentials(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "AUTH_LIST")
+	original := []byte("bob:untouched\n")
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	users := map[string]string{"bob": "untouched"}
+	// This ID still fits inside the HTTP signup body's 64 KiB limit, but its
+	// bcrypt hash makes the resulting credential line exceed the reader limit.
+	id := strings.Repeat("a", bufio.MaxScanTokenSize-36)
+	if err := AddUser(path, users, id, "x"); err == nil {
+		t.Fatal("signup wrote a credential line that cannot be read")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || string(data) != string(original) || len(users) != 1 {
+		t.Fatal("oversized signup changed credentials or the caller's snapshot")
+	}
+	if _, err := LoadUsers(path); err != nil {
+		t.Fatalf("oversized signup blocked existing accounts: %v", err)
+	}
+}
 
 func TestAccountOperationsPreserveDataAndRevokeGenerations(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "AUTH_LIST")

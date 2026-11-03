@@ -81,6 +81,14 @@ Before submitting a PR:
 ## Administrator UI checks
 
 Run the Go regression suite with `go -C src test -race ./...`.
+The configuration parser, credential reader, and backup reader also have fuzz targets. For example:
+
+```bash
+go -C src test ./internal/common/config -run '^$' -fuzz '^FuzzParseEnv$' -fuzztime=30s -parallel=2
+go -C src test ./internal/common/backup -run '^$' -fuzz '^FuzzReadArchive$' -fuzztime=30s -parallel=2
+go -C src test ./internal/common/user -run '^$' -fuzz '^FuzzReadUsers$' -fuzztime=30s -parallel=2
+```
+
 The browser checks use Node 20 or newer, Playwright, and its Chromium browser:
 
 ```bash

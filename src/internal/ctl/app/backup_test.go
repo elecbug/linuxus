@@ -7,6 +7,29 @@ import (
 	"testing"
 )
 
+func TestBackupPathsProtectImagesBesideSymlinkedMounts(t *testing.T) {
+	root := t.TempDir()
+	a := &App{}
+	a.Config.Volumes.Host.Homes = filepath.Join(root, "homes")
+	a.Config.Volumes.Host.Share = filepath.Join(root, "share")
+	a.Config.Volumes.Host.Readonly = filepath.Join(root, "readonly")
+	for _, mount := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
+		target := t.TempDir()
+		if err := os.Symlink(target, mount); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.outsideManagedStorage(mount + ".img"); err == nil {
+			t.Fatalf("backup can occupy managed image path %s.img", mount)
+		}
+		if err := a.outsideManagedStorage(filepath.Join(target, "backup.tar.gz")); err == nil {
+			t.Fatal("backup can be saved inside a symlinked managed disk")
+		}
+	}
+	if err := a.outsideManagedStorage(filepath.Join(root, "backups", "alice.tar.gz")); err != nil {
+		t.Fatalf("rejected backup outside managed disks: %v", err)
+	}
+}
+
 type restoreAPI struct {
 	recordingDiskAPI
 	failOnce bool

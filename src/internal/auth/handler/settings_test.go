@@ -260,7 +260,7 @@ func TestPasswordChangeRejectsTerminalWaitingForPreparation(t *testing.T) {
 				close(preparing)
 				<-release
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"ok":true,"container_name":"unreachable.invalid"}`))
+				_, _ = w.Write([]byte(`{"ok":true,"user_id":"alice","container_name":"user_alice","container_ip":"127.0.0.1"}`))
 			}))
 			defer manager.Close()
 			defer resume()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,9 +13,13 @@ import (
 
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/network"
 	"github.com/elecbug/linuxus/src/internal/common/packet"
 	"github.com/elecbug/linuxus/src/internal/common/ruleset"
 )
+
+const userContainerNetworkLabel = "io.linuxus.user-container"
 
 // HandleUserSessionState records active session counts reported by auth service.
 func (s *Server) HandleUserSessionState(w http.ResponseWriter, r *http.Request) {
@@ -107,66 +112,85 @@ func (s *Server) updateSessionStateLocked(userID string, active int, observedAt 
 
 // stopAndRemoveUserContainerAndNetwork stops and removes user runtime resources.
 func (s *Server) stopAndRemoveUserContainerAndNetwork(ctx context.Context, userID string) error {
-	containerName, networkName := s.resolveUserRuntimeNames(ctx, userID)
-	stopCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	timeoutSec := 10
-	err := s.docker.ContainerStop(stopCtx, containerName, container.StopOptions{
-		Timeout: &timeoutSec,
-	})
+	containerID, networkIDs, err := s.resolveUserRuntimeResources(ctx, userID)
 	if err != nil {
-		log.Printf("container stop warning for %s: %v", userID, err)
+		return err
 	}
-
-	removeCtx, removeCancel := context.WithTimeout(ctx, 15*time.Second)
-	defer removeCancel()
-
-	if err := s.docker.ContainerRemove(removeCtx, containerName, container.RemoveOptions{
-		Force:         true,
-		RemoveVolumes: false,
-	}); err != nil {
-		if !errdefs.IsNotFound(err) {
-			return fmt.Errorf("container remove failed: %w", err)
+	if containerID != "" {
+		stopCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
+		timeoutSec := 10
+		if err := s.docker.ContainerStop(stopCtx, containerID, container.StopOptions{Timeout: &timeoutSec}); err != nil {
+			log.Printf("container stop warning for %s: %v", userID, err)
 		}
-		log.Printf("container already removed for %s, continuing cleanup", userID)
+
+		removeCtx, removeCancel := context.WithTimeout(ctx, 15*time.Second)
+		defer removeCancel()
+
+		if err := s.docker.ContainerRemove(removeCtx, containerID, container.RemoveOptions{Force: true}); err != nil {
+			if !errdefs.IsNotFound(err) {
+				return fmt.Errorf("container remove failed: %w", err)
+			}
+			log.Printf("container already removed for %s, continuing cleanup", userID)
+		}
 	}
 
-	if err := s.disconnectAuthFromUserNetwork(ctx, networkName); err != nil {
-		log.Printf("auth disconnect warning for %s: %v", userID, err)
+	var failures []error
+	for _, networkID := range networkIDs {
+		if err := s.disconnectAuthFromUserNetwork(ctx, networkID); err != nil {
+			log.Printf("auth disconnect warning for %s: %v", userID, err)
+		}
+		if err := s.removeNetwork(ctx, networkID); err != nil {
+			failures = append(failures, fmt.Errorf("network remove failed: %w", err))
+		}
 	}
-
-	if err := s.removeNetwork(ctx, networkName); err != nil {
-		return fmt.Errorf("network remove failed: %w", err)
-	}
-
-	return nil
+	return errors.Join(failures...)
 }
 
-// resolveUserRuntimeNames resolves managed container/network names for a user.
-func (s *Server) resolveUserRuntimeNames(ctx context.Context, userID string) (string, string) {
+// Use immutable IDs from the container's actual attachments. If the container
+// has disappeared, only an explicit ownership label can identify its networks.
+func (s *Server) resolveUserRuntimeResources(ctx context.Context, userID string) (string, []string, error) {
 	if !ruleset.AllowedUserID(userID) {
-		return "", ""
+		return "", nil, fmt.Errorf("invalid user ID")
 	}
 
 	containerName := s.cfg.UserContainerNamePrefix + userID
-	networkName := s.cfg.NetworkPrefix + userID
-
 	inspect, err := s.docker.ContainerInspect(ctx, containerName)
 	if err != nil {
-		return containerName, networkName
-	}
-
-	if inspect.NetworkSettings != nil {
-		for attachedNetworkName := range inspect.NetworkSettings.Networks {
-			if strings.HasPrefix(attachedNetworkName, s.cfg.NetworkPrefix) {
-				networkName = attachedNetworkName
-				break
+		if !errdefs.IsNotFound(err) {
+			return "", nil, fmt.Errorf("inspect runtime before cleanup: %w", err)
+		}
+		networks, err := s.docker.NetworkList(ctx, network.ListOptions{
+			Filters: filters.NewArgs(filters.Arg("label", userContainerNetworkLabel+"="+containerName)),
+		})
+		if err != nil {
+			return "", nil, fmt.Errorf("find orphan runtime networks: %w", err)
+		}
+		var ids []string
+		for _, nw := range networks {
+			if nw.Labels[userContainerNetworkLabel] == containerName && nw.ID != "" {
+				ids = append(ids, nw.ID)
 			}
 		}
+		return "", ids, nil
 	}
 
-	return containerName, networkName
+	var ids []string
+	if inspect.NetworkSettings != nil {
+		for name, endpoint := range inspect.NetworkSettings.Networks {
+			if !strings.HasPrefix(name, s.cfg.NetworkPrefix) || endpoint == nil {
+				continue
+			}
+			if endpoint.NetworkID == "" {
+				return "", nil, fmt.Errorf("managed network %s has no ID", name)
+			}
+			ids = append(ids, endpoint.NetworkID)
+		}
+	}
+	if inspect.ID == "" {
+		return "", nil, fmt.Errorf("runtime container has no ID")
+	}
+	return inspect.ID, ids, nil
 }
 
 // disconnectAuthFromUserNetwork detaches the auth container from a user network.

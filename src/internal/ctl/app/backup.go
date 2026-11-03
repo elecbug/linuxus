@@ -56,7 +56,15 @@ func (a *App) outsideManagedStorage(path string) error {
 		if rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 			return fmt.Errorf("backup must be outside managed user/shared disks")
 		}
-		if resolved == base+".img" {
+	}
+	// A symlinked mount's image is beside the configured link, rather than
+	// beside its resolved target. Check the image path independently.
+	for _, mount := range []string{a.Config.Volumes.Host.Share, a.Config.Volumes.Host.Readonly} {
+		image, err := config.CanonicalStoragePath(filepath.Clean(mount) + ".img")
+		if err != nil {
+			return err
+		}
+		if resolved == image {
 			return fmt.Errorf("backup cannot replace a managed image")
 		}
 	}

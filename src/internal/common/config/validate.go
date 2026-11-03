@@ -74,6 +74,8 @@ func ValidateConfig(cfg *Config) error {
 		errMsgs = append(errMsgs, "AUTH_SERVICE_CONTAINER_NAME is required")
 	} else if !ruleset.AllowedDockerID(cfg.AuthService.Container.Name) {
 		errMsgs = append(errMsgs, "AUTH_SERVICE_CONTAINER_NAME must be a valid Docker ID")
+	} else if cfg.UserService.Container.NamePrefix != "" && strings.HasPrefix(cfg.AuthService.Container.Name, cfg.UserService.Container.NamePrefix) {
+		errMsgs = append(errMsgs, "AUTH_SERVICE_CONTAINER_NAME must not start with USER_SERVICE_CONTAINER_NAME_PREFIX")
 	}
 
 	if cfg.AuthService.Container.ExternalPort <= 0 || cfg.AuthService.Container.ExternalPort > 65535 {
@@ -114,14 +116,16 @@ func ValidateConfig(cfg *Config) error {
 		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NAME must be a valid Docker ID")
 	} else if cfg.ManagerService.Container.Name == cfg.AuthService.Container.Name {
 		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NAME cannot be the same as AUTH_SERVICE_CONTAINER_NAME")
+	} else if cfg.UserService.Container.NamePrefix != "" && strings.HasPrefix(cfg.ManagerService.Container.Name, cfg.UserService.Container.NamePrefix) {
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NAME must not start with USER_SERVICE_CONTAINER_NAME_PREFIX")
 	}
 
 	if cfg.ManagerService.Container.Network == "" {
 		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NETWORK is required")
 	} else if !ruleset.AllowedDockerID(cfg.ManagerService.Container.Network) {
 		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NETWORK must be a valid Docker ID")
-	} else if cfg.ManagerService.Container.Network == cfg.UserService.Container.NetworkNamePrefix {
-		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NETWORK cannot be the same as USER_SERVICE_CONTAINER_NETWORK_NAME_PREFIX")
+	} else if cfg.UserService.Container.NetworkNamePrefix != "" && strings.HasPrefix(cfg.ManagerService.Container.Network, cfg.UserService.Container.NetworkNamePrefix) {
+		errMsgs = append(errMsgs, "MANAGER_SERVICE_CONTAINER_NETWORK must not start with USER_SERVICE_CONTAINER_NETWORK_NAME_PREFIX")
 	}
 
 	if cfg.ManagerService.Container.Subnet == "" {
@@ -225,6 +229,9 @@ func ValidateConfig(cfg *Config) error {
 	}
 
 	if err := validateVolumePaths(cfg); err != nil {
+		errMsgs = append(errMsgs, err.Error())
+	}
+	if err := validateContainerVolumePaths(cfg); err != nil {
 		errMsgs = append(errMsgs, err.Error())
 	}
 

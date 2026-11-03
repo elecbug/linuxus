@@ -1,6 +1,8 @@
 package user
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,6 +15,29 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+func FuzzReadUsers(f *testing.F) {
+	for _, seed := range []string{"", "alice:hash\n", "# accounts\nalice:hash\nbob:other\n", "alice:hash\nalice:duplicate\n", "../outside:hash\n", "alice:\x00opaque\n"} {
+		f.Add([]byte(seed))
+	}
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > 256<<10 {
+			t.Skip()
+		}
+		users, err := readUsers(bytes.NewReader(data))
+		if err != nil {
+			return
+		}
+		var normalized bytes.Buffer
+		for id, record := range users {
+			fmt.Fprintf(&normalized, "%s:%s\n", id, record)
+		}
+		loaded, err := readUsers(&normalized)
+		if err != nil || !reflect.DeepEqual(users, loaded) {
+			t.Fatalf("accepted credentials cannot be read after normalization: %v", err)
+		}
+	})
+}
 
 func TestSyncUsersReplacesChangedCredentialsWithSameCount(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "AUTH_LIST")

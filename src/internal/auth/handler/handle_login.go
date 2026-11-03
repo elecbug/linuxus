@@ -172,7 +172,7 @@ func (a *App) clientIP(r *http.Request) string {
 	}
 
 	if a.isTrustedProxy(remoteHost) {
-		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if xff := strings.Join(r.Header.Values("X-Forwarded-For"), ","); xff != "" {
 			parts := strings.Split(xff, ",")
 			// Walk from the nearest hop. Entries before the first untrusted
 			// address may have been supplied by the client itself.
@@ -187,8 +187,10 @@ func (a *App) clientIP(r *http.Request) string {
 			}
 		}
 
-		if ip := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); ip != nil {
-			return ip.String()
+		if values := r.Header.Values("X-Real-IP"); len(values) == 1 {
+			if ip := net.ParseIP(strings.TrimSpace(values[0])); ip != nil {
+				return ip.String()
+			}
 		}
 	}
 

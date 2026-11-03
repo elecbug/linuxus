@@ -22,6 +22,13 @@ Auth and Manager containers, and the host disk service. Failures return exit cod
 reported as warnings. It does not test the external HTTPS proxy or browser login.
 Both commands leave files, mounts, and containers unchanged.
 
+Auth and Manager container names must not start with the user container prefix;
+the Manager network must also be outside the user network prefix. These prefixes
+identify user resources during capacity checks and cleanup. Home, shared, and
+readonly directories and shared image files must not overlap or alias one another,
+including through symbolic or hard links. Container mount targets must be clean
+absolute paths and must not overlap the user home or each other.
+
 ## Recovery after reboots and process failures
 
 `supervise` prepares disks before starting Manager and Auth. Every five seconds,
@@ -72,6 +79,17 @@ Session counts expire after two minutes without an update; the configured idle
 cleanup timeout then applies. Setting that timeout to `0s` still disables idle
 cleanup.
 
+Manager removes networks using their actual Docker IDs. New user networks carry
+an ownership label, allowing cleanup to be retried after their container disappears.
+Failed container inspections stop cleanup. Older networks without ownership labels
+are still cleaned while attached to an existing user container; orphaned legacy
+networks are retained until `linuxusctl down` performs deployment-wide cleanup.
+
+Auth connects to the exact IPv4 address inspected by Manager. This keeps accounts
+such as `alice` and `Alice` separate even though Docker DNS ignores letter case.
+Rebuild and restart Auth and Manager together when upgrading; an older Manager
+without the runtime address field cannot serve terminal requests to the new Auth.
+
 ## Account operations that preserve data
 
 ```bash
@@ -96,6 +114,8 @@ the inode used by Docker's bind mount. Older binaries cannot read the new record
 format; do not downgrade after updating accounts. If a CLI stop request fails, the
 account change remains in effect and the error explains that partial result.
 Auth also periodically revalidates existing connections.
+Account writes reject entries that exceed the credential reader's line limit,
+leaving existing accounts unchanged rather than publishing an unreadable file.
 
 ## Per-user backups and restores
 
@@ -109,7 +129,9 @@ Create the backup directory first. Backups contain the user's ext4 home image an
 a manifest recording its SHA-256 checksum, user ID, UID/GID, size, and creation
 time. Shared disks, account passwords, and deployment settings are not included.
 Store backups outside managed disks on the host. Existing backup files are never
-overwritten.
+overwritten. Shared image paths are protected even when their mount directories
+are symbolic links. Verification rejects trailing archive data and additional gzip
+members, including empty members.
 
 Backup maintenance marks the account unavailable, stops its environment, and
 removes its mounts and loop attachments. Success remounts the disk and restores

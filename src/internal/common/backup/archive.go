@@ -2,6 +2,7 @@ package backup
 
 import (
 	"archive/tar"
+	"bufio"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
@@ -72,11 +73,13 @@ func Write(output io.Writer, image *os.File, manifest Manifest) error {
 // Destination must be an unpublished temporary file (nil for verification).
 func Read(input io.Reader, destination *os.File, maxSize int64) (Manifest, error) {
 	var manifest Manifest
-	gz, err := gzip.NewReader(input)
+	compressed := bufio.NewReader(input)
+	gz, err := gzip.NewReader(compressed)
 	if err != nil {
 		return manifest, err
 	}
 	defer gz.Close()
+	gz.Multistream(false)
 	tr := tar.NewReader(gz)
 	header, err := tr.Next()
 	if err != nil {
@@ -114,13 +117,19 @@ func Read(input io.Reader, destination *os.File, maxSize int64) (Manifest, error
 	if _, err := tr.Next(); err != io.EOF {
 		return manifest, fmt.Errorf("unexpected extra backup entry")
 	}
-	// Reading through gzip's EOF also validates its checksum and rejects payload
-	// hidden after the tar terminator, including additional gzip members.
+	// Read through this member's EOF to validate its checksum. Checking the
+	// compressed stream separately also rejects empty additional gzip members.
 	trailing, err := io.Copy(io.Discard, gz)
 	if err != nil {
 		return manifest, err
 	}
 	if trailing != 0 {
+		return manifest, fmt.Errorf("trailing backup payload")
+	}
+	if _, err := compressed.ReadByte(); err != io.EOF {
+		if err != nil {
+			return manifest, err
+		}
 		return manifest, fmt.Errorf("trailing backup payload")
 	}
 	if destination != nil {

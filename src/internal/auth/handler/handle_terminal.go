@@ -29,14 +29,14 @@ func (a *App) handleTerminalProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	containerName, err := a.ensureUserContainerReady(r.Context(), id)
+	backendHost, err := a.ensureUserContainerReady(r.Context(), id)
 	if err != nil {
 		log.Printf("manager prepare failed for %s: %v", id, err)
 		a.renderError(w, "Shell container is not ready. Please try again later.", http.StatusServiceUnavailable)
 		return
 	}
 
-	targetURL := fmt.Sprintf("http://%s:7681", containerName)
+	targetURL := fmt.Sprintf("http://%s:7681", backendHost)
 
 	target, err := url.Parse(targetURL)
 	if err != nil {

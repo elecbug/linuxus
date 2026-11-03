@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func testArchive(t *testing.T) ([]byte, []byte) {
+func testArchive(t testing.TB) ([]byte, []byte) {
 	t.Helper()
 	data := make([]byte, 2<<20)
 	copy(data, "student files")
@@ -88,4 +88,34 @@ func TestRejectTruncatedCorruptAndUnexpectedEntries(t *testing.T) {
 	if _, err := Read(bytes.NewReader(append(append([]byte{}, encoded...), encoded...)), nil, 0); err == nil {
 		t.Fatal("accepted extra compressed member")
 	}
+}
+
+func TestRejectEmptyExtraGzipMember(t *testing.T) {
+	encoded, _ := testArchive(t)
+	var empty bytes.Buffer
+	gz := gzip.NewWriter(&empty)
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for _, tail := range [][]byte{empty.Bytes(), {0}, []byte("trailing data")} {
+		if _, err := Read(bytes.NewReader(append(append([]byte{}, encoded...), tail...)), nil, 0); err == nil {
+			t.Fatalf("accepted trailing compressed bytes: %x", tail)
+		}
+	}
+}
+
+func FuzzReadArchive(f *testing.F) {
+	encoded, _ := testArchive(f)
+	f.Add(encoded)
+	f.Add([]byte{})
+	f.Add([]byte("not a backup"))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > 64<<10 {
+			t.Skip()
+		}
+		manifest, err := Read(bytes.NewReader(data), nil, 4<<20)
+		if err == nil && (manifest.Size <= 1<<20 || manifest.Size > 4<<20 || manifest.UID <= 0 || manifest.GID <= 0) {
+			t.Fatalf("accepted invalid backup metadata: %+v", manifest)
+		}
+	})
 }

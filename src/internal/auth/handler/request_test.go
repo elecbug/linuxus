@@ -30,6 +30,49 @@ func TestClientIPIgnoresForgedForwardedPrefix(t *testing.T) {
 	}
 }
 
+func TestClientIPCombinesRepeatedForwardedHeaders(t *testing.T) {
+	_, trusted, _ := net.ParseCIDR("10.0.0.0/8")
+	a := &App{trustedProxies: []*net.IPNet{trusted}}
+	for _, values := range [][]string{
+		{"192.0.2.99", "203.0.113.10"},
+		{"192.0.2.99", "203.0.113.10, 10.0.0.2"},
+		{"192.0.2.99, 203.0.113.10", "10.0.0.2"},
+	} {
+		r := httptest.NewRequest("GET", "/login", nil)
+		r.RemoteAddr = "10.0.0.1:8080"
+		for _, value := range values {
+			r.Header.Add("X-Forwarded-For", value)
+		}
+		if got := a.clientIP(r); got != "203.0.113.10" {
+			t.Fatalf("forwarded=%v client IP=%s; trusted proxy's appended client address was ignored", values, got)
+		}
+	}
+}
+
+func TestClientIPRejectsAmbiguousRealIPHeaders(t *testing.T) {
+	_, trusted, _ := net.ParseCIDR("10.0.0.0/8")
+	a := &App{trustedProxies: []*net.IPNet{trusted}}
+	for _, values := range [][]string{
+		{"192.0.2.99", "203.0.113.10"},
+		{"192.0.2.99, 203.0.113.10"},
+	} {
+		r := httptest.NewRequest("GET", "/login", nil)
+		r.RemoteAddr = "10.0.0.1:8080"
+		for _, value := range values {
+			r.Header.Add("X-Real-IP", value)
+		}
+		if got := a.clientIP(r); got != "10.0.0.1" {
+			t.Fatalf("ambiguous X-Real-IP headers changed the client address: %s", got)
+		}
+	}
+	r := httptest.NewRequest("GET", "/login", nil)
+	r.RemoteAddr = "10.0.0.1:8080"
+	r.Header.Set("X-Real-IP", "203.0.113.10")
+	if got := a.clientIP(r); got != "203.0.113.10" {
+		t.Fatalf("valid single X-Real-IP was ignored: %s", got)
+	}
+}
+
 type delayedForm struct {
 	reader           io.Reader
 	once             sync.Once

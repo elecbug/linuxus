@@ -31,6 +31,7 @@ type runtimeDocker struct {
 	beforeMutation  func()
 	failPath        string
 	existingNetwork string
+	networkLabels   map[string]string
 }
 
 func (d *runtimeDocker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -66,7 +67,7 @@ func (d *runtimeDocker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(map[string]any{
 			"Id": "user-id", "State": map[string]bool{"Running": d.running},
-			"NetworkSettings": map[string]any{"Networks": map[string]any{"net_alice": map[string]string{"IPAddress": "10.10.0.2"}}},
+			"NetworkSettings": map[string]any{"Networks": map[string]any{"net_alice": map[string]string{"IPAddress": "10.10.0.2", "NetworkID": "network-id"}}},
 		})
 	case path == "/networks":
 		if d.existingNetwork != "" {
@@ -75,6 +76,12 @@ func (d *runtimeDocker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("[]"))
 		}
 	case path == "/networks/create":
+		var body struct{ Labels map[string]string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		d.networkLabels = body.Labels
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(`{"Id":"network-id"}`))
 	case path == "/networks/net_alice":
@@ -174,6 +181,9 @@ func TestAutoEnsureRuntime(t *testing.T) {
 			if !tc.wantError && (resp == nil || !resp.OK) {
 				t.Fatalf("not ready: %v", resp)
 			}
+			if !tc.wantError && resp.ContainerIP != "10.10.0.2" {
+				t.Fatalf("runtime response lost the inspected IPv4 address: %+v", resp)
+			}
 			if got := int(calls.Load()); got != tc.wantCalls {
 				t.Fatalf("disk calls=%d, want %d", got, tc.wantCalls)
 			}
@@ -183,6 +193,9 @@ func TestAutoEnsureRuntime(t *testing.T) {
 				t.Fatalf("Docker mutations: %v", d.mutations)
 			}
 			if !tc.exists && !tc.wantError {
+				if d.networkLabels["io.linuxus.user-container"] != "user_alice" {
+					t.Fatal("new network is missing its runtime ownership label")
+				}
 				if len(d.hostConfig.Binds) != 0 || len(d.hostConfig.Mounts) != 3 {
 					t.Fatalf("unsafe binds: %+v", d.hostConfig)
 				}
@@ -301,7 +314,7 @@ func TestExistingRuntimeFailureDoesNotDeleteResources(t *testing.T) {
 func TestNetworkNameCollisionDoesNotJoinExistingNetwork(t *testing.T) {
 	d := &runtimeDocker{existingNetwork: "net_alice"}
 	s := runtimeTestServer(t, d, nil)
-	if _, err := s.createNetwork(context.Background(), "net_alice", "10.10.0.0/28"); err == nil {
+	if _, err := s.createNetwork(context.Background(), "net_alice", "10.10.0.0/28", "alice"); err == nil {
 		t.Fatal("reused another network with the same name")
 	}
 	d.mu.Lock()

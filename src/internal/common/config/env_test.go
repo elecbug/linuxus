@@ -86,3 +86,29 @@ func TestEnvDoesNotInheritOrModifyProcessEnvironment(t *testing.T) {
 		t.Fatal("process environment changed file configuration")
 	}
 }
+
+func FuzzParseEnv(f *testing.F) {
+	for _, seed := range []string{DefaultEnv, "", "secret#suffix", "'quoted'", "line\nline\r\t\\\"$VALUE", "\x00"} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, input string) {
+		if len(input) > 64<<10 {
+			t.Skip()
+		}
+		// Arbitrary configuration input must never panic.
+		_, _ = ParseEnv([]byte(input))
+		// Quoting must preserve every supported byte, including whitespace,
+		// comments, non-ASCII text and literal shell expressions.
+		quoted := strings.NewReplacer("\\", "\\\\", "\"", "\\\"", "\n", "\\n", "\r", "\\r", "\t", "\\t").Replace(input)
+		cfg, err := ParseEnv([]byte("AUTH_SERVICE_SECURITY_SESSION_SECRET=\"" + quoted + "\" # comment\n"))
+		if strings.ContainsRune(input, 0) {
+			if err == nil {
+				t.Fatal("accepted NUL in a setting")
+			}
+			return
+		}
+		if err != nil || cfg.AuthService.Security.SessionSecret != input {
+			t.Fatalf("quoted value did not round trip: input=%q value=%q error=%v", input, cfg.AuthService.Security.SessionSecret, err)
+		}
+	})
+}

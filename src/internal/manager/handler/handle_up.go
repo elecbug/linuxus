@@ -144,7 +144,8 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (res
 			}
 		}
 
-		if _, err := s.waitForContainerIP(ctx, containerName, networkName); err != nil {
+		ip, err := s.waitForContainerIP(ctx, containerName, networkName)
+		if err != nil {
 			return nil, err
 		}
 
@@ -152,6 +153,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (res
 			OK:            true,
 			UserID:        userID,
 			ContainerName: containerName,
+			ContainerIP:   ip,
 			NetworkName:   networkName,
 			Subnet:        subnet,
 			Message:       "container ready",
@@ -170,7 +172,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (res
 		networkName = fmt.Sprintf("%sidx_%d", s.cfg.NetworkPrefix, index)
 	}
 
-	networkID, err := s.createNetwork(ctx, networkName, subnet)
+	networkID, err := s.createNetwork(ctx, networkName, subnet, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +192,8 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (res
 	}
 	authConnected = true
 
-	if _, err := s.waitForContainerIP(ctx, containerName, networkName); err != nil {
+	ip, err := s.waitForContainerIP(ctx, containerName, networkName)
+	if err != nil {
 		return nil, err
 	}
 
@@ -198,6 +201,7 @@ func (s *Server) ensureUserRuntimeReady(ctx context.Context, userID string) (res
 		OK:            true,
 		UserID:        userID,
 		ContainerName: containerName,
+		ContainerIP:   ip,
 		NetworkName:   networkName,
 		Subnet:        subnet,
 		Message:       "container ready",
@@ -472,7 +476,7 @@ func (s *Server) existNetwork(ctx context.Context, name string) (bool, error) {
 }
 
 // createNetwork creates a new, isolated network and returns its immutable ID.
-func (s *Server) createNetwork(ctx context.Context, name, subnet string) (string, error) {
+func (s *Server) createNetwork(ctx context.Context, name, subnet, userID string) (string, error) {
 	if exists, err := s.existNetwork(ctx, name); err != nil {
 		return "", err
 	} else if exists {
@@ -481,6 +485,7 @@ func (s *Server) createNetwork(ctx context.Context, name, subnet string) (string
 	created, err := s.docker.NetworkCreate(ctx, name, network.CreateOptions{
 		Driver: "bridge",
 		IPAM:   &network.IPAM{Config: []network.IPAMConfig{{Subnet: subnet}}},
+		Labels: map[string]string{userContainerNetworkLabel: s.cfg.UserContainerNamePrefix + userID},
 	})
 	if err != nil {
 		return "", fmt.Errorf("network create failed: %w", err)

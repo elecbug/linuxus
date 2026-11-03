@@ -159,11 +159,15 @@ func updateAccount(path, id, operation, value string, expectedRecord *string) er
 	if err != nil {
 		return err
 	}
+	entry := id + ":" + accountPrefix + base64.RawURLEncoding.EncodeToString(encoded)
+	if _, err := readUsers(strings.NewReader(entry + "\n")); err != nil {
+		return fmt.Errorf("updated auth entry cannot be read back: %w", err)
+	}
 	lines := strings.Split(string(data), "\n")
 	for i, line := range lines {
 		key, _, ok := strings.Cut(strings.TrimSpace(line), ":")
 		if ok && strings.TrimSpace(key) == id {
-			lines[i] = id + ":" + accountPrefix + base64.RawURLEncoding.EncodeToString(encoded)
+			lines[i] = entry
 		}
 	}
 	return replaceAuthData(file, data, []byte(strings.Join(lines, "\n")))
